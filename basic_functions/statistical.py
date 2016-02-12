@@ -12,6 +12,8 @@ In effect, normalizing by the integral guarantees that the parameter is given it
 But then it's not forced to be between 0 and 1... it's forced between 0*a1*a2*a3.... which is not unitless and hard to interpret
 """
 
+import numpy as np
+
 def gaussian(r,r0,width):
     V = np.exp(-((r - r0)**2)/(2.*(width**2)))
     return V
@@ -20,5 +22,5 @@ def wrapped_gaussian(r0, width):
     def new_gaussian(r):
         return gaussian(r,r0,width)
     
-    return new_gaussian(r)
+    return new_gaussian
     
