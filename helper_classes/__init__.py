@@ -1,1 +1,0 @@
-import q_value

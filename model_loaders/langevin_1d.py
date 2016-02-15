@@ -1,11 +1,11 @@
 """ These set of functions will load in a simple 1-D Langevin data set"""
 import numpy as np
-import max)likelihood.model_loaders.model_loader as model_loader
-
+import max_likelihood.model_loaders.Model_Loader as Model_Loader
+import max_likelihood.model_loaders.data_loaders.load_array as load_array
 
 """ USEFUL FUNCTIONS FOR GETTING DESIRED RESULTS FROM MODEL """
 
-class langevin(model_loader):
+class Langevin(Model_Loader):
     """Object for getting data sets and langevin based stuff from the """
     
     def __init__(self, ini_file_name):
@@ -19,21 +19,40 @@ class langevin(model_loader):
             ini_file_name = ini_file_name[:-4]
         self.model = lmodel(ini_file_name)
         
-    def input_config(self, data):
-        self.data = data
-    
-    def append_config(self, data):
-        try:
-            self.data = np.append(self.data, data, axis=0)
-        except:
-            print "Failed to load data... data is the wrong size or shape"
-    
-    def load_config(self, fname):
-        self.data = np.loadtxt(fname)
+        indices = np.arange(0, self.model.number_parameters)
+        self.use_params = indices[self.model.fit_parameters] # indices corresponding to potentials to use
+        self.epsilons = self.model.params[self.model.fit_parameters]
         
-    def get_potentials_epsilon(self, data):
-        pass
+    def load_data(self,fname):
+        return load_array(fname)
     
+    def get_epsilons(self):
+        return self.model.params[self.model.fit_parameters]
+    
+    def get_potentials_epsilon(self, data):
+        """ Takes a 1-d array, outputs a function(epsilons_list) 
+        
+        get_potentials_epsilons(self, data) should take as input
+        some data that is already properly formatted for the model
+        in question. Then, it should calculate a function where
+        the epsilons are the independent variables. the function
+        is formatted to take a list of epsilons as an input and
+        return a float number as its output.
+        
+        """
+        
+        constants_list = [] #final list of constant pre factor to each model param epsilon
+        
+        for i in self.use_params:
+            constants_list.append(self.model.potential_functions[i](data))
+        
+        def hepsilon(epsilons):
+            total = 0.0
+            for i in range(len(self.use_params)):
+                total += epsilons[i] * constants_list[i]
+            return total
+            
+        return hepsilon
     
     
     

@@ -1,4 +1,4 @@
-""" Initiate the sub packages for  """
+""" Initiate the sub packages for functions """
 
-import statistical
+##to do: set up importing of statistical module to parent level of max_likelihood
 
