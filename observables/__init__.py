@@ -1,3 +1,3 @@
 
 
-from hist_analysis_pkg import histogram_distance
+from observable_object import Obs
