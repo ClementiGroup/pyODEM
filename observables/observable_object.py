@@ -5,6 +5,8 @@ The information contained in each observable varies greatly from what experiment
 import numpy as np
 
 import max_likelihood.observables.hist_analysis_pkg.HistogramO
+import max_likelihood.basic_functions as bf
+
 
 class Observable(object):
     def __init__(self):
@@ -14,13 +16,18 @@ class Observable(object):
         """ return the observation and observation_std"""
         return 0, 1
     
-class Obs(object):
+class ExperimentalObservable(object):
     def __init__():
         self.observables = []
-    
-    def add_histogram(type, nbins=10, range=(0,10), spacing=None, edges=None, weights=None):
+        self.q_functions = []
+        self.num_q_functions = 0
+        
+    def add_histogram(exp_file, nbins=10, range=(0,10), spacing=None, edges=None, weights=None, errortype="gaussian"):
         observable = HistogramO(nbins, range, spacing, edges, weights)
         self.observables.append(observable)
+        for i in range(np.shape(exp_file)[0]):
+            self.num_q_functions += 1
+            self.q_functions.append(bf.statistical.wrapped_gaussian(exp_file[i,0], exp_file[i,1]))
         
     def compute_observations(self, data, weights):
         if weights == None:
@@ -34,4 +41,17 @@ class Obs(object):
             all_std = np.append(all_std, std)
         
         return all_obs, all_std
+    
+    def get_q_function(self):
+        def q_simple(observations):
+            if not np.shape(observations)[0] == self.num_q_functions:
+                #check to see if number of observations match
+                #NOTE: Depending on how values are arranged and passed in this wrapper  function, we can add q_functions later in a script and cause this to fail when trying ot use the same "old" function.
+                raise IOError("Number of obserations not equal to number of q_functions. This is a problem")
+            q_value = 1.0
+            for i in range(self.num_q_functions):
+                q_value *= self.q_functions[i](observations[i])
+            
+            return q_value
         
+        return q_simple
