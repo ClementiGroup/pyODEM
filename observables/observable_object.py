@@ -16,7 +16,7 @@ class Observable(object):
         """ return the observation and observation_std"""
         return 0, 1
     
-class ExperimentalObservable(object):
+class ExperimentalObservables(object):
     def __init__():
         self.observables = []
         self.q_functions = []
