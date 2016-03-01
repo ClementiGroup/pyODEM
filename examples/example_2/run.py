@@ -27,5 +27,8 @@ for i in possible_slices:
     data[slices == i]
     equilibrium_frames.append(data)
 
+
+
+
 #Now we can compute the set of epsilons that satisfy the max-likelihood condition
-import max_likelihood.estimate_new_epsilons(data, data_sets, obs, lmodel)
+import max_likelihood.estimate_new_epsilons

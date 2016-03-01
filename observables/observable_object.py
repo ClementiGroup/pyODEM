@@ -29,7 +29,7 @@ class ExperimentalObservables(object):
             self.num_q_functions += 1
             self.q_functions.append(bf.statistical.wrapped_gaussian(exp_file[i,0], exp_file[i,1]))
         
-    def compute_observations(self, data, weights):
+    def compute_observations(self, data, weights=None):
         if weights == None:
             weights = np.ones(np.shape(data)[0])
         
