@@ -62,7 +62,7 @@ def estimate_new_epsilons(data, data_sets, observables, model):
         #calculate re-weighting for all terms 
         for i in range(number_equilibrium_states):
             #exp(-beat dH) weighted for this state is:
-            next_weight = h0[i]*epsilon_functions[i](epsilon)
+            next_weight = epsilon_functions[i](epsilon) / h0[i]
             next_observed += next_weight * expectation_observables[i]
         
         
