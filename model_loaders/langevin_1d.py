@@ -22,6 +22,7 @@ class Langevin(Model_Loader):
         indices = np.arange(0, self.model.number_parameters)
         self.use_params = indices[self.model.fit_parameters] # indices corresponding to potentials to use
         self.epsilons = self.model.params[self.model.fit_parameters]
+        self.beta = 1.0
         
     def load_data(self,fname):
         return load_array(fname)
@@ -49,9 +50,11 @@ class Langevin(Model_Loader):
         def hepsilon(epsilons):
             total = 0.0
             for i in range(len(self.use_params)):
-                total += epsilons[i] * constants_list[i]
+                total += np.exp(-1.0 * self.beta * epsilons[i] * constants_list[i])
             return total
-            
+        
+        total /= float(np.shape(data)[0])
+        
         return hepsilon
     
     
