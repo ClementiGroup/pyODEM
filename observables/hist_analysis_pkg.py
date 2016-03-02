@@ -1,6 +1,7 @@
 import numpy as np
 import math
-import pyfexd.observables.observable_object.observable as Observable
+from pyfexd.observables import Observable
+
 
 class HistogramO(Observable):
     def __init__(self, nbins, range, spacing, edges):
@@ -89,7 +90,7 @@ def histogram_data(data, nbins=10, range=(0,10), edges=None, weights=None):
     
     return hist, stdev, bincenters, edges, slices
 
-def histogram_data_spacing(data, spacing=spacing, weights=None):
+def histogram_data_spacing(data, spacing, weights=None):
     if weights == None:
         weights = np.ones(np.shape(data)[0])
     

@@ -1,7 +1,7 @@
 """ Example for analyzing a 1d langevin dynamics model"""
 
-import max_likelihood.model_loaders as ml
-import max_likelihood.observables as observables
+import pyfexd.model_loaders as ml
+import pyfexd.observables as observables
 
 
 #load the model and load the data per the model's load_data method.
