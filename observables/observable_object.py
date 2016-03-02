@@ -4,8 +4,8 @@ The information contained in each observable varies greatly from what experiment
 """
 import numpy as np
 
-import max_likelihood.observables.hist_analysis_pkg.HistogramO
-import max_likelihood.basic_functions as bf
+import pyfexd.observables.hist_analysis_pkg.HistogramO
+import pyfexd.basic_functions as bf
 
 
 class Observable(object):

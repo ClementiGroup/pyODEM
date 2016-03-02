@@ -1,6 +1,6 @@
 import numpy as np
 import math
-import max_likelihood.observables.observable_object.observable as Observable
+import pyfexd.observables.observable_object.observable as Observable
 
 class HistogramO(Observable):
     def __init__(self, nbins, range, spacing, edges):

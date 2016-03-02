@@ -1,7 +1,7 @@
 """ These set of functions will load in a simple 1-D Langevin data set"""
 import numpy as np
-import max_likelihood.model_loaders.Model_Loader as Model_Loader
-import max_likelihood.model_loaders.data_loaders.load_array as load_array
+import pyfexd.model_loaders.Model_Loader as Model_Loader
+
 
 """ USEFUL FUNCTIONS FOR GETTING DESIRED RESULTS FROM MODEL """
 
@@ -25,7 +25,7 @@ class Langevin(Model_Loader):
         self.beta = 1.0
         
     def load_data(self,fname):
-        return load_array(fname)
+        return np.loadtxt(fname)
     
     def get_epsilons(self):
         return self.model.params[self.model.fit_parameters]
