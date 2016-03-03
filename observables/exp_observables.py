@@ -1,21 +1,30 @@
+import numpy as np
+
 from pyfexd.observables.hist_analysis_pkg import HistogramO
 import pyfexd.basic_functions as bf
 
 
 
 class ExperimentalObservables(object):
-    def __init__():
+    def __init__(self):
         self.observables = []
         self.q_functions = []
         self.num_q_functions = 0
         
-    def add_histogram(exp_file, nbins=10, range=(0,10), spacing=None, edges=None, weights=None, errortype="gaussian"):
-        observable = HistogramO(nbins, range, spacing, edges, weights)
-        self.observables.append(observable)
-        for i in range(np.shape(exp_file)[0]):
-            self.num_q_functions += 1
-            self.q_functions.append(bf.statistical.wrapped_gaussian(exp_file[i,0], exp_file[i,1]))
+    def add_histogram(self, exp_file, compute=False, nbins=None, histrange=None, spacing=None, edges=None, errortype="gaussian"):
+        if compute == False:
+		    observable = HistogramO(nbins, histrange, spacing, edges)
+		    self.observables.append(observable)
         
+        else:
+        	pass #implement a method for analyzing a data file based on the parameters for the histogram given here.
+        
+        exp_data = np.loadtxt(exp_file)
+        
+        for i in range(np.shape(exp_data)[0]):
+	        self.num_q_functions += 1
+	        self.q_functions.append(bf.statistical.wrapped_gaussian(exp_data[i,0], exp_data[i,1]))
+    
     def compute_observations(self, data, weights=None):
         if weights == None:
             weights = np.ones(np.shape(data)[0])

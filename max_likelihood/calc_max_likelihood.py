@@ -19,7 +19,7 @@ def estimate_new_epsilons(data, data_sets, observables, model):
     #observables get useful stuff like value of beta
     beta = model.beta
     number_equilibrium_states = len(data_sets)
-    
+
     #first calculate average value of all observables and associated functions 
     
     expectation_observables = []
@@ -35,25 +35,26 @@ def estimate_new_epsilons(data, data_sets, observables, model):
     
     for i in data_sets:
         use_data = data[i]
-        epsilon_function = model.get_potentials_epsilon(use_data)
+        epsilons_function = model.get_potentials_epsilon(use_data)
         observed = observables.compute_observations(use_data)
         num_in_set = np.shape(use_data)[0]
         ni.append(num_in_set)
         pi.append(num_in_set)
-        h0.append(epsilon_function(current_epsilons))
+        print epsilons_function(current_epsilons)
+        h0.append(epsilons_function(current_epsilons))
         expectation_observables.append(observed)
-        epsilons_functions.append(epsilon_function)
-    num_observable = np.shape(observed)[i] ## Calculate the number of observables
-    
+        epsilons_functions.append(epsilons_function)
+    num_observable = np.shape(observed)[0] ## Calculate the number of observables
+
         
     pi =  np.array(pi).astype(float)
     pi /= np.sum(pi)
     state_prefactors = []
     
     for i in range(number_equilibrium_states):
-        state_prefactor = pi[i] * observed[i]##these are the parts that don't depend on the re-weighting   
+        state_prefactor = pi[i] * expectation_observables[i]##these are the parts that don't depend on the re-weighting   
         state_prefactors.append(state_prefactor)
-    
+
     #then wrap up a funciton that takes only epsilons, and outputs a value for Q
     def Qfunction_epsilon(epsilons):
         #initiate value for observables:
@@ -62,11 +63,11 @@ def estimate_new_epsilons(data, data_sets, observables, model):
         #calculate re-weighting for all terms 
         for i in range(number_equilibrium_states):
             #exp(-beat dH) weighted for this state is:
-            next_weight = epsilon_functions[i](epsilon) / h0[i]
+            next_weight = np.sum(epsilons_functions[i](epsilons) / h0[i])
             next_observed += next_weight * expectation_observables[i]
         
         
-        Q = Q_function(next observed)
+        Q = Q_function(next_observed)
         return Q 
         
     #Then run the solver

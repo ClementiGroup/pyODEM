@@ -10,7 +10,7 @@ class Langevin(Model_Loader):
     
     def __init__(self, ini_file_name):
         try:
-            import langevin_model.model as lmodel
+            from langevin_model.model import langevin_model as lmodel
         except:
             raiseIOError("langevin_model package is not installed. Please check path variables or install the relevant package from: https://github.com/TensorDuck/langevin_model")
         
@@ -46,14 +46,21 @@ class Langevin(Model_Loader):
         
         for i in self.use_params:
             constants_list.append(self.model.potential_functions[i](data))
+            
+
         
         def hepsilon(epsilons):
-            total = 0.0
-            for i in range(len(self.use_params)):
-                total += np.exp(-1.0 * self.beta * epsilons[i] * constants_list[i])
+            #returns an array for the value of H for each frame, given a set of epsilons.
+            total = np.zeros(np.shape(data)[0])
+            
+            for i in self.use_params:
+                total = epsilons[i]*constants_list[i]
+            
+            total = np.exp(-1.0 * self.beta * total)
+            
             return total
         
-        total /= float(np.shape(data)[0])
+        
         
         return hepsilon
     

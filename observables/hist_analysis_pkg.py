@@ -1,48 +1,41 @@
 import numpy as np
+import scipy.stats as stats
+
 import math
 from pyfexd.observables import Observable
 
 
 class HistogramO(Observable):
-    def __init__(self, nbins, range, spacing, edges):
-        if edges == None:
-            def calc(data, weights):
-                stats.binned_statistic(data, weights, statistic="sum", range=[range], bins=nbins)
-        else:
-            def calc(data, weights):
-                stats.binned_statistic(data, weights, statistic="sum", edges=edges)
-        self.calculate = calc
+    def __init__(self, nbins, histrange, spacing, edges):
         self.spacing = spacing
-        self.range = range
+        self.histrange = histrange
         self.nbins = nbins
         self.edges = edges
     
     def compute_observed(self, data, weights):
         if self.edges == None:
             if self.spacing == None:
-                hist, edges, slices = stats.binned_statistic(data, weights, statistic="sum", range=[range], bins=nbins)
+                hist, edges = np.histogram(data, weights=weights, range=self.histrange, bins=self.nbins)
             else:
                 xmin = int(np.min(data)/spacing)
                 xmax = int(np.max(data)/spacing) + 1
                     
-                hist, edges, slices = stats.binned_statistic(x, weights, statistic="sum", range=[((xmin*spacing)/(xmax*spacing))], bins=xmax-xmin)
+                hist, edges = np.histogram(x, weights=weights, range=[((xmin*spacing)/(xmax*spacing))], bins=xmax-xmin)
         else:
-            hist, edges, slices = stats.binned_statistic(data, weights, statistic="sum", edges=edges)
+            hist, edges = np.histogram(data, weights=weights, bins=self.edges)
 
-        normalization = math.abs(integrate_simple(hist, edges))
+        normalization = math.fabs(integrate_simple(hist, edges))
     
         stdev = np.sqrt(hist) / normalization
         hist = hist / normalization
         bincenters = 0.5*(edges[1:] + edges[:-1])
         
-        self.bincenters = bincenters
-        self.edges = edges
-        self.slices = slices
+
         
         return hist, stdev
         
 
-def histogram_distance(data, nbins=10, range=(0,10), spacing=None, edges=None, weights=None):
+def histogram_distance(data, nbins=10, histrange=(0,10), spacing=None, edges=None, weights=None):
     """ Formats the output from histogram_data
     
     histogram_distance will output things as a hist and stdev. 
@@ -53,13 +46,13 @@ def histogram_distance(data, nbins=10, range=(0,10), spacing=None, edges=None, w
     
     """
     if spacing == None:
-        hist, stdev, bincenters, edges, slices = histogram_data(data, nbins=nbins, range=range, edges=edges, weights=weights)
+        hist, stdev, bincenters, edges, slices = histogram_data(data, nbins=nbins, histrange=histrange, edges=edges, weights=weights)
     else:
         hist, stdev, bincenters, edges, slices = histogram_data_spacing(data, spacing=spacing, weights=weights)
     return hist, stdev
 
 
-def histogram_data(data, nbins=10, range=(0,10), edges=None, weights=None):
+def histogram_data(data, nbins=10, histrange=(0,10), edges=None, weights=None):
     """ Histogram a 1-d Array, integral normalized
 
     Histogram is integral normalized. A stdev is outputted as 
@@ -78,7 +71,7 @@ def histogram_data(data, nbins=10, range=(0,10), edges=None, weights=None):
         weights = np.ones(np.shape(data)[0])
     
     if edges == None:
-        hist, edges, slices = stats.binned_statistic(data, weights, statistic="sum", range=[range], bins=nbins)
+        hist, edges, slices = stats.binned_statistic(data, weights, statistic="sum", histrange=[histrange], bins=nbins)
     else:
         hist, edges, slices = stats.binned_statistic(data, weights, statistic="sum", edges=edges)
 
@@ -97,7 +90,7 @@ def histogram_data_spacing(data, spacing, weights=None):
     xmin = int(np.min(data)/spacing)
     xmax = int(np.max(data)/spacing) + 1
         
-    hist, edges, slices = stats.binned_statistic(x, weights, statistic="sum", range=[((xmin*spacing)/(xmax*spacing))], bins=xmax-xmin)
+    hist, edges, slices = stats.binned_statistic(x, weights, statistic="sum", histrange=[((xmin*spacing)/(xmax*spacing))], bins=xmax-xmin)
 
     normalization = math.abs(integrate_simple(hist, edges))
     
