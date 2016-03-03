@@ -23,7 +23,11 @@ class ExperimentalObservables(object):
         
         for i in range(np.shape(exp_data)[0]):
 	        self.num_q_functions += 1
-	        self.q_functions.append(bf.statistical.wrapped_gaussian(exp_data[i,0], exp_data[i,1]))
+	        mean = exp_data[i,0]
+	        std = exp_data[i,1]
+	        if std == 0:
+	            std = 1.0 #std of zero could lead to divide by zero exception. Set to 1 if it's zero (due to no sampling) 
+	        self.q_functions.append(bf.statistical.wrapped_gaussian(mean, std))
     
     def compute_observations(self, data, weights=None):
         if weights == None:
@@ -43,7 +47,7 @@ class ExperimentalObservables(object):
             if not np.shape(observations)[0] == self.num_q_functions:
                 #check to see if number of observations match
                 #NOTE: Depending on how values are arranged and passed in this wrapper  function, we can add q_functions later in a script and cause this to fail when trying ot use the same "old" function.
-                raise IOError("Number of obserations not equal to number of q_functions. This is a problem")
+                raise IOError("Number of observations not equal to number of q_functions. This is a problem")
             q_value = 1.0
             for i in range(self.num_q_functions):
                 q_value *= self.q_functions[i](observations[i])

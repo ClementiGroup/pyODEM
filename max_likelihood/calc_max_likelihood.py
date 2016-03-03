@@ -24,26 +24,33 @@ def estimate_new_epsilons(data, data_sets, observables, model):
     
     expectation_observables = []
     epsilons_functions = []
-    ni = []
+    
     current_epsilons = model.get_epsilons()
     h0 = []
-    pi = []
     
-    Q_function = observables.get_q_function
+    pi = []
+    ni = []
+    
+    Q_function = observables.get_q_function()
     
     
     
     for i in data_sets:
         use_data = data[i]
         epsilons_function = model.get_potentials_epsilon(use_data)
-        observed = observables.compute_observations(use_data)
+        observed, obs_std = observables.compute_observations(use_data) #outputs a std in case people want to plot with error bars
         num_in_set = np.shape(use_data)[0]
-        ni.append(num_in_set)
-        pi.append(num_in_set)
-        print epsilons_function(current_epsilons)
-        h0.append(epsilons_function(current_epsilons))
+        
         expectation_observables.append(observed)
         epsilons_functions.append(epsilons_function)
+        
+        h0.append(epsilons_function(current_epsilons))
+        
+        ni.append(num_in_set)
+        pi.append(num_in_set)
+        
+        
+        
     num_observable = np.shape(observed)[0] ## Calculate the number of observables
 
         
@@ -63,19 +70,19 @@ def estimate_new_epsilons(data, data_sets, observables, model):
         #calculate re-weighting for all terms 
         for i in range(number_equilibrium_states):
             #exp(-beat dH) weighted for this state is:
-            next_weight = np.sum(epsilons_functions[i](epsilons) / h0[i])
-            next_observed += next_weight * expectation_observables[i]
+            next_weight = np.sum(epsilons_functions[i](epsilons) / h0[i]) / ni[i]
+            next_observed += next_weight * state_prefactors[i]
         
-        
-        Q = Q_function(next_observed)
-        return Q 
+        Q = -1.0 * Q_function(next_observed) #Minimization, so make maximal value a minimal value with a negative sign.
+
+        return Q
         
     #Then run the solver
     new_epsilons = solve_simplex(Qfunction_epsilon, current_epsilons) #find local minima of this current set of epsilons
-    
+
     #then return a new set of epsilons... consider adding a method to the model object to automatically udpate epsilons
     
-    return epsilons
+    return new_epsilons, current_epsilons
     
     
     
