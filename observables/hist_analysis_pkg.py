@@ -30,9 +30,10 @@ class HistogramO(Observable):
         hist = hist / normalization
         bincenters = 0.5*(edges[1:] + edges[:-1])
         
+        seen = [not i==0 for i in hist]
 
         
-        return hist, stdev
+        return hist, stdev, seen
         
 
 def histogram_distance(data, nbins=10, histrange=(0,10), spacing=None, edges=None, weights=None):

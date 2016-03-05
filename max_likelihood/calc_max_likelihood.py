@@ -19,6 +19,8 @@ def estimate_new_epsilons(data, data_sets, observables, model):
     #observables get useful stuff like value of beta
     beta = model.beta
     number_equilibrium_states = len(data_sets)
+    
+    observables.prep()
 
     #first calculate average value of all observables and associated functions 
     
@@ -82,7 +84,7 @@ def estimate_new_epsilons(data, data_sets, observables, model):
 
     #then return a new set of epsilons... consider adding a method to the model object to automatically udpate epsilons
     
-    return new_epsilons, current_epsilons
+    return new_epsilons, current_epsilons, Qfunction_epsilon(new_epsilons), Qfunction_epsilon(current_epsilons)
     
     
     

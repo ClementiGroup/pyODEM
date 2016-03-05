@@ -15,7 +15,6 @@ class ExperimentalObservables(object):
         if compute == False:
 		    observable = HistogramO(nbins, histrange, spacing, edges)
 		    self.observables.append(observable)
-        
         else:
         	pass #implement a method for analyzing a data file based on the parameters for the histogram given here.
         
@@ -29,6 +28,10 @@ class ExperimentalObservables(object):
 	            std = 1.0 #std of zero could lead to divide by zero exception. Set to 1 if it's zero (due to no sampling) 
 	        self.q_functions.append(bf.statistical.wrapped_gaussian(mean, std))
     
+    def prep(self):
+        #only use  the observables actually seen
+        self.obs_seen = [False for i in range(self.num_q_functions)]
+
     def compute_observations(self, data, weights=None):
         if weights == None:
             weights = np.ones(np.shape(data)[0])
@@ -36,10 +39,10 @@ class ExperimentalObservables(object):
         all_obs = np.array([])
         all_std = np.array([])
         for observable in self.observables:
-            obs, std = observable.compute_observed(data, weights)
+            obs, std, seen = observable.compute_observed(data, weights)
             all_obs = np.append(all_obs, obs)
             all_std = np.append(all_std, std)
-        
+            self.obs_seen = [seent or nott for seent, nott in zip(seen, self.obs_seen)] 
         return all_obs, all_std
     
     def get_q_function(self):
@@ -50,7 +53,8 @@ class ExperimentalObservables(object):
                 raise IOError("Number of observations not equal to number of q_functions. This is a problem")
             q_value = 1.0
             for i in range(self.num_q_functions):
-                q_value *= self.q_functions[i](observations[i])
+                if self.obs_seen[i]:
+                    q_value *= self.q_functions[i](observations[i])
             
             return q_value
         

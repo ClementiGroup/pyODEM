@@ -12,7 +12,7 @@ class Langevin(Model_Loader):
         try:
             from langevin_model.model import langevin_model as lmodel
         except:
-            raiseIOError("langevin_model package is not installed. Please check path variables or install the relevant package from: https://github.com/TensorDuck/langevin_model")
+            raise IOError("langevin_model package is not installed. Please check path variables or install the relevant package from: https://github.com/TensorDuck/langevin_model")
         
         ##remove .ini suffix
         if ".ini" in ini_file_name[-4:]:
