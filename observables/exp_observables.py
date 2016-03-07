@@ -27,10 +27,15 @@ class ExperimentalObservables(object):
 	        if std == 0:
 	            std = 1.0 #std of zero could lead to divide by zero exception. Set to 1 if it's zero (due to no sampling) 
 	        self.q_functions.append(bf.statistical.wrapped_gaussian(mean, std))
+        self.prep_True()
+	    
     
     def prep(self):
         #only use  the observables actually seen
         self.obs_seen = [False for i in range(self.num_q_functions)]
+        
+    def prep_True(self):
+        self.obs_seen = [True for i in range(self.num_q_functions)]
 
     def compute_observations(self, data, weights=None):
         if weights == None:

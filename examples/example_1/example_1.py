@@ -1,34 +1,26 @@
 """ Basic example of a run through using the methods in this package"""
 
 ##import the basic things
-import max_likelihood as ml
-import ml.basic_functions as bf
-import ml.helper_classes.q_value.q_value as qval
+import numpy as np
+import pyfexd
+bf = pyfexd.basic_functions
+ml = pyfexd.model_loaders
+observables = pyfexd.observables
+ene = pyfexd.max_likelihood.estimate_new_epsilons
 
 #load a histogram data
-hist_data = np.loadtxt("hist.dat") ##assumes number of counts in a bin
-edge_data = np.loadtxt("edges.dat") ##assumes equal to the number of 
+edges = np.loadtxt("edges.dat")
+obs = observables.ExperimentalObservables()
+obs.add_histogram("exp_data.dat", edges=edges, errortype="gaussian") #load and format the data distribution
 
-centers = 0.5 * (edge_data[:-1]+edge_data[1:])
+qcalc = obs.get_q_function()
 
-integrated_total = 0.0
-for i,v in enumerate(hist_data):
-    integrated_total += v*(edge_data[i+1] - edge_data[i])
+regdata = np.array([20, 110, 300, 90, 30])
 
-hist = hist_data / integrated_total
-errors = np.sqrt(hist_data) / integrated_total
-
-q_function_list = []
-
-for i in range(len(hist_data)):
-    q_function_list.append(bf.statistical.wrapped_gaussian(hist[i], errors[i]))
-
-qfunction = qval(q_function_list)
-
-print qfunction.get_Q(hist)
-
-
-
-
-
-
+print qcalc(regdata)
+regdata[0] = 10
+print qcalc(regdata)
+regdata[0] = 10.0
+print qcalc(regdata)
+regdata[2] = 282.0
+print qcalc(regdata)
