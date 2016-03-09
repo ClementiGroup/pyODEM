@@ -55,7 +55,7 @@ class Langevin(Model_Loader):
             for i in range(np.shape(epsilons)[0]):
                 total += epsilons[i]*constants_list[i]
             
-            total = np.exp(-1.0 * self.beta * total)
+            total = -1.0 * self.beta * total
             
             return total
         

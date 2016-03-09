@@ -7,7 +7,7 @@ class Model_Loader(object):
     def get_model(self):
         return self.model
     
-    def get_potentials_epsilons(self):
+    def get_epsilons(self):
         return self.epsilons
     
     def input_config(self, data):

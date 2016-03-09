@@ -4,15 +4,45 @@ import numpy as np
 
 import scipy.optimize as optimize
 
+class SolutionHolder(object):
+    pass
+
 def solve_simplex(func, x0):
     optimal = optimize.minimize(func, x0, method="Nelder-Mead")
     print optimal.message
     
     if not optimal.success == True:
-        raise IOError("Minimization failed to find a local minima using the simplex method")
-    
+        raise IOError("Minimization failed to find a local minima using the simplex method") 
+            
     return optimal.x
     
+def solve_simplex_global(func, x0):
+    out_eps = solve_simplex(func, x0)
+        
+    num_eps = np.shape(x0)[0]
+    if np.sum(np.abs(x0-out_eps)) < num_eps*0.1:
+        #check for global minima since near a local minima
+        out_Q  = func(out_eps)
+        for i in range(100):
+            rand = np.random.rand(num_eps)
+            for j in range(num_eps):
+                if np.random.rand(1)[0] < 0.5:
+                    rand[j] *= -1.0
+
+            optime = solve_simplex(func, x0 + (rand))
+            optimQ = func(optime)
+            
+            if out_Q > optimQ:
+                out_eps = optime
+                print "found better global Q"
+                print "new starting epsilons:"
+                print x0 + rand
+                print "new finished epsilons:"
+                print optime
+                print "new Q"
+                print optimQ
+    return out_eps
+             
 
 def estimate_new_epsilons(data, data_sets, observables, model):
     
@@ -72,7 +102,7 @@ def estimate_new_epsilons(data, data_sets, observables, model):
         #calculate re-weighting for all terms 
         for i in range(number_equilibrium_states):
             #exp(-beat dH) weighted for this state is:
-            next_weight = np.sum(epsilons_functions[i](epsilons) / h0[i]) / ni[i]
+            next_weight = np.sum(np.exp(epsilons_functions[i](epsilons) - h0[i])) / ni[i]
             next_observed += next_weight * state_prefactors[i]
         
         Q = -1.0 * Q_function(next_observed) #Minimization, so make maximal value a minimal value with a negative sign.
@@ -80,12 +110,16 @@ def estimate_new_epsilons(data, data_sets, observables, model):
         return Q
         
     #Then run the solver
-    new_epsilons = solve_simplex(Qfunction_epsilon, current_epsilons) #find local minima of this current set of epsilons
+    new_epsilons = solve_simplex_global(Qfunction_epsilon, current_epsilons) #find local minima of this current set of epsilons
 
     #then return a new set of epsilons... consider adding a method to the model object to automatically udpate epsilons
+    sh = SolutionHolder()
+    sh.state_prefactors = state_prefactors
+    sh.new_epsilons = new_epsilons
+    sh.old_epsilons = current_epsilons
+    sh.Qfunction_epsilon = Qfunction_epsilon
     
-    return new_epsilons, current_epsilons, Qfunction_epsilon(new_epsilons), Qfunction_epsilon(current_epsilons)
-    
+    return sh
     
     
     
