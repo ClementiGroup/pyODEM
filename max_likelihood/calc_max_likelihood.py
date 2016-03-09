@@ -23,7 +23,7 @@ def solve_simplex_global(func, x0):
     if np.sum(np.abs(x0-out_eps)) < num_eps*0.1:
         #check for global minima since near a local minima
         out_Q  = func(out_eps)
-        for i in range(100):
+        for i in range(10):
             rand = np.random.rand(num_eps)
             for j in range(num_eps):
                 if np.random.rand(1)[0] < 0.5:
@@ -105,7 +105,7 @@ def estimate_new_epsilons(data, data_sets, observables, model):
             #exp(-beat dH) weighted for this state is:
             next_weight = np.sum(np.exp(epsilons_functions[i](epsilons) - h0[i])) / ni[i]
             next_observed += next_weight * state_prefactors[i]
-            total_weight += next_weight
+            total_weight += next_weight * pi[i]
         
         next_observed /= total_weight
         
