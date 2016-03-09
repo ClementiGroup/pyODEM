@@ -100,10 +100,14 @@ def estimate_new_epsilons(data, data_sets, observables, model):
         next_observed = np.zeros(num_observable)
         
         #calculate re-weighting for all terms 
+        total_weight = 0.0 #add up all re-weighted terms and normalize to keep probability equal to 1
         for i in range(number_equilibrium_states):
             #exp(-beat dH) weighted for this state is:
             next_weight = np.sum(np.exp(epsilons_functions[i](epsilons) - h0[i])) / ni[i]
             next_observed += next_weight * state_prefactors[i]
+            total_weight += next_weight
+        
+        next_observed /= total_weight
         
         Q = -1.0 * Q_function(next_observed) #Minimization, so make maximal value a minimal value with a negative sign.
 
