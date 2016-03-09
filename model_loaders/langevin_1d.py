@@ -1,11 +1,11 @@
 """ These set of functions will load in a simple 1-D Langevin data set"""
 import numpy as np
-from pyfexd.model_loaders import Model_Loader
+from pyfexd.model_loaders import ModelLoader
 
 
 """ USEFUL FUNCTIONS FOR GETTING DESIRED RESULTS FROM MODEL """
 
-class Langevin(Model_Loader):
+class Langevin(ModelLoader):
     """Object for getting data sets and langevin based stuff from the """
     
     def __init__(self, ini_file_name):

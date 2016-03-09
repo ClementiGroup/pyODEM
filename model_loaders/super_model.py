@@ -1,4 +1,4 @@
-class Model_Loader(object):
+class ModelLoader(object):
     def __init__(self):
         self.model = type('temp', (object,), {})()  ## potentials as a function of coordinates
         self.epsilons = []  ##potentials as a function of epsilons
