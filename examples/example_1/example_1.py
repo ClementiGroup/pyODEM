@@ -3,10 +3,8 @@
 ##import the basic things
 import numpy as np
 import pyfexd
-bf = pyfexd.basic_functions
-ml = pyfexd.model_loaders
+
 observables = pyfexd.observables
-ene = pyfexd.max_likelihood.estimate_new_epsilons
 
 #load a histogram data
 edges = np.loadtxt("edges.dat")
