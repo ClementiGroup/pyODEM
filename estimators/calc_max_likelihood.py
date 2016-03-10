@@ -5,17 +5,11 @@ referred to as Qfunc or Q throughout. Q has many components, but mainly
 you seek to optimize some parameters epsilons, hereby referred to as
 epsilons, x0 or x. Epsilons are model dependent. 
 
-
-
-
 """
 
 import numpy as np
 import scipy.optimize as optimize
-
-class SolutionHolder(object):
-    """ Object that holds the results estimate_new_epsilons() """
-    pass
+from solutions import SolutionHolder
 
 def solve_simplex(Qfunc, x0):
     """ Optimizes a function using the scipy siplex method.
@@ -97,7 +91,7 @@ def solve_simplex_global(Qfunc, x0, ntries=0):
              
 
 def max_likelihood_estimate(data, data_sets, observables, model, ntries=0):
-    """ Uses a max likelihood method for optimizing a model's params
+    """ Optimizes model's paramters using a max likelihood method
     
     Args:
         data (array): Contains all the data for a system, First index 
@@ -126,7 +120,7 @@ def max_likelihood_estimate(data, data_sets, observables, model, ntries=0):
     
     observables.prep()
 
-    #first calculate average value of all observables and associated functions 
+    #calculate average value of all observables and associated functions 
     
     expectation_observables = []
     epsilons_functions = []

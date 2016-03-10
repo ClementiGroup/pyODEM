@@ -9,9 +9,15 @@ Instead, this module would hold all the various estimators the user can
 use to estimate a new set of model parameters. It should be formatted
 so only the user-level methods are imported for their convenience.
 
-methods:
+Methods:
     max_likelihood_estimate: uses the calc_max_likelihood.py module 
     bayesian_estimate: In development
+
+Example:
+    solution = estimators.max_likelihood_estimate(data, data_sets, 
+                                                    observables, model)
+    solution.new_epsilons
+        attribute containing optimal epsilons found  
 
     
 """

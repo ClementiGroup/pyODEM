@@ -1,14 +1,32 @@
-""" These set of functions will load in a simple 1-D Langevin data set"""
+""" Loading 1-Dimensional Langevin Dynamics Model set of functions will
+
+Requires package: https://github.com/TensorDuck/langevin_model
+
+"""
 import numpy as np
 from pyfexd.model_loaders import ModelLoader
 
-
-""" USEFUL FUNCTIONS FOR GETTING DESIRED RESULTS FROM MODEL """
-
 class Langevin(ModelLoader):
-    """Object for getting data sets and langevin based stuff from the """
+    """ Subclass for making a ModelLoader for a 1-D Langevin dynamics
+    
+    Methods:
+        See ModelLoader in pyfexd/super_model/ModelLoader
+    
+    """
     
     def __init__(self, ini_file_name):
+        """ Initialize the Langevin model, override superclass
+        
+        Args:
+            ini_file_name: Name of a .ini file to load containing the 
+                model information.
+        
+        Attributes:
+            See superclass for generic attributes.
+            epsilons(array): Chosen from a specific list of tunable 
+                parameters from the .ini file.
+        
+        """
         try:
             from langevin_model.model import langevin_model as lmodel
         except:
@@ -19,37 +37,29 @@ class Langevin(ModelLoader):
             ini_file_name = ini_file_name[:-4]
         self.model = lmodel(ini_file_name)
         
-        #indices = np.arange(0, self.model.number_parameters)
-        self.use_params = np.where(self.model.fit_parameters)[0] # get indices corresponding to potentials to use
+        # get indices corresponding to epsilons to use
+        self.use_params = np.where(self.model.fit_parameters)[0] 
         self.epsilons = self.model.params[self.use_params]
-        self.beta = 1.0
-        
-    def load_data(self,fname):
-        return np.loadtxt(fname)
-    
-    def get_epsilons(self):
-        return self.epsilons
+        self.beta = 1.0 #set temperature
     
     def get_potentials_epsilon(self, data):
-        """ Takes a 1-d array, outputs a function(epsilons_list) 
+        """ Return PotentialEnergy(epsilons)  
         
-        get_potentials_epsilons(self, data) should take as input
-        some data that is already properly formatted for the model
-        in question. Then, it should calculate a function where
-        the epsilons are the independent variables. the function
-        is formatted to take a list of epsilons as an input and
-        return a float number as its output.
+        See superclass for full description of purpose.
+        Override superclass. Potential Energy is easily calculated since
+        for this model, all epsilons are linearly related to the 
+        potential energy.
         
         """
         
-        constants_list = [] #final list of constant pre factor to each model param epsilon
+        #list of constant pre factors to each model epsilons
+        constants_list = [] 
         
         for i in self.use_params:
             constants_list.append(self.model.potential_functions[i](data))
 
         
         def hepsilon(epsilons):
-            #returns an array for the value of H for each frame, given a set of epsilons.
             total = np.zeros(np.shape(data)[0])
             
             for i in range(np.shape(epsilons)[0]):

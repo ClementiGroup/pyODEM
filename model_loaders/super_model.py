@@ -1,41 +1,77 @@
+""" Holds superclasses for the model objects """
+import numpy as np
+
 class ModelLoader(object):
+    """ ModelLoader is meant to be subclassed. Holds basic model info.
+    
+    Attributes:
+        model(object): Object representing the specifics of a model. 
+            Typically will involve importing from some external package.
+            Because of this specificity, external methods should avoid
+            expecting specific attributes or methods in this object.
+        epsilons(Array): The current value of each of the model's 
+                    adjustable parameters. 
+        beta(float): Value of 1/KT for the system.
+    
+    Example:
+            ml = ModelLoader()
+            data = ml.load_data(fname)
+            hepsilon = ml.get_potentials_epsilons(data)
+            Potential_Energy = hepsilon(ModelLoader.epsilons) 
+            
+    """
     def __init__(self):
-        self.model = type('temp', (object,), {})()  ## potentials as a function of coordinates
-        self.epsilons = []  ##potentials as a function of epsilons
-        self.data = []
+        """ initialize the model
+        
+        Intialization for subclasses will be much more complex.
+                    
+        """
+        self.model = type('temp', (object,), {})()  
+        self.epsilons = []  
+        self.beat = 1.0
+    
+    def load_data(self,fname):
+        """ Load a data file and format for later use
+        Args:
+            fname(string): Name of a file to load.
+        
+        Return:
+            Array(floats): Default is load using numpy and return.
+            
+        """
+        return np.loadtxt(fname)
         
     def get_model(self):
         return self.model
     
     def get_epsilons(self):
         return self.epsilons
-    
-    def input_config(self, data):
-        self.data = data
-    
-    def append_config(self, data):
-        try:
-            self.data = np.append(self.data, data, axis=0)
-        except:
-            print "Failed to load data... data is the wrong size or shape"
-    
-    def load_config(self, fname):
-        self.data = np.loadtxt(fname)
+
     
     def get_potentials_epsilon(self, data):
-        """ Takes a 1-d array, outputs a function(epsilons_list) 
+        """ Return PotentialEnergy(epsilons)  
         
-        get_potentials_epsilons(self, data) should take as input
-        some data that is already properly formatted for the model
-        in question. Then, it should calculate a function where
-        the epsilons are the independent variables. the function
-        is formatted to take a list of epsilons as an input and
-        return a float number as its output.
+        Computes the potential energy for each frame in data. Each 
+        ModelLoader subclass should have all the necessary information 
+        internally to interpret the inputted data format. 
         
+        Args:
+            data(array): First index is the frame, rest are coordinates.
+            
+        Return:
+            hepsilon(method): potential energy as a function of 
+                epsilons.
+                Args:
+                    x: Input list of epsilons.
+                Return:
+                    total(Array): Same length as data, gives the 
+                        potential energy of each frame.
+                        
         """
         
         def hepsilon(x):
-            return 0.0
+            total = np.array([0.0])
+            return total
         
         return hepsilon
     
