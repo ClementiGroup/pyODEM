@@ -39,6 +39,7 @@ def solve_simplex(Qfunc, x0):
         raise IOError("Minimization failed to find a local minima using the simplex method") 
             
     return optimal.x
+
     
 def solve_simplex_global(Qfunc, x0, ntries=0):
     """ Attempts to find global minima using solve_simplex()
@@ -88,9 +89,19 @@ def solve_simplex_global(Qfunc, x0, ntries=0):
                 print optimQ
                     
     return out_eps
-             
 
-def max_likelihood_estimate(data, data_sets, observables, model, ntries=0):
+def solve_annealing(Qfunc, x0, ntries=1000):
+    
+    def test_bounds(f_new=None, x_new=None, f_old=None, x_old=None):
+        if np.max(np.abs(x_new)) > 5:
+            return False
+        else:
+            return True
+    optimal = optimize.basinhopping(Qfunc, x0, niter=1000, T=0.5, stepsize=0.2, accept_test=test_bounds)  
+    
+    return optimal.x
+    
+def max_likelihood_estimate(data, data_sets, observables, model, ntries=0, solver="simplex"):
     """ Optimizes model's paramters using a max likelihood method
     
     Args:
@@ -108,6 +119,7 @@ def max_likelihood_estimate(data, data_sets, observables, model, ntries=0):
             pyfexd/model_loaders/super_model for full description.
         ntries (int): Number of random startung epsilons to generate 
             in case solution. Defaults to 0.
+        solver (str): Optimization procedures. Defaults to Simplex. 
         
     Returns:
         sh (SolutionHolder): new epsilons found as well as the Q
@@ -182,7 +194,10 @@ def max_likelihood_estimate(data, data_sets, observables, model, ntries=0):
         return Q
         
     #Then run the solver
-    new_epsilons = solve_simplex_global(Qfunction_epsilon, current_epsilons, ntries=ntries)
+    dict_solvers = {"simplex":solve_simplex_global, "annealing":solve_annealing}
+    new_epsilons = dict_solvers[solver](Qfunction_epsilon, current_epsilons, ntries=ntries)
+    
+    #new_epsilons = solve_simplex_global(Qfunction_epsilon, current_epsilons, ntries=ntries)
 
     #then return a new set of epsilons inside SolutionHolder
     sh = SolutionHolder()
