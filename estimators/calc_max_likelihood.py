@@ -90,14 +90,20 @@ def solve_simplex_global(Qfunc, x0, ntries=0):
                     
     return out_eps
 
-def solve_annealing(Qfunc, x0, ntries=1000):
+def solve_annealing(Qfunc, x0, ntries=1000, scale=0.2):
+    numparams = np.shape(x0)[0]
+    def take_step_custom(x):
+        perturbation = np.random.randn(numparams)
+        perturbation *= 0.2/np.sum(perturbation)
+        return x + perturbation
     
     def test_bounds(f_new=None, x_new=None, f_old=None, x_old=None):
         if np.max(np.abs(x_new)) > 5:
             return False
         else:
             return True
-    optimal = optimize.basinhopping(Qfunc, x0, niter=1000, T=0.5, stepsize=0.2, accept_test=test_bounds)  
+            
+    optimal = optimize.basinhopping(Qfunc, x0, niter=1000, T=0.5, stepsize=scale, accept_test=test_bounds, take_step=take_step_custom)  
     
     return optimal.x
     
