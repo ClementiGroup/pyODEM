@@ -18,9 +18,16 @@ def gaussian(r,r0,width):
     V = np.exp(-((r - r0)**2)/(2.*(width**2)))
     return V
     
+def derivative_gaussian(r, r0, width):
+    dV = gaussian(r, r0, width) * (-(r - r0) / width**2)
+    return dV
+    
 def wrapped_gaussian(r0, width):
     def new_gaussian(r):
         return gaussian(r,r0,width)
-    
     return new_gaussian
-    
+
+def wrapped_derivative_gaussian(r0, width):
+    def new_derivative_gaussian(r):
+        return derivative_gaussian(r, r0, width)
+    return new_derivative_gaussian

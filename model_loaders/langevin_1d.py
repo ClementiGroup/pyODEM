@@ -56,22 +56,47 @@ class Langevin(ModelLoader):
         constants_list = [] 
         
         for i in self.use_params:
-            constants_list.append(self.model.potential_functions[i](data))
-
+            constants_list.append(self.model.potential_functions[i](data) * -1.0 * self.beta)
         
+        #compute the function for the potential energy
         def hepsilon(epsilons):
             total = np.zeros(np.shape(data)[0])
-            
+
             for i in range(np.shape(epsilons)[0]):
                 total += epsilons[i]*constants_list[i]
             
-            total = -1.0 * self.beta * total
-            
-            return total
+            return total     
+        
+        #compute the function for the derivative of the potential energy
+        def dhepsilon(epsilons):
+            #first index is frame, second index is for each epsilon
+            return constants_list
+        
+        return hepsilon, dhepsilon
+    
+    def get_potentials_derivatives(self,data):
+        """ Return derivative of PotentialEnergy
+        
+        Optional, only if you intend to calculate a derivative for your 
+        system for using an optmizaiton method that requires it.
+    
+        """
         
         
         
-        return hepsilon
-    
-    
-    
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
