@@ -66,15 +66,19 @@ def solve_simplex_global(Qfunc, x0, ntries=0):
      
     #check for global minima near found minima if ntries >0
     if not ntries <= 0:
-        #generate random +/- perturbation to local minima found with 
-        #uniform distribution from -1 to 1
+        print "Searching for a global minima. Trying %d times." % ntries
         num_eps = np.shape(x0)[0] 
         for i in range(ntries):
+            #generate random +/- perturbation to local minima found with 
+            #uniform distribution from -1 to 1'
             rand = np.random.rand(num_eps)
             for j in range(num_eps):
                 if np.random.rand(1)[0] < 0.5:
                     rand[j] *= -1.0
-
+            
+            print "new starting epsilons:"
+            print start_eps + rand
+            
             optime = solve_simplex(Qfunc, start_eps+rand)
             optimQ = Qfunc(optime)
             
@@ -82,8 +86,6 @@ def solve_simplex_global(Qfunc, x0, ntries=0):
             if out_Q > optimQ:
                 out_eps = optime
                 print "found better global Q"
-                print "new starting epsilons:"
-                print x0 + rand
                 print "new finished epsilons:"
                 print optime
                 print "new Q"
