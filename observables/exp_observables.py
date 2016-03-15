@@ -73,8 +73,9 @@ class ExperimentalObservables(object):
                 raise IOError("Number of observations not equal to number of q_functions. This is a problem")
             dq_value = 0.0
             for i in range(self.num_q_functions):
-                dq_value += (self.dq_functions[i](observations[i]) * derivative_observed[i]) / self.q_functions[i](observations[i])
-                
+                if self.obs_seen[i]:
+                    dq_value += (self.dq_functions[i](observations[i]) * derivative_observed[i]) / self.q_functions[i](observations[i])
+            print dq_value    
             return dq_value
     
         return q_simple, dq_simple

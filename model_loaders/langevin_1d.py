@@ -61,7 +61,6 @@ class Langevin(ModelLoader):
         #compute the function for the potential energy
         def hepsilon(epsilons):
             total = np.zeros(np.shape(data)[0])
-
             for i in range(np.shape(epsilons)[0]):
                 total += epsilons[i]*constants_list[i]
             

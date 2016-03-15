@@ -36,8 +36,9 @@ def solve_simplex(Qfunc, x0):
     
     if not optimal.success == True:
         print optimal.message
-        raise IOError("Minimization failed to find a local minima using the simplex method") 
-            
+        #raise IOError("Minimization failed to find a local minima using the simplex method") 
+        return x0
+           
     return optimal.x
 
     
@@ -111,6 +112,12 @@ def solve_cg(Qfunc, x0, ntries=1):
     
     print "solve using CG"
     optimal = optimize.minimize(Qfunc, x0, jac=True, method="CG")
+    print optimal.message
+    if not optimal.success == True:
+        
+        raise IOError("Minimization failed to find a local minima using the simplex method") 
+        
+    return optimal.x
     
 def max_likelihood_estimate(data, data_sets, observables, model, ntries=0, solver="simplex", derivative="False"):
     """ Optimizes model's paramters using a max likelihood method
