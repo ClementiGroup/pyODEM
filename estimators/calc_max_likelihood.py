@@ -9,7 +9,7 @@ epsilons, x0 or x. Epsilons are model dependent.
 
 import numpy as np
 import scipy.optimize as optimize
-from solutions import SolutionHolder
+from estimators_class import EstimatorsObject
 
 def solve_simplex(Qfunc, x0):
     """ Optimizes a function using the scipy siplex method.
@@ -110,7 +110,7 @@ def solve_annealing(Qfunc, x0, ntries=1000, scale=0.2):
     
     return optimal.x
     
-def solve_cg(Qfunc, x0, ntries=1):
+def solve_cg(Qfunc, x0):
     
     print "solve using CG"
     optimal = optimize.minimize(Qfunc, x0, jac=True, method="CG")
@@ -146,132 +146,30 @@ def max_likelihood_estimate(data, data_sets, observables, model, ntries=0, solve
             function used.
             
     """
-    #observables get useful stuff like value of beta
-    beta = model.beta
-    number_equilibrium_states = len(data_sets)
+    eo = EstimatorsObject(data, data_sets, observables, model)
     
-    observables.prep()
-
-    #calculate average value of all observables and associated functions 
-    
-    expectation_observables = []
-    epsilons_functions = []
-    derivatives_functions = []
-    
-    current_epsilons = model.get_epsilons()
-    number_params = np.shape(current_epsilons)[0]
-    h0 = []
-    
-    pi = []
-    ni = []
-    
-    Q_function, dQ_function = observables.get_q_functions()
-    
-    
-    
-    #load data for each set, and compute energies and observations
-    for i in data_sets:
-        use_data = data[i]
-        epsilons_function, derivatives_function = model.get_potentials_epsilon(use_data)
-        observed, obs_std = observables.compute_observations(use_data)
-        num_in_set = np.shape(use_data)[0]
-        
-        expectation_observables.append(observed)
-        epsilons_functions.append(epsilons_function)
-        derivatives_functions.append(derivatives_function)
-        
-        h0.append(epsilons_function(current_epsilons))
-        
-        ni.append(num_in_set)
-        pi.append(num_in_set)
-    ##number of observables
-    num_observable = np.shape(observed)[0]   
-    pi =  np.array(pi).astype(float)
-    pi /= np.sum(pi)
-    
-    ##Compute factors that don't depend on the re-weighting
-    state_prefactors = []
-    for i in range(number_equilibrium_states):
-        state_prefactor = pi[i] * expectation_observables[i]   
-        state_prefactors.append(state_prefactor)
-
-    #then wrap up a function that takes only epsilons, and outputs Q value
-    if derivative == False:
-        def Qfunction_epsilon(epsilons):
-            #initiate value for observables:
-            next_observed = np.zeros(num_observable)
-            
-
-            #add up all re-weighted terms for normalizaiton
-            total_weight = 0.0
-            #calculate re-weighting for all terms 
-            for i in range(number_equilibrium_states):
-                next_weight = np.sum(np.exp(epsilons_functions[i](epsilons) - h0[i])) / ni[i]
-                next_observed += next_weight * state_prefactors[i]
-                total_weight += next_weight * pi[i]
-            
-            #normalize so total re-weighted probability is = 1.0
-            next_observed /= total_weight
-            
-            #Minimization, so make maximal value a minimal value with a negative sign.
-            Q = -1.0 * Q_function(next_observed) 
-
-            return Q
-        
+    if derivative == True:
+        Qfunction_epsilon = eo.get_Q_function_derivatives()
     else:
-        def Qfunction_epsilon(epsilons):
-            next_observed = np.zeros(num_observable)
-            dQ_vector = []
-            #add up all re-weighted terms for normalizaiton
-            total_weight = 0.0
-            
-            #Calculate the reweighting for all terms: Get Q, and next_observed
-            for i in range(number_equilibrium_states):
-                next_weight = np.sum(np.exp(epsilons_functions[i](epsilons) - h0[i])) / ni[i]
-                next_observed += next_weight * state_prefactors[i]
-                total_weight += next_weight * pi[i]
-            
-            #normalize so total re-weighted probability is = 1.0
-            next_observed /= total_weight
-            
-            #Minimization, so make maximal value a minimal value with a negative sign.
-            Q = -1.0 * Q_function(next_observed) 
-            
-            
-            #Now calculate the derivatives 
-            for j in range(number_params):
-                derivative_observed = np.zeros(num_observable)
-                for i in range(number_equilibrium_states):
-                    boltzman_weights = np.exp(epsilons_functions[i](epsilons) - h0[i])
-                    next_weight_derivatives = np.sum(boltzman_weights * derivatives_functions[i](epsilons)[j]) / ni[i]
-                    derivative_observed += next_weight_derivatives * state_prefactors[i]
-        
-                #normalize with same factor from calculating re-weighted Qs
-                #1-D array of derivatives with respect to parameter j
-                derivative_observed /= total_weight
-                
-                #Minimization, so make maximal value a minimal value with a negative sign.
-                dQ = Q * dQ_function(next_observed, derivative_observed) 
-                dQ_vector.append(dQ)
-            
-            return Q, np.array(dQ_vector)
-        
+        Qfunction_epsilon = eo.get_Q_function()
+    
+    current_epsilons = eo.current_epsilons
+    
     #Then run the solver
-    dict_solvers = {"simplex":solve_simplex_global, "annealing":solve_annealing, "cg":solve_cg}
-    dict_values = {"simplex":0, "annealing":1, "cg":2}
+    if solver == "simplex":
+        new_epsilons = solve_simplex_global(Qfunction_epsilon, current_epsilons, ntries=ntries)
+    elif solver == "anneal":
+        new_epsilons = solve_annealing(Qfunction_epsilon, current_epsilons,ntries=1000, scale=0.2)
+    elif solver == "cg":
+        new_epsilons = solve_cg(Qfunction_epsilon, current_epsilons)
+    else:
+        print "invalid solver, please select either: ..."
     
-    new_epsilons = dict_solvers[solver](Qfunction_epsilon, current_epsilons, ntries=ntries)
     
-    #new_epsilons = solve_simplex_global(Qfunction_epsilon, current_epsilons, ntries=ntries)
-
-    #then return a new set of epsilons inside SolutionHolder
-    sh = SolutionHolder()
-    sh.state_prefactors = state_prefactors
-    sh.new_epsilons = new_epsilons
-    sh.old_epsilons = current_epsilons
-    sh.Qfunction_epsilon = Qfunction_epsilon
+    #then return a new set of epsilons inside the EstimatorsObject
     
-    return sh
+    eo.save_solutions(new_epsilons)
+    return eo
     
     
     
