@@ -240,7 +240,7 @@ def max_likelihood_estimate(data, data_sets, observables, model, ntries=0, solve
             
             #Now calculate the derivatives 
             for j in range(number_params):
-                derivative_observed = 0.0
+                derivative_observed = np.zeros(num_observable)
                 for i in range(number_equilibrium_states):
                     boltzman_weights = np.exp(epsilons_functions[i](epsilons) - h0[i])
                     next_weight_derivatives = np.sum(boltzman_weights * derivatives_functions[i](epsilons)[j]) / ni[i]
