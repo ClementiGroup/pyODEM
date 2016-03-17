@@ -52,7 +52,7 @@ class EstimatorsObject(object):
         for i in range(self.number_equilibrium_states):
             state_prefactor = self.pi[i] * self.expectation_observables[i]   
             self.state_prefactors.append(state_prefactor)
-        
+    
     def get_Q_function(self):
         def Qfunction_epsilon(epsilons):
             #initiate value for observables:
@@ -177,7 +177,10 @@ class EstimatorsObject(object):
                 #Minimization, so make maximal value a minimal value with a negative sign.
                 dQ = self.dlog_Q_function(next_observed, derivative_observed) 
                 dQ_vector.append(dQ)
-            
+            print "epsilons:"
+            print epsilons
+            print "dQ vector:"
+            print dQ_vector
             return Q, np.array(dQ_vector)
         
         return Qfunction_epsilon

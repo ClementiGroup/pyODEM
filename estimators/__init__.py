@@ -22,5 +22,5 @@ Example:
     
 """
 from calc_max_likelihood import max_likelihood_estimate 
-
+from estimators_class import EstimatorsObject
 
