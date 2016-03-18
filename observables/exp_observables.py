@@ -79,7 +79,7 @@ class ExperimentalObservables(object):
             for i in range(self.num_q_functions):
                 if self.obs_seen[i]:
                     dq_value += (self.dq_functions[i](observations[i]) * derivative_observed[i]) / self.q_functions[i](observations[i])
-            print dq_value    
+    
             return dq_value
     
         return q_simple, dq_simple

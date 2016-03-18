@@ -77,6 +77,26 @@ class EstimatorsObject(object):
             
         return Qfunction_epsilon
     
+    def get_reweighted_observable_function(self):
+        def Qfunction_epsilon(epsilons):
+            #initiate value for observables:
+            next_observed = np.zeros(self.num_observable)
+            
+
+            #add up all re-weighted terms for normalizaiton
+            total_weight = 0.0
+            #calculate re-weighting for all terms 
+            for i in range(self.number_equilibrium_states):
+                next_weight = np.sum(np.exp(self.epsilons_functions[i](epsilons) - self.h0[i])) / self.ni[i]
+                next_observed += next_weight * self.state_prefactors[i]
+                total_weight += next_weight * self.pi[i]
+            
+            #normalize so total re-weighted probability is = 1.0
+            next_observed /= total_weight
+            
+            return next_observed
+        return Qfunction_epsilon
+            
     def get_log_Q_function(self):
         def Qfunction_epsilon(epsilons):
             #initiate value for observables:
@@ -104,84 +124,81 @@ class EstimatorsObject(object):
     
     def get_Q_function_derivatives(self):
         def Qfunction_epsilon(epsilons):
+            #initialize final matrices
             next_observed = np.zeros(self.num_observable)
+            derivative_observed_first = [np.zeros(self.num_observable) for j in range(self.number_params)]
+            derivative_observed_second = [np.zeros(self.num_observable) for j in range(self.number_params)]
             dQ_vector = []
             #add up all re-weighted terms for normalizaiton
             total_weight = 0.0
             
-            #Calculate the reweighting for all terms: Get Q, and next_observed
+            #Calculate the reweighting for all terms: Get Q, and next_observed and derivative terms
             for i in range(self.number_equilibrium_states):
-                next_weight = np.sum(np.exp(self.epsilons_functions[i](epsilons) - self.h0[i])) / self.ni[i]
+                #terms for Q
+                boltzman_weights = np.exp(self.epsilons_functions[i](epsilons) - self.h0[i])
+                next_weight = np.sum(boltzman_weights) / self.ni[i]
                 next_observed += next_weight * self.state_prefactors[i]
                 total_weight += next_weight * self.pi[i]
-            
+                #terms for dQ/de
+                for j in range(self.number_params):
+                    next_weight_derivatives = np.sum(boltzman_weights * self.derivatives_functions[i](epsilons)[j]) / self.ni[i]
+                    derivative_observed_first[j] += next_weight_derivatives * self.state_prefactors[i]
+                    derivative_observed_second[j] += next_weight_derivatives * self.pi[i]
+                    
             #normalize so total re-weighted probability is = 1.0
             next_observed /= total_weight
             
             #Minimization, so make maximal value a minimal value with a negative sign.
-            Q = -1.0 * self.Q_function(next_observed) 
+            Q = self.Q_function(next_observed)
             
-            
-            #Now calculate the derivatives 
             for j in range(self.number_params):
-                derivative_observed = np.zeros(self.num_observable)
-                for i in range(self.number_equilibrium_states):
-                    boltzman_weights = np.exp(self.epsilons_functions[i](epsilons) - self.h0[i])
-                    next_weight_derivatives = np.sum(boltzman_weights * self.derivatives_functions[i](epsilons)[j]) / self.ni[i]
-                    derivative_observed += next_weight_derivatives * self.state_prefactors[i]
-        
-                #normalize with same factor from calculating re-weighted Qs
-                #1-D array of derivatives with respect to parameter j
-                derivative_observed /= total_weight
-                
-                #Minimization, so make maximal value a minimal value with a negative sign.
-                dQ = Q * self.dQ_function(next_observed, derivative_observed) 
+                derivative_observed = (derivative_observed_first[j]  - (next_observed * derivative_observed_second[j])) / total_weight 
+                dQ = self.dQ_function(next_observed, derivative_observed) * Q
                 dQ_vector.append(dQ)
+
             
             return Q, np.array(dQ_vector)
+        
         
         return Qfunction_epsilon
         
     def get_log_Q_function_derivatives(self):
         def Qfunction_epsilon(epsilons):
+            #initialize final matrices
             next_observed = np.zeros(self.num_observable)
+            derivative_observed_first = [np.zeros(self.num_observable) for j in range(self.number_params)]
+            derivative_observed_second = [np.zeros(self.num_observable) for j in range(self.number_params)]
             dQ_vector = []
             #add up all re-weighted terms for normalizaiton
             total_weight = 0.0
             
-            #Calculate the reweighting for all terms: Get Q, and next_observed
+            #Calculate the reweighting for all terms: Get Q, and next_observed and derivative terms
             for i in range(self.number_equilibrium_states):
-                next_weight = np.sum(np.exp(self.epsilons_functions[i](epsilons) - self.h0[i])) / self.ni[i]
+                #terms for Q
+                boltzman_weights = np.exp(self.epsilons_functions[i](epsilons) - self.h0[i])
+                next_weight = np.sum(boltzman_weights) / self.ni[i]
                 next_observed += next_weight * self.state_prefactors[i]
                 total_weight += next_weight * self.pi[i]
-            
+                #terms for dQ/de
+                for j in range(self.number_params):
+                    next_weight_derivatives = np.sum(boltzman_weights * self.derivatives_functions[i](epsilons)[j]) / self.ni[i]
+                    derivative_observed_first[j] += next_weight_derivatives * self.state_prefactors[i]
+                    derivative_observed_second[j] += next_weight_derivatives * self.pi[i]
+                    
             #normalize so total re-weighted probability is = 1.0
             next_observed /= total_weight
             
             #Minimization, so make maximal value a minimal value with a negative sign.
-            Q = self.Q_function(next_observed) 
+            Q = self.log_Q_function(next_observed)
             
-            
-            #Now calculate the derivatives 
             for j in range(self.number_params):
-                derivative_observed = np.zeros(self.num_observable)
-                for i in range(self.number_equilibrium_states):
-                    boltzman_weights = np.exp(self.epsilons_functions[i](epsilons) - self.h0[i])
-                    next_weight_derivatives = np.sum(boltzman_weights * self.derivatives_functions[i](epsilons)[j]) / self.ni[i]
-                    derivative_observed += next_weight_derivatives * self.state_prefactors[i]
-        
-                #normalize with same factor from calculating re-weighted Qs
-                #1-D array of derivatives with respect to parameter j
-                derivative_observed /= total_weight
-                
-                #Minimization, so make maximal value a minimal value with a negative sign.
+                derivative_observed = (derivative_observed_first[j]  - (next_observed * derivative_observed_second[j])) / total_weight 
                 dQ = self.dlog_Q_function(next_observed, derivative_observed) 
                 dQ_vector.append(dQ)
-            print "epsilons:"
-            print epsilons
-            print "dQ vector:"
-            print dQ_vector
+
+            
             return Q, np.array(dQ_vector)
+        
         
         return Qfunction_epsilon
     

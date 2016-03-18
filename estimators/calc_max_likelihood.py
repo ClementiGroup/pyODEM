@@ -114,6 +114,7 @@ def solve_cg(Qfunc, x0):
     
     print "solve using CG"
     optimal = optimize.minimize(Qfunc, x0, jac=True, method="CG")
+    #optimal = optimize.minimize(Qfunc, x0, options={"epsilon":0.001}, method="CG")
     print optimal.message
     if not optimal.success == True:
         
@@ -147,7 +148,7 @@ def max_likelihood_estimate(data, data_sets, observables, model, ntries=0, solve
             
     """
     eo = EstimatorsObject(data, data_sets, observables, model)
-    
+
     if solver in ["cg"]:
         if logq:
             Qfunction_epsilon = eo.get_log_Q_function_derivatives()
@@ -158,6 +159,12 @@ def max_likelihood_estimate(data, data_sets, observables, model, ntries=0, solve
             Qfunction_epsilon = eo.get_log_Q_function()
         else:
             Qfunction_epsilon = eo.get_Q_function()
+    '''
+    if logq:
+        Qfunction_epsilon = eo.get_log_Q_function()
+    else:
+        Qfunction_epsilon = eo.get_Q_function()
+    '''
             
     current_epsilons = eo.current_epsilons
     
