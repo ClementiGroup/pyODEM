@@ -106,7 +106,7 @@ def solve_annealing(Qfunc, x0, ntries=1000, scale=0.2):
         else:
             return True
             
-    optimal = optimize.basinhopping(Qfunc, x0, niter=1000, T=0.5, stepsize=scale, accept_test=test_bounds, take_step=take_step_custom)  
+    optimal = optimize.basinhopping(Qfunc, x0, niter=ntries, T=0.5, stepsize=scale, accept_test=test_bounds, take_step=take_step_custom)  
     
     return optimal.x
     
@@ -122,7 +122,7 @@ def solve_cg(Qfunc, x0):
         
     return optimal.x
     
-def max_likelihood_estimate(data, data_sets, observables, model, ntries=0, solver="simplex", logq="False"):
+def max_likelihood_estimate(data, data_sets, observables, model, ntries=0, solver="simplex", logq="False", x0=None):
     """ Optimizes model's paramters using a max likelihood method
     
     Args:
@@ -165,18 +165,21 @@ def max_likelihood_estimate(data, data_sets, observables, model, ntries=0, solve
     else:
         Qfunction_epsilon = eo.get_Q_function()
     '''
-            
-    current_epsilons = eo.current_epsilons
     
+    if x0 is None:
+        current_epsilons = eo.current_epsilons
+    else:
+        current_epsilons = x0
+        
     #Then run the solver
     if solver == "simplex":
         new_epsilons = solve_simplex_global(Qfunction_epsilon, current_epsilons, ntries=ntries)
     elif solver == "anneal":
-        new_epsilons = solve_annealing(Qfunction_epsilon, current_epsilons,ntries=1000, scale=0.2)
+        new_epsilons = solve_annealing(Qfunction_epsilon, current_epsilons,ntries=ntries, scale=0.2)
     elif solver == "cg":
         new_epsilons = solve_cg(Qfunction_epsilon, current_epsilons)
     else:
-        print "invalid solver, please select either: ..."
+        raise IOError("invalid solver, please select either: ...")
     
     
     #then return a new set of epsilons inside the EstimatorsObject
