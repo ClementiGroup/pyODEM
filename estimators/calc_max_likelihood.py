@@ -6,7 +6,7 @@ you seek to optimize some parameters epsilons, hereby referred to as
 epsilons, x0 or x. Epsilons are model dependent. 
 
 """
-
+import random
 import numpy as np
 import scipy.optimize as optimize
 from estimators_class import EstimatorsObject
@@ -93,11 +93,26 @@ def solve_simplex_global(Qfunc, x0, ntries=0):
                     
     return out_eps
 
-def solve_annealing(Qfunc, x0, ntries=1000, scale=0.2):
+def solve_annealing(Qfunc, x0, ntries=1000, scale=0.2, logq=False):
+    
+    def test_bounds(f_new=None, x_new=None, f_old=None, x_old=None):
+        if np.max(np.abs(x_new)) > 5:
+            return False
+        else:
+            return True
+    if logq:
+        Tbarrier = 200
+    else:
+        Tbarrier = 0.5        
+    optimal = optimize.basinhopping(Qfunc, x0, niter=ntries, T=Tbarrier, stepsize=scale, accept_test=test_bounds, interval=100)  
+    
+    return optimal.x
+
+def solve_annealing_experimental(Qfunc, x0, ntries=1000, scale=0.2, logq=False):
     numparams = np.shape(x0)[0]
     def take_step_custom(x):
-        perturbation = np.random.randn(numparams)
-        perturbation *= 0.2/np.sum(perturbation)
+        perturbation = np.arrray(random.choice([-0.1, 0.1]) for i in range(numparams))
+        perturbation[np.where(np.rand(numparams)<0.8)] = 0
         return x + perturbation
     
     def test_bounds(f_new=None, x_new=None, f_old=None, x_old=None):
@@ -105,8 +120,12 @@ def solve_annealing(Qfunc, x0, ntries=1000, scale=0.2):
             return False
         else:
             return True
-            
-    optimal = optimize.basinhopping(Qfunc, x0, niter=ntries, T=0.5, stepsize=scale, accept_test=test_bounds, take_step=take_step_custom)  
+    if logq:
+        Tbarrier = 200
+    else:
+        Tbarrier = 0.5   
+             
+    optimal = optimize.basinhopping(Qfunc, x0, niter=ntries, T=Tbarrier, accept_test=test_bounds, take_step=take_step_custom)  
     
     return optimal.x
     
@@ -175,7 +194,7 @@ def max_likelihood_estimate(data, data_sets, observables, model, ntries=0, solve
     if solver == "simplex":
         new_epsilons = solve_simplex_global(Qfunction_epsilon, current_epsilons, ntries=ntries)
     elif solver == "anneal":
-        new_epsilons = solve_annealing(Qfunction_epsilon, current_epsilons,ntries=ntries, scale=0.2)
+        new_epsilons = solve_annealing(Qfunction_epsilon, current_epsilons,ntries=ntries, scale=0.2, logq=logq)
     elif solver == "cg":
         new_epsilons = solve_cg(Qfunction_epsilon, current_epsilons)
     else:
