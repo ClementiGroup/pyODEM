@@ -111,8 +111,8 @@ def solve_annealing(Qfunc, x0, ntries=1000, scale=0.2, logq=False):
 def solve_annealing_experimental(Qfunc, x0, ntries=1000, scale=0.2, logq=False):
     numparams = np.shape(x0)[0]
     def take_step_custom(x):
-        perturbation = np.arrray(random.choice([-0.1, 0.1]) for i in range(numparams))
-        perturbation[np.where(np.rand(numparams)<0.8)] = 0
+        perturbation = np.array([random.choice([-0.1, 0.1]) for i in range(numparams)])
+        perturbation[np.where(np.random.rand(numparams)<0.8)] = 0
         return x + perturbation
     
     def test_bounds(f_new=None, x_new=None, f_old=None, x_old=None):
@@ -128,12 +128,51 @@ def solve_annealing_experimental(Qfunc, x0, ntries=1000, scale=0.2, logq=False):
     optimal = optimize.basinhopping(Qfunc, x0, niter=ntries, T=Tbarrier, accept_test=test_bounds, take_step=take_step_custom)  
     
     return optimal.x
+
+def solve_annealing_custom(Qfunc, x0,  ntries=1000, scale=0.2, logq=False):
+    numparams = np.shape(x0)[0]
+    #current vals
+    Qval = Qfunc(x0)
+    xval = x0
+    #global vals
+    minima = x0
+    minQ = Qval
+    for i in range(ntries):
+        perturbation = np.array([random.choice([-0.1, 0.1]) for i in range(numparams)])
+        perturbation[np.where(np.random.rand(numparams)<0.8)] = 0
+        xnext = xval+perturbation
+        Qnext = Qfunc(xnext)
+        
+        if Qnext < Qval:
+            xval = xnext
+            Qval = Qnext
+        
+        else:
+            pass
+        if Qval < minQ:
+            minima = xval 
     
+    for i in range(ntries/10):
+        perturbation = np.array([random.uniform(-0.1, 0.1) for i in range(numparams)])
+        perturbation[np.where(np.random.rand(numparams)<0.8)] = 0
+        xnext = xval+perturbation
+        Qnext = Qfunc(xnext)
+        
+        if Qnext < Qval:
+            xval = xnext
+            Qval = Qnext
+        
+        else:
+            pass
+        if Qval < minQ:
+            minima = xval 
+    
+    return minima   
+    
+       
 def solve_cg(Qfunc, x0):
     
-    print "solve using CG"
     optimal = optimize.minimize(Qfunc, x0, jac=True, method="CG")
-    #optimal = optimize.minimize(Qfunc, x0, options={"epsilon":0.001}, method="CG")
     print optimal.message
     if not optimal.success == True:
         
@@ -189,7 +228,8 @@ def max_likelihood_estimate(data, data_sets, observables, model, ntries=0, solve
         current_epsilons = eo.current_epsilons
     else:
         current_epsilons = x0
-        
+    
+    print "Starting Optimization"
     #Then run the solver
     if solver == "simplex":
         new_epsilons = solve_simplex_global(Qfunction_epsilon, current_epsilons, ntries=ntries)
@@ -197,6 +237,10 @@ def max_likelihood_estimate(data, data_sets, observables, model, ntries=0, solve
         new_epsilons = solve_annealing(Qfunction_epsilon, current_epsilons,ntries=ntries, scale=0.2, logq=logq)
     elif solver == "cg":
         new_epsilons = solve_cg(Qfunction_epsilon, current_epsilons)
+    elif solver == "anneal_exp":
+        new_epsilons = solve_annealing_experimental(Qfunction_epsilon, current_epsilons, ntries=ntries, scale=0.2, logq=logq)
+    elif solver == "custom":
+        new_epsilons = solve_annealing_custom(Qfunction_epsilon, current_epsilons, ntries=ntries, scale=0.2, logq=logq)
     else:
         raise IOError("invalid solver, please select either: ...")
     

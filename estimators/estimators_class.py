@@ -116,7 +116,7 @@ class EstimatorsObject(object):
             
             #Minimization, so make maximal value a minimal value with a negative sign.
             Q = self.log_Q_function(next_observed) 
-
+            print epsilons
             return Q
             
         return Qfunction_epsilon
@@ -196,7 +196,7 @@ class EstimatorsObject(object):
                 dQ = self.dlog_Q_function(next_observed, derivative_observed) 
                 dQ_vector.append(dQ)
 
-            
+            print epsilons
             return Q, np.array(dQ_vector)
         
         
