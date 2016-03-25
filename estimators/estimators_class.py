@@ -78,7 +78,7 @@ class EstimatorsObject(object):
     def get_reweighted_observable_function(self):
         return self.calculate_observables_reweighted
         
-    def calculate_observables_reweighted(epsilons):
+    def calculate_observables_reweighted(self, epsilons):
         """ Calculates the observables using a set of epsilons
         
         Takes as input a new set of epsilons (model parameters). 
@@ -134,7 +134,7 @@ class EstimatorsObject(object):
             
         return func
         
-    def Qfunction_epsilon(epsilons):
+    def Qfunction_epsilon(self, epsilons):
         #initiate value for observables:
         next_observed = np.zeros(self.num_observable)
         
@@ -155,7 +155,7 @@ class EstimatorsObject(object):
 
         return Q
         
-    def log_Qfunction_epsilon(epsilons):
+    def log_Qfunction_epsilon(self, epsilons):
         #initiate value for observables:
         next_observed = np.zeros(self.num_observable)
         
@@ -176,7 +176,7 @@ class EstimatorsObject(object):
         #print epsilons
         return Q
 
-    def derivatives_Qfunction_epsilon(epsilons):
+    def derivatives_Qfunction_epsilon(self, epsilons):
         #initialize final matrices
         next_observed = np.zeros(self.num_observable)
         derivative_observed_first = [np.zeros(self.num_observable) for j in range(self.number_params)]
@@ -212,7 +212,7 @@ class EstimatorsObject(object):
         
         return Q, np.array(dQ_vector)
 
-    def derivatives_log_Qfunction_epsilon(epsilons):
+    def derivatives_log_Qfunction_epsilon(self, epsilons):
         #initialize final matrices
         next_observed = np.zeros(self.num_observable)
         derivative_observed_first = [np.zeros(self.num_observable) for j in range(self.number_params)]
