@@ -42,6 +42,7 @@ new_eps = solutions.new_epsilons
 old_eps = solutions.old_epsilons
 Qold = solutions.oldQ
 Qnew = solutions.newQ
+Qfunction = solutions.Qfunction_epsilons
 
 print "Epsilons are: "
 print new_eps

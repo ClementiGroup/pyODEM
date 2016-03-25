@@ -199,24 +199,21 @@ def max_likelihood_estimate(data, data_sets, observables, model, ntries=0, solve
         ntries (int): Number of random startung epsilons to generate 
             in case solution. Defaults to 0.
         solver (str): Optimization procedures. Defaults to Simplex. 
+            Available methods include: simplex, anneal, cg, custom.
         
     Returns:
-        sh (SolutionHolder): new epsilons found as well as the Q
-            function used.
+        eo (EstimatorsObject): Object that contains the data used for 
+            the computation and the results.
             
     """
     eo = EstimatorsObject(data, data_sets, observables, model)
 
     if solver in ["cg"]:
-        if logq:
-            Qfunction_epsilon = eo.get_log_Q_function_derivatives()
-        else:
-            Qfunction_epsilon = eo.get_Q_function_derivatives()
+        derivative = True
     else:
-        if logq:
-            Qfunction_epsilon = eo.get_log_Q_function()
-        else:
-            Qfunction_epsilon = eo.get_Q_function()
+        derivative = False
+    Qfunction_epsilon = eo.get_function(derivative, logq)
+    
     '''
     if logq:
         Qfunction_epsilon = eo.get_log_Q_function()

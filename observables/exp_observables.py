@@ -24,15 +24,15 @@ class ExperimentalObservables(object):
     This will set up the necessary lists of functions.
     
     Attributes:
-        observables(list): List of ObservableObjects. Used for 
+        observables (list): List of ObservableObjects. Used for 
             computing the observables on a trajectory.
-        q_functions(list): List of q_function associated with each value 
-            of all the observables.
-        dq_functions(list): List of derivatives of each q_function.
-        log_funtions(list): Logarithm of each q_function
-        dlog_functions(list): derivative of the log_functions
-        num_q_functions(float): Number of q_functions added thus far.
-        obs_seen(list): List of bool. True for observables that were 
+        q_functions (list): List of q_function associated with each 
+            value of all the observables.
+        dq_functions (list): List of derivatives of each q_function.
+        log_funtions (list): Logarithm of each q_function
+        dlog_functions (list): derivative of the log_functions
+        num_q_functions (float): Number of q_functions added thus far.
+        obs_seen (list): List of bool. True for observables that were 
             seen in the simulation. Used internally in other methods.
     
     Example:
@@ -56,16 +56,16 @@ class ExperimentalObservables(object):
         distance or position distribution.
         
         Args:
-            exp_file(str): Properly formatted data file. Either in two 
+            exp_file (str): Properly formatted data file. Either in two 
                 columns, representing value and std, or a trace of 
                 numbers to be histogrammed.
-            compute(bool): True if the data file is a trace of numbers 
+            compute (bool): True if the data file is a trace of numbers 
                 to histogram. Default to False.
-            nbins(int): Specify number of bins for histogramming.
+            nbins (int): Specify number of bins for histogramming.
             histrange(tuple): Range to histogram over.
-            spacing(float): Spacing to histogram the data over.
-            edges(array): 1-D column of edges for histogram bins.
-            errortype(str): Type of error to use for the observables.
+            spacing (float): Spacing to histogram the data over.
+            edges (array): 1-D column of edges for histogram bins.
+            errortype (str): Type of error to use for the observables.
             
             Histogram parameters default to None. 
             Must give a valid set of parameters:
@@ -117,15 +117,15 @@ class ExperimentalObservables(object):
         to interpret.
         
         Args:
-            data(array): Typically array of floats. First index frames, 
+            data (array): Typically array of floats. First index frames, 
                 second index and above are for coordiantes.
-            weights(array): Weight values for each frame. 1-D array, 
+            weights (array): Weight values for each frame. 1-D array, 
                 same size as first dimension of data.
         
         Returns:
-            all_obs(list): Value of observables for every 
+            all_obs (list): Value of observables for every 
                 ObservableObject.  
-            all_std(list): Value of std for each observable in all_obs.        
+            all_std (list): Value of std for each observable in all_obs.        
         """
         if weights == None:
             weights = np.ones(np.shape(data)[0])
@@ -143,8 +143,8 @@ class ExperimentalObservables(object):
         """ Returns the q_function and the derivative of the q_function
         
         Returns:
-            q_simple(method): Computes q value based on some observabled.
-            dq_simple(method): Computes derivative of q_values.
+            q_simple (method): Computes q value based on some observabled.
+            dq_simple (method): Computes derivative of q_values.
         
         """
         def q_simple(observations):
@@ -177,8 +177,8 @@ class ExperimentalObservables(object):
         """ Returns the logarithm of q_function and its derivative 
         
         Returns:
-            q_simple(method): Computes logarithm of q.
-            dq_simple(method): Computes derivative of log(q).
+            q_simple (method): Computes logarithm of q.
+            dq_simple (method): Computes derivative of log(q).
         
         """
         def q_simple(observations):
