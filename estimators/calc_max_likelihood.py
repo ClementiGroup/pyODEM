@@ -94,7 +94,7 @@ def solve_simplex_global(Qfunc, x0, ntries=0):
     return out_eps
 
 def solve_annealing(Qfunc, x0, ntries=1000, scale=0.2, logq=False):
-    
+    """ Use the scipy basinhopping method """
     def test_bounds(f_new=None, x_new=None, f_old=None, x_old=None):
         if np.max(np.abs(x_new)) > 5:
             return False
@@ -109,6 +109,7 @@ def solve_annealing(Qfunc, x0, ntries=1000, scale=0.2, logq=False):
     return optimal.x
 
 def solve_annealing_experimental(Qfunc, x0, ntries=1000, scale=0.2, logq=False):
+    """ Experimental annealing methods for testing purposes only"""
     numparams = np.shape(x0)[0]
     def take_step_custom(x):
         perturbation = np.array([random.choice([-0.1, 0.1]) for i in range(numparams)])
@@ -129,7 +130,12 @@ def solve_annealing_experimental(Qfunc, x0, ntries=1000, scale=0.2, logq=False):
     
     return optimal.x
 
-def solve_annealing_custom(Qfunc, x0,  ntries=1000, scale=0.2, logq=False):
+def solve_annealing_custom(Qfunc, x0,  ntries=1000, scale=0.2, logq=False, stuck=100):
+    """ Custom stochastic method 
+    
+    Currently perturbs randomly and steps downhill.
+    """
+    
     numparams = np.shape(x0)[0]
     #current vals
     Qval = Qfunc(x0)
@@ -146,7 +152,6 @@ def solve_annealing_custom(Qfunc, x0,  ntries=1000, scale=0.2, logq=False):
         if Qnext < Qval:
             xval = xnext
             Qval = Qnext
-        
         else:
             pass
         if Qval < minQ:
@@ -171,7 +176,7 @@ def solve_annealing_custom(Qfunc, x0,  ntries=1000, scale=0.2, logq=False):
     
        
 def solve_cg(Qfunc, x0):
-    
+    """ use the scipy.optimize.minimize, method=CG """
     optimal = optimize.minimize(Qfunc, x0, jac=True, method="CG")
     print optimal.message
     if not optimal.success == True:
