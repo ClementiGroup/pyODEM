@@ -38,7 +38,7 @@ class Protein(ModelLoader):
         self.model, self.fittingopts = mdb.inputs.load_model(ini_file_name)
         
         # get indices corresponding to epsilons to use
-        self.use_params = self.model.Hamiltonian._pairs
+        self.use_params = np.arange(len(self.model.Hamiltonian._pairs))
         self.epsilons = self.model.Hamiltonian.params[self.use_params]
         self.beta = 1.0 #set temperature
     

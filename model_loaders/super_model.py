@@ -26,9 +26,11 @@ class ModelLoader(object):
         Intialization for subclasses will be much more complex.
                     
         """
+        self.GAS_CONSTANT_KJ_MOL = 0.0083144621 #kJ/mol*k
         self.model = type('temp', (object,), {})()  
         self.epsilons = []  
-        self.beat = 1.0
+        self.beta = 1.0
+        self.temperature = 1.0 / (self.beta*self.GAS_CONSTANT_KJ_MOL)
     
     def load_data(self,fname):
         """ Load a data file and format for later use
@@ -46,8 +48,33 @@ class ModelLoader(object):
     
     def get_epsilons(self):
         return self.epsilons
-
     
+    def set_temperature(self, temp):
+        """ Set attribute temperature for the loader
+        
+        Also updates the setting for the attribute beta.
+        
+        Args:
+            temp (float): Temperature in Kelvins
+        
+        """
+        
+        self.temperature = temp 
+        self.beta = 1.0 / (self.temp*self.GAS_CONSTANT_KJ_MOL)
+        
+    def set_beta(self, besta):
+        """ Set attribute beta for the loader
+        
+        Also updates the setting for the attribute temperature.
+        
+        Args:
+            besta (float): Temperature in Kelvins
+        
+        """
+        
+        self.beta = besta
+        self.temperature = 1.0 / (self.beta*self.GAS_CONSTANT_KJ_MOL)
+        
     def get_potentials_epsilon(self, data):
         """ Return PotentialEnergy(epsilons)  
         
