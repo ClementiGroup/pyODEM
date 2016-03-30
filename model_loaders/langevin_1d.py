@@ -8,6 +8,8 @@ from pyfexd.model_loaders import ModelLoader
 
 try:
     from langevin_model.model import langevin_model as lmodel
+except:
+    pass
 
 class Langevin(ModelLoader):
     """ Subclass for making a ModelLoader for a 1-D Langevin dynamics

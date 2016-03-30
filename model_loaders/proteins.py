@@ -9,6 +9,8 @@ import mdtraj as md
 from pyfexd.model_loaders import ModelLoader
 try:
     import model_builder as mdb
+except:
+    pass
 
 class Protein(ModelLoader):
     """ Subclass for making a ModelLoader for a Protein Model
@@ -45,14 +47,11 @@ class Protein(ModelLoader):
         self.pairs = self.model.mapping._contact_pairs
         self.use_pairs = []
         for i in self.use_params: #only load relevant parameters
-            self.use_pairs.append([pairs[i][0].index, pairs[i][1].index])
+            self.use_pairs.append([self.pairs[i][0].index, self.pairs[i][1].index])
         
         self.epsilons = np.ones(len(self.use_pairs))
         self.beta = 1.0 #set temperature
-        
-        # check if pair potentials and pairs are equal in number
-        if not np.shape(self.use_pairs)[0] == np.shape(self.pairs)[0]:
-            
+           
     
     def load_data(self,fname):
         """ Load a data file and format for later use
@@ -93,7 +92,7 @@ class Protein(ModelLoader):
         constants_list = [] 
         
         for idx, i in enumerate(self.use_params):
-            constants_list.append(self.model.Hamiltonian._pairs[i](data[idx]) * -1.0 * self.beta)
+            constants_list.append(self.model.Hamiltonian._pairs[i].dVdeps(data[idx]) * -1.0 * self.beta)
         
         #compute the function for the potential energy
         def hepsilon(epsilons):

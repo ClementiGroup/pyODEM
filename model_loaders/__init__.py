@@ -23,5 +23,5 @@ from super_model import ModelLoader
 
 #load all subclasses below
 from langevin_1d import Langevin
-
+from proteins import Protein
 
