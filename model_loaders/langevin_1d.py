@@ -6,6 +6,9 @@ Requires package: https://github.com/TensorDuck/langevin_model
 import numpy as np
 from pyfexd.model_loaders import ModelLoader
 
+try:
+    from langevin_model.model import langevin_model as lmodel
+
 class Langevin(ModelLoader):
     """ Subclass for making a ModelLoader for a 1-D Langevin dynamics
     
@@ -27,15 +30,14 @@ class Langevin(ModelLoader):
                 parameters from the .ini file.
         
         """
-        try:
-            from langevin_model.model import langevin_model as lmodel
-        except:
-            raise IOError("langevin_model package is not installed. Please check path variables or install the relevant package from: https://github.com/TensorDuck/langevin_model")
-        
+
         ##remove .ini suffix
         if ".ini" in ini_file_name[-4:]:
-            ini_file_name = ini_file_name[:-4]
-        self.model = lmodel(ini_file_name)
+            ini_file_name = ini_file_name[:-4]            
+        try:
+            self.model = lmodel(ini_file_name)
+        except:
+            raise IOError("langevin_model package is not installed.")
         
         # get indices corresponding to epsilons to use
         self.use_params = np.where(self.model.fit_parameters)[0] 
@@ -72,21 +74,6 @@ class Langevin(ModelLoader):
             return constants_list
         
         return hepsilon, dhepsilon
-    
-    def get_potentials_derivatives(self,data):
-        """ Return derivative of PotentialEnergy
-        
-        Optional, only if you intend to calculate a derivative for your 
-        system for using an optmizaiton method that requires it.
-    
-        """
-        
-        
-        
-        
-        
-        
-        
         
         
         

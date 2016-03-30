@@ -5,9 +5,11 @@ Requires package: https://github.com/ajkluber/model_builder
 """
 import numpy as np
 from pyfexd.model_loaders import ModelLoader
+try:
+    import model_builder as mdb
 
 class Protein(ModelLoader):
-    """ Subclass for making a ModelLoader for a 1-D Langevin dynamics
+    """ Subclass for making a ModelLoader for a Protein Model
     
     Methods:
         See ModelLoader in pyfexd/super_model/ModelLoader
@@ -30,16 +32,14 @@ class Protein(ModelLoader):
         try:
             from langevin_model.model import langevin_model as lmodel
         except:
-            raise IOError("langevin_model package is not installed. Please check path variables or install the relevant package from: https://github.com/TensorDuck/langevin_model")
+            raise IOError("model_builder package is not installed.")
         
         ##remove .ini suffix
-        if ".ini" in ini_file_name[-4:]:
-            ini_file_name = ini_file_name[:-4]
-        self.model = lmodel(ini_file_name)
+        self.model, self.fittingopts = mdb.inputs.load_model(ini_file_name)
         
         # get indices corresponding to epsilons to use
-        self.use_params = np.where(self.model.fit_parameters)[0] 
-        self.epsilons = self.model.params[self.use_params]
+        self.use_params = self.model.Hamiltonian._pairs
+        self.epsilons = self.model.Hamiltonian.params[self.use_params]
         self.beta = 1.0 #set temperature
     
     def get_potentials_epsilon(self, data):
@@ -72,16 +72,6 @@ class Protein(ModelLoader):
             return constants_list
         
         return hepsilon, dhepsilon
-    
-    def get_potentials_derivatives(self,data):
-        """ Return derivative of PotentialEnergy
-        
-        Optional, only if you intend to calculate a derivative for your 
-        system for using an optmizaiton method that requires it.
-    
-        """
-        
-        
         
         
         
