@@ -34,6 +34,7 @@ class ModelLoader(object):
     
     def load_data(self,fname):
         """ Load a data file and format for later use
+        
         Args:
             fname(string): Name of a file to load.
         
