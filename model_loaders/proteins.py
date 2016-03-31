@@ -86,7 +86,10 @@ class Protein(ModelLoader):
         
         #check to see if data is the expected shape for this analysis:
         if not np.shape(data)[1] == np.shape(self.use_params)[0]:
-            raise IOError("data's number of dimensions not equal to number of parameters")
+            err_str = "dimensions of data incompatible with number of parameters\n"
+            err_str += "Second index must equal number of parameters \n"
+            err_str += "data is: %s, number of parameters is: %d" %(str(np.shape(data)), len(self.use_params))
+            raise IOError(err_str)
         
         #list of constant pre factors to each model epsilons
         constants_list = [] 
