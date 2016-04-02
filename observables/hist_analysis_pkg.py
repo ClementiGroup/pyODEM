@@ -13,7 +13,7 @@ class HistogramO(Observable):
         self.edges = edges
     
     def compute_observed(self, data, weights):
-        if self.edges == None:
+        if self.edges is None:
             if self.spacing == None:
                 hist, edges = np.histogram(data, weights=weights, range=self.histrange, bins=self.nbins)
             else:
@@ -68,10 +68,10 @@ def histogram_data(data, nbins=10, histrange=(0,10), edges=None, weights=None):
     
     """
     
-    if weights == None:
+    if weights is None:
         weights = np.ones(np.shape(data)[0])
     
-    if edges == None:
+    if edges is None:
         hist, edges, slices = stats.binned_statistic(data, weights, statistic="sum", histrange=[histrange], bins=nbins)
     else:
         hist, edges, slices = stats.binned_statistic(data, weights, statistic="sum", edges=edges)
@@ -85,7 +85,7 @@ def histogram_data(data, nbins=10, histrange=(0,10), edges=None, weights=None):
     return hist, stdev, bincenters, edges, slices
 
 def histogram_data_spacing(data, spacing, weights=None):
-    if weights == None:
+    if weights is None:
         weights = np.ones(np.shape(data)[0])
     
     xmin = int(np.min(data)/spacing)
