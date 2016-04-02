@@ -7,8 +7,10 @@ epsilons, x0 or x. Epsilons are model dependent.
 
 """
 import random
+import time
 import numpy as np
 import scipy.optimize as optimize
+
 from estimators_class import EstimatorsObject
 
 def solve_simplex(Qfunc, x0):
@@ -211,6 +213,7 @@ def max_likelihood_estimate(data, data_sets, observables, model, obs_data=None, 
             the computation and the results.
             
     """
+    
     eo = EstimatorsObject(data, data_sets, observables, model, obs_data=obs_data)
 
     if solver in ["cg"]:
@@ -232,6 +235,7 @@ def max_likelihood_estimate(data, data_sets, observables, model, obs_data=None, 
         current_epsilons = x0
     
     print "Starting Optimization"
+    t1 = time.time()
     #Then run the solver
     if solver == "simplex":
         new_epsilons = solve_simplex_global(Qfunction_epsilon, current_epsilons, ntries=ntries)
@@ -246,9 +250,11 @@ def max_likelihood_estimate(data, data_sets, observables, model, obs_data=None, 
     else:
         raise IOError("invalid solver, please select either: ...")
     
+    t2 = time.time()
+    total_time = (t2-t1) / 60.0
+    print "Optimization Complete: %f minutes" % total_time
     
     #then return a new set of epsilons inside the EstimatorsObject
-    
     eo.save_solutions(new_epsilons)
     return eo
     

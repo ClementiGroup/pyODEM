@@ -1,6 +1,7 @@
 """ Contains EstimatorsObject """
 
 import numpy as np
+import time
 
 class EstimatorsObject(object):
     """ Contains inputted formatted data and results from analysis 
@@ -24,6 +25,8 @@ class EstimatorsObject(object):
                  <pyfexd/model_loaders>.
                 
         """
+        print "Initializing EstimatorsObject"
+        t1 = time.time()
         #observables get useful stuff like value of beta
         self.beta = model.beta
         self.number_equilibrium_states = len(data_sets)
@@ -83,7 +86,10 @@ class EstimatorsObject(object):
         for i in range(self.number_equilibrium_states):
             state_prefactor = self.pi[i] * self.expectation_observables[i]   
             self.state_prefactors.append(state_prefactor)
-    
+        
+        t2 = time.time()
+        total_time = (t2-t1) / 60.0
+        print "Initializaiton Completed: %f Minutes" % total_time 
     def get_reweighted_observable_function(self):
         return self.calculate_observables_reweighted
         
