@@ -97,8 +97,7 @@ class ExperimentalObservables(object):
 	        self.dlog_functions.append(bf.log_statistical.wrapped_derivative_harmonic(mean,std))
 	    
 	    #Default: all observables are by default seen.     
-        self.prep_True()
-	    
+        self.prep_True()  
     
     def prep(self):
         """ Sets obs_seen to False for all observables. """
@@ -117,8 +116,9 @@ class ExperimentalObservables(object):
         to interpret.
         
         Args:
-            data (array): Typically array of floats. First index frames, 
-                second index and above are for coordiantes.
+            data (list): List of data sets. Each entry is an array where 
+                the first index corresponds to the frames and the second 
+                index and above are for coordinates.
             weights (array): Weight values for each frame. 1-D array, 
                 same size as first dimension of data.
         
@@ -128,12 +128,12 @@ class ExperimentalObservables(object):
             all_std (list): Value of std for each observable in all_obs.        
         """
         if weights == None:
-            weights = np.ones(np.shape(data)[0])
+            weights = np.ones(np.shape(data[0])[0])
         
         all_obs = np.array([])
         all_std = np.array([])
-        for observable in self.observables:
-            obs, std, seen = observable.compute_observed(data, weights)
+        for idx,observable in enumerate(self.observables):
+            obs, std, seen = observable.compute_observed(data[idx], weights)
             all_obs = np.append(all_obs, obs)
             all_std = np.append(all_std, std)
             self.obs_seen = [seent or nott for seent, nott in zip(seen, self.obs_seen)] 

@@ -41,6 +41,11 @@ class Protein(ModelLoader):
         ##remove .ini suffix
         self.model, self.fittingopts = mdb.inputs.load_model(ini_file_name)
         
+        if "fret_pairs" in self.fittingopts and not self.fittingopts["fret_pairs"] is None:
+            self.fret_pairs = self.fittingopts["fret_pairs"]
+        else:
+            self.fret_pairs = [None]
+            
         # get indices corresponding to epsilons to use
         # Assumes only parameters to change are pair interactions
         self.use_params = np.arange(len(self.model.Hamiltonian._pairs)) #assumes you use all pairs
@@ -71,7 +76,7 @@ class Protein(ModelLoader):
         
         traj = md.load(fname, top=self.model.mapping.topology)
         data = md.compute_distances(traj, self.use_pairs, periodic=False)
-        
+
         return data
     
     def get_potentials_epsilon(self, data):
@@ -85,7 +90,7 @@ class Protein(ModelLoader):
         """
         
         #check to see if data is the expected shape for this analysis:
-        if not np.shape(data)[1] == np.shape(self.use_params)[0]:
+        if not np.shape(data[1])[1] == np.shape(self.use_params)[0]:
             err_str = "dimensions of data incompatible with number of parameters\n"
             err_str += "Second index must equal number of parameters \n"
             err_str += "data is: %s, number of parameters is: %d" %(str(np.shape(data)), len(self.use_params))

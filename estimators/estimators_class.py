@@ -10,7 +10,7 @@ class EstimatorsObject(object):
     optimization routine.
     
     """
-    def __init__(self, data, data_sets, observables, model):
+    def __init__(self, data, data_sets, observables, model, obs_data=None):
         """ initialize object and process all the inputted data 
         
         Args:
@@ -48,11 +48,20 @@ class EstimatorsObject(object):
         self.pi = []
         self.ni = []
         
+        if obs_data is None: #use sim data for calculating observables
+            obs_data = [data for i in range(len(self.observables.observables))]
+        else:
+            pass
+            
         #load data for each set, and compute energies and observations
         for i in data_sets:
             use_data = data[i]
             epsilons_function, derivatives_function = model.get_potentials_epsilon(use_data)
-            observed, obs_std = observables.compute_observations(use_data)
+            #process obs_data so that only the desired frames are passed
+            use_obs_data = []
+            for obs_dat in obs_data:
+                use_obs_data.append(obs_dat[i])
+            observed, obs_std = observables.compute_observations(use_obs_data)
             num_in_set = np.shape(use_data)[0]
             
             self.expectation_observables.append(observed)

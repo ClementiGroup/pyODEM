@@ -185,7 +185,7 @@ def solve_cg(Qfunc, x0):
         
     return optimal.x
     
-def max_likelihood_estimate(data, data_sets, observables, model, ntries=0, solver="simplex", logq="False", x0=None):
+def max_likelihood_estimate(data, data_sets, observables, model, obs_data=None, ntries=0, solver="simplex", logq="False", x0=None):
     """ Optimizes model's paramters using a max likelihood method
     
     Args:
@@ -211,7 +211,7 @@ def max_likelihood_estimate(data, data_sets, observables, model, ntries=0, solve
             the computation and the results.
             
     """
-    eo = EstimatorsObject(data, data_sets, observables, model)
+    eo = EstimatorsObject(data, data_sets, observables, model, obs_data=obs_data)
 
     if solver in ["cg"]:
         derivative = True
