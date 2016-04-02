@@ -90,7 +90,7 @@ class Protein(ModelLoader):
         """
         
         #check to see if data is the expected shape for this analysis:
-        if not np.shape(data[1])[1] == np.shape(self.use_params)[0]:
+        if not np.shape(data)[1] == np.shape(self.use_params)[0]:
             err_str = "dimensions of data incompatible with number of parameters\n"
             err_str += "Second index must equal number of parameters \n"
             err_str += "data is: %s, number of parameters is: %d" %(str(np.shape(data)), len(self.use_params))
@@ -99,8 +99,8 @@ class Protein(ModelLoader):
         #list of constant pre factors to each model epsilons
         constants_list = [] 
         
-        for idx, i in enumerate(self.use_params):
-            constants_list.append(self.model.Hamiltonian._pairs[i].dVdeps(data[idx]) * -1.0 * self.beta)
+        for i in self.use_params:
+            constants_list.append(self.model.Hamiltonian._pairs[i].dVdeps(data) * -1.0 * self.beta)
         
         #compute the function for the potential energy
         def hepsilon(epsilons):
