@@ -100,7 +100,7 @@ class Protein(ModelLoader):
         constants_list = [] 
         
         for i in self.use_params:
-            constants_list.append(self.model.Hamiltonian._pairs[i].dVdeps(data) * -1.0 * self.beta)
+            constants_list.append(self.model.Hamiltonian._pairs[i].dVdeps(data[:,i]) * -1.0 * self.beta)
         
         #compute the function for the potential energy
         def hepsilon(epsilons):
