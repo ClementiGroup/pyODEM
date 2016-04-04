@@ -33,6 +33,7 @@ class Protein(ModelLoader):
                 parameters from the .ini file.
         
         """
+        self.GAS_CONSTANT_KJ_MOL = 0.0083144621 #kJ/mol*k
         try:
             from langevin_model.model import langevin_model as lmodel
         except:
@@ -56,7 +57,7 @@ class Protein(ModelLoader):
         
         self.epsilons = np.ones(len(self.use_pairs))
         self.beta = 1.0 #set temperature
-           
+        
     
     def load_data(self,fname):
         """ Load a data file and format for later use
