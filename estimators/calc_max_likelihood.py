@@ -187,7 +187,7 @@ def solve_cg(Qfunc, x0):
         
     return optimal.x
     
-def max_likelihood_estimate(data, data_sets, observables, model, obs_data=None, ntries=0, solver="simplex", logq="False", x0=None):
+def max_likelihood_estimate(data, data_sets, observables, model, obs_data=None, ntries=0, solver="simplex", logq=False, x0=None):
     """ Optimizes model's paramters using a max likelihood method
     
     Args:
@@ -203,11 +203,21 @@ def max_likelihood_estimate(data, data_sets, observables, model, obs_data=None, 
         model (ModelLoader): Object that is used to load data and
             compute potential energies for the data set. See: 
             pyfexd/model_loaders/super_model for full description.
-        ntries (int): Number of random startung epsilons to generate 
-            in case solution. Defaults to 0.
+        obs_data (list): Use if data set for computing observables is 
+            different from data for computing the energy. List  contains 
+            arrays where each array-entry corresponds to the observable 
+            in the ExperimentalObservables object. Arrays are specified 
+            with first index corresponding to the frame and second index 
+            to the data. Default: Use the array specified in data for 
+            all observables. 
+        ntries (int): Number of random starting epsilons to generate in 
+            case solution. Defaults to 0.
         solver (str): Optimization procedures. Defaults to Simplex. 
             Available methods include: simplex, anneal, cg, custom.
-        
+        logq (bool): Use the logarithmic Q functions. Default: False.
+        x0 (array): Specify starting epsilons for optimization methods. 
+            Defaults to current epsilons from the model.
+            
     Returns:
         eo (EstimatorsObject): Object that contains the data used for 
             the computation and the results.

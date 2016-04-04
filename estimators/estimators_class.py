@@ -23,6 +23,13 @@ class EstimatorsObject(object):
                 module <pyfexd/observables>.
             model (ModelLoader): See object in the module
                  <pyfexd/model_loaders>.
+            obs_data (list): Use if data set for computing observables 
+                is different from data for computing the energy. List 
+                contains arrays where each array-entry corresponds to 
+                the observable in the ExperimentalObservables object. 
+                Arrays are specified with first index corresponding to 
+                the frame and second index to the data. Default: Use the 
+                array specified in data for all observables.
                 
         """
         print "Initializing EstimatorsObject"
