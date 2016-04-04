@@ -61,7 +61,7 @@ class ModelLoader(object):
         """
         
         self.temperature = temp 
-        self.beta = 1.0 / (self.temp*self.GAS_CONSTANT_KJ_MOL)
+        self.beta = 1.0 / (self.temperature*self.GAS_CONSTANT_KJ_MOL)
         
     def set_beta(self, besta):
         """ Set attribute beta for the loader
