@@ -132,13 +132,23 @@ def solve_annealing_experimental(Qfunc, x0, ntries=1000, scale=0.2, logq=False):
     
     return optimal.x
 
-def solve_annealing_custom(Qfunc, x0,  ntries=1000, scale=0.2, logq=False, stuck=100):
+def solve_annealing_custom(Qfunc, x0,  ntries=1000, scale=0.2, logq=False, stuck=100, bounds=[-10,10]):
     """ Custom stochastic method 
     
     Currently perturbs randomly and steps downhill.
     """
     
     numparams = np.shape(x0)[0]
+    
+    #sort bounds so the smallest is first
+    if not np.shape(bounds)[0] == 2:
+        bounds = [-10, 10]
+        print "Invalid bounds, setting to default of (-10,10)"
+    
+    use_bounds = []
+    use_bounds.append(np.min(bounds))
+    use_bounds.append(np.max(bounds))
+    
     #current vals
     Qval = Qfunc(x0)
     xval = x0
@@ -149,6 +159,9 @@ def solve_annealing_custom(Qfunc, x0,  ntries=1000, scale=0.2, logq=False, stuck
         perturbation = np.array([random.choice([-0.1, 0.1]) for i in range(numparams)])
         perturbation[np.where(np.random.rand(numparams)<0.8)] = 0
         xnext = xval+perturbation
+        xnext[xnext<use_bounds[0]] = use_bounds[0]
+        xnext[xnext>use_bounds[1]] = use_bounds[1]
+        
         Qnext = Qfunc(xnext)
         
         if Qnext < Qval:
@@ -187,7 +200,7 @@ def solve_cg(Qfunc, x0):
         
     return optimal.x
     
-def max_likelihood_estimate(data, data_sets, observables, model, obs_data=None, ntries=0, solver="simplex", logq=False, x0=None):
+def max_likelihood_estimate(data, data_sets, observables, model, obs_data=None, solver="simplex", logq=False, x0=None, kwargs={}):
     """ Optimizes model's paramters using a max likelihood method
     
     Args:
@@ -247,18 +260,22 @@ def max_likelihood_estimate(data, data_sets, observables, model, obs_data=None, 
     print "Starting Optimization"
     t1 = time.time()
     #Then run the solver
-    if solver == "simplex":
-        new_epsilons = solve_simplex_global(Qfunction_epsilon, current_epsilons, ntries=ntries)
-    elif solver == "anneal":
-        new_epsilons = solve_annealing(Qfunction_epsilon, current_epsilons,ntries=ntries, scale=0.2, logq=logq)
-    elif solver == "cg":
-        new_epsilons = solve_cg(Qfunction_epsilon, current_epsilons)
-    elif solver == "anneal_exp":
-        new_epsilons = solve_annealing_experimental(Qfunction_epsilon, current_epsilons, ntries=ntries, scale=0.2, logq=logq)
-    elif solver == "custom":
-        new_epsilons = solve_annealing_custom(Qfunction_epsilon, current_epsilons, ntries=ntries, scale=0.2, logq=logq)
-    else:
-        raise IOError("invalid solver, please select either: ...")
+    
+    ##add keyword args thatn need to be passed
+    kwargs["logq"] = logq
+    
+    function_dictionary = {"simplex":solve_simplex_global}
+    function_dictionary["anneal"] = solve_annealing
+    function_dictionary["cg"] = solve_cg
+    function_dictionary["anneal_exp"] = solve_annealing_experimental
+    function_dictionary["custom"] = solve_annealing_custom
+    
+    if solver not in function_dictionary:
+        raise IOError("Invalid Solver. Please specify a valid solver")
+    func_solver = function_dictionary[solver]
+    
+    new_epsilons = func_solver(Qfunction_epsilon, current_epsilons, **kwargs)
+    
     
     t2 = time.time()
     total_time = (t2-t1) / 60.0
