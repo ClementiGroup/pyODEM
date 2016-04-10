@@ -48,7 +48,7 @@ class ExperimentalObservables(object):
         self.dlog_functions = []
         self.num_q_functions = 0
         
-    def add_histogram(self, exp_file, compute=False, nbins=None, histrange=None, spacing=None, edges=None, errortype="gaussian"):
+    def add_histogram(self, exp_file, compute=False, nbins=None, histrange=None, spacing=None, edges=None, errortype="gaussian", scale=1.0):
         """ Adds a Histogram observable from HistogramO
         
         Method will add appropriate objects to the list and generate the 
@@ -66,6 +66,8 @@ class ExperimentalObservables(object):
             spacing (float): Spacing to histogram the data over.
             edges (array): 1-D column of edges for histogram bins.
             errortype (str): Type of error to use for the observables.
+            scale (float): Scale the error values by this factor. 
+                Default to 1.0 (no scaling). 
             
             Histogram parameters default to None. 
             Must give a valid set of parameters:
@@ -88,7 +90,7 @@ class ExperimentalObservables(object):
         for i in range(np.shape(exp_data)[0]):
 	        self.num_q_functions += 1
 	        mean = exp_data[i,0]
-	        std = exp_data[i,1]
+	        std = exp_data[i,1]*scale
 	        if std == 0:
 	            std = 1.0 #std of zero could lead to divide by zero exception. Set to 1 if it's zero (due to no sampling) 
 	        self.q_functions.append(bf.statistical.wrapped_gaussian(mean,std))
