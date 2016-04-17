@@ -41,6 +41,14 @@ example_1: Compute the Q-value for the data files present in the folder.
 
 example_2: Compute a new set of model parameters for the data files present in the folder.
 
+To Run, use execute multirun.sh in the folder to run a langevin 1-D simulation using the current set of starting parameters. There are 3-steps per an iteration in multirun.sh:
+
+`python -m langevin_model.simulation sim --name $name --steps 1000000`: Executes a langevin 1-d simulation. You can change the number of steps it takes. More steps means more data to analyze so it will take longer to simulate and analyze, with ~O(N) scaling. The `time` function is there for diagnostic purposes. It will generate a new folder `iteration_%d` where `%d` is the iteration number.
+
+`python -m run`: Executes the analysis script in the folder called `run.py`. This will analyze using the max_likelihood method and output a new set of parameteres into `iteration_%d/newton/params`
+
+`python -m langevin_model.simulation next --name $name --start`: Update the input files for the next simulation run (i.e. update model parameters).
+
 
 
 

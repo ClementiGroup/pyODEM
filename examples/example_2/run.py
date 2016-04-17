@@ -1,4 +1,8 @@
-""" Example for analyzing a 1d langevin dynamics model"""
+""" Example for analyzing a 1d langevin dynamics model
+
+This script analyzes the langevin 1-d run and outputs a new set of parameters
+based on the simulation run.
+"""
 import numpy as np
 import scipy.stats as stats
 import os
@@ -42,7 +46,8 @@ new_eps = solutions.new_epsilons
 old_eps = solutions.old_epsilons
 Qold = solutions.oldQ
 Qnew = solutions.newQ
-Qfunction = solutions.Qfunction_epsilons
+Qfunction = solutions.Qfunction_epsilon #-Q function
+Qfunction_log = solutions.log_Qfunction_epsilon #-log(Q) function
 
 print "Epsilons are: "
 print new_eps
