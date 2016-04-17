@@ -3,6 +3,11 @@ pyfexd
 
 This package, pyfexd, adjusts model parameters based upon experimental data. The method was developed in the Clementi Group at Rice University. 
 
+#Prerequisites
+The `TensorDuck/langevin_model` repository needs to be  cloned and in your PYTHONPATH variable for using the `model_loaders.Langevin()` loader.
+
+The `ajkluber/model_builder` repository needs to be  cloned and in your PYTHONPATH variable for using the `model_loaders.Proteins()` loader.
+
 Main packages and methods to be aware of for the end user is:
 
 ##model_loaders
@@ -10,6 +15,8 @@ Main packages and methods to be aware of for the end user is:
 Modules with methods for loading simulation data and analyzing it.
 
 `model_loaders.Langevin()`: 1-D langevin dynamics data. See package TensorDuck/langevin_model.
+
+`model_loaders.Proteins()`: Loading a protein topology and its associated potential functions. See package ajkluber/model_builder.
 
 ##observables
 
