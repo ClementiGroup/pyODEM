@@ -176,6 +176,8 @@ def solve_annealing_custom(Qfunc, x0,  ntries=1000, scale=0.2, logq=False, stuck
         perturbation = np.array([random.uniform(-0.1, 0.1) for i in range(numparams)])
         perturbation[np.where(np.random.rand(numparams)<0.8)] = 0
         xnext = xval+perturbation
+        xnext[xnext<use_bounds[0]] = use_bounds[0]
+        xnext[xnext>use_bounds[1]] = use_bounds[1]
         Qnext = Qfunc(xnext)
         
         if Qnext < Qval:
