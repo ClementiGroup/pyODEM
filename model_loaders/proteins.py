@@ -55,7 +55,7 @@ class Protein(ModelLoader):
         for i in self.use_params: #only load relevant parameters
             self.use_pairs.append([self.pairs[i][0].index, self.pairs[i][1].index])
         
-        self.epsilons = np.ones(len(self.use_pairs))
+        self.epsilons = self.model.fitted_epsilons
         self.beta = 1.0 #set temperature
         
     
