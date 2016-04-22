@@ -190,16 +190,96 @@ def solve_annealing_custom(Qfunc, x0,  ntries=1000, scale=0.2, logq=False, stuck
             minima = xval 
     
     return minima   
+
+def solve_newton_step_custom(Qfunc, x0, stepsize=1.0, logq=False, maxiters=200, proximity=1.0, qstop=1.0):
+    """ Solve by taking a newton step"""
     
-       
-def solve_cg(Qfunc, x0):
+    xval = x0
+    go = True
+    count = 0
+    qval, qderiv = Qfunc(xval)
+    while go:
+        count += 1
+        target =  -qderiv
+        step = target - xval
+        if np.linalg.norm(step) > stepsize:
+            step *= (stepsize/np.linalg.norm(step))
+        
+        qold = qval
+        qoldest = qval
+        xold = xval
+        xval = xval + step
+        print "Current Q Value:"
+        print qval
+        #print "moving to:"
+        #print xval
+        
+        #Find an optimal step size
+        go_find_step = True
+        go_find_step_count = 0
+        while go_find_step:
+            qval, qderiv = Qfunc(xval)
+            if qval > qold:
+                print "Scaling down the step"
+                step *= 0.1
+                xval = xold + step
+                go_find_step_count += 1
+                if go_find_step_count == 4:
+                    print "Failed to find a minima within 1/1000 of the step"
+                    print "Exiting the Optimizer"
+                    go = False
+                    go_find_step = False
+                    qval = qold
+            else:
+                print "Step is OKay now"
+                go_find_step = False
+                
+        go_along_line = True
+        while go_along_line:
+            print "Going along line"
+            qval, qderiv = Qfunc(xval)
+            if qval > qold:
+                go_along_line = False #started going up hill
+                xval -= step
+            else:
+                qold = qval
+                xval += step
+        
+        qval, qderiv = Qfunc(xval)
+                
+        diffq = qoldest - qval
+        if diffq > 0 and diffq < qstop:
+            print "Stopping as dq is within qstop"
+            go = False
+        if count > maxiters:
+            print "Reached the maximum number of iterations."
+            go = False
+            
+    return xval
+    
+def solve_cg(Qfunc, x0, norm=1):
     """ use the scipy.optimize.minimize, method=CG """
-    optimal = optimize.minimize(Qfunc, x0, jac=True, method="CG")
-    print optimal.message
+    def func(x):
+        return Qfunc(x)[0]
+    def dfunc(x):
+        return -Qfunc(x)[1]
+    optimal = optimize.fmin_cg(func, x0, fprime=dfunc, norm=norm)
+    #print optimal
+    #if not optimal[4] == 0:
+        
+        #raise IOError("Minimization failed to find a local minima. Code %d" % optimal[4]) 
+        
+    return optimal
+
+def solve_bfgs(Qfunc, x0):
+    """ Use the scipy.optimize.minimize (bfgs) method"""
+    optimal = optimize.minimize(Qfunc, x0, method="L-BFGS-B", jac=True)
+    
     if not optimal.success == True:
-        
-        raise IOError("Minimization failed to find a local minima using the simplex method") 
-        
+        print optimal.message
+        #raise IOError("Minimization failed to find a local minima using the simplex method") 
+        return x0
+           
     return optimal.x
     
 def max_likelihood_estimate(data, data_sets, observables, model, obs_data=None, solver="simplex", logq=False, x0=None, kwargs={}):
@@ -241,7 +321,7 @@ def max_likelihood_estimate(data, data_sets, observables, model, obs_data=None, 
     
     eo = EstimatorsObject(data, data_sets, observables, model, obs_data=obs_data)
 
-    if solver in ["cg"]:
+    if solver in ["cg", "newton", "bfgs"]:
         derivative = True
     else:
         derivative = False
@@ -264,13 +344,15 @@ def max_likelihood_estimate(data, data_sets, observables, model, obs_data=None, 
     #Then run the solver
     
     ##add keyword args thatn need to be passed
-    kwargs["logq"] = logq
+    #kwargs["logq"] = logq
     
     function_dictionary = {"simplex":solve_simplex_global}
     function_dictionary["anneal"] = solve_annealing
     function_dictionary["cg"] = solve_cg
     function_dictionary["anneal_exp"] = solve_annealing_experimental
     function_dictionary["custom"] = solve_annealing_custom
+    function_dictionary["newton"] = solve_newton_step_custom
+    function_dictionary["bfgs"] = solve_bfgs
     
     if solver not in function_dictionary:
         raise IOError("Invalid Solver. Please specify a valid solver")

@@ -1,7 +1,7 @@
 pyfexd
 ======
 
-This package, pyfexd, adjusts model parameters based upon experimental data. The method was developed in the Clementi Group at Rice University. 
+This package, pyfexd (**py**thon-**f**itting-**ex**perimental-**d**ata), adjusts model parameters based upon experimental data. The method was developed in the Clementi Group at Rice University. 
 
 #Prerequisites
 The `TensorDuck/langevin_model` repository needs to be  cloned and in your PYTHONPATH variable for using the `model_loaders.Langevin()` loader.
