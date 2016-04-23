@@ -271,10 +271,12 @@ def solve_cg(Qfunc, x0, norm=1):
         
     return optimal
 
-def solve_bfgs(Qfunc, x0):
+def solve_bfgs(Qfunc, x0, bounds=None):
     """ Use the scipy.optimize.minimize (bfgs) method"""
-    optimal = optimize.minimize(Qfunc, x0, method="L-BFGS-B", jac=True)
-    
+    if bounds is None:
+        optimal = optimize.minimize(Qfunc, x0, method="L-BFGS-B", jac=True)
+    else:
+        optimal = optimize.minimize(Qfunc, x0, method="L-BFGS-B", jac=True, bounds=bounds)
     if not optimal.success == True:
         print optimal.message
         #raise IOError("Minimization failed to find a local minima using the simplex method") 
