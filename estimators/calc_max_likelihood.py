@@ -283,7 +283,68 @@ def solve_bfgs(Qfunc, x0, bounds=None):
         return x0
            
     return optimal.x
+
+def solve_one_step(Qfunc, x0, stepsize=1.0, bounds=None):
+    """ take steps in steepest decent until reaches the smallest value"""    
+    xval = x0
+    go = True
+    count = 0
+    qval, qderiv = Qfunc(xval)
+    qold = qval
+    target =  -qderiv
+    step = target - xval
+    if np.linalg.norm(step) > stepsize:
+        step *= (stepsize/np.linalg.norm(step))
     
+    #detemrine bounds
+    bound_terms = []
+    if bounds is None:
+        for i in xval:
+            bound_terms.append([0,10])
+    else:
+        bound_terms = bounds
+        
+    #Find an optimal step size
+    go_find_step = True
+    go_find_step_count = 0
+    while go_find_step:
+        qval, qderiv = Qfunc(xval)
+        if qval > qold:
+            print "Scaling down the step"
+            step *= 0.1
+            xval = xold + step
+            go_find_step_count += 1
+            if go_find_step_count == 4:
+                print "Failed to find a minima within 1/1000 of the step"
+                print "Exiting the Optimizer"
+                go = False
+                go_find_step = False
+                qval = qold
+        else:
+            print "Step is OKay now"
+            go_find_step = False
+            
+    go_along_line = True
+    while go_along_line:
+        print "Going along line"
+        qval, qderiv = Qfunc(xval)
+        if qval > qold and check_bounds(xval,bound_terms):
+            go_along_line = False #started going up hill
+            xval -= step
+        else:
+            qold = qval
+            xval += step
+    
+    return xval
+
+def check_bounds(eps, bounds):
+    good = True
+    for i in eps:
+        if eps < bounds[0] or eps > bounds[1]:
+            good = False
+    
+    return good  
+        
 def max_likelihood_estimate(data, data_sets, observables, model, obs_data=None, solver="simplex", logq=False, x0=None, kwargs={}):
     """ Optimizes model's paramters using a max likelihood method
     
@@ -323,7 +384,7 @@ def max_likelihood_estimate(data, data_sets, observables, model, obs_data=None, 
     
     eo = EstimatorsObject(data, data_sets, observables, model, obs_data=obs_data)
 
-    if solver in ["cg", "newton", "bfgs"]:
+    if solver in ["cg", "newton", "bfgs", "one"]:
         derivative = True
     else:
         derivative = False
@@ -355,7 +416,7 @@ def max_likelihood_estimate(data, data_sets, observables, model, obs_data=None, 
     function_dictionary["custom"] = solve_annealing_custom
     function_dictionary["newton"] = solve_newton_step_custom
     function_dictionary["bfgs"] = solve_bfgs
-    
+    function_dictionary["one"] = solve_one_step
     if solver not in function_dictionary:
         raise IOError("Invalid Solver. Please specify a valid solver")
     func_solver = function_dictionary[solver]
