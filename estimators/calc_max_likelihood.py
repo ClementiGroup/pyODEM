@@ -428,7 +428,6 @@ def max_likelihood_estimate(data, data_sets, observables, model, obs_data=None, 
     
     new_epsilons = func_solver(Qfunction_epsilon, current_epsilons, **kwargs)
     
-    
     t2 = time.time()
     total_time = (t2-t1) / 60.0
     print "Optimization Complete: %f minutes" % total_time
