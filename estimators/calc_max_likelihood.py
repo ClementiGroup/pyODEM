@@ -290,12 +290,16 @@ def solve_one_step(Qfunc, x0, stepsize=1.0, bounds=None):
     go = True
     count = 0
     qval, qderiv = Qfunc(xval)
+    print qval
+    print np.min(np.abs(qderiv)) 
+    print np.max(np.abs(qderiv))
     qold = qval
-    target =  -qderiv
+    target = -qderiv
     step = target - xval
     if np.linalg.norm(step) > stepsize:
         step *= (stepsize/np.linalg.norm(step))
-    
+    print np.min(np.abs(step)) 
+    print np.max(np.abs(step))
     #detemrine bounds
     bound_terms = []
     if bounds is None:
@@ -328,7 +332,8 @@ def solve_one_step(Qfunc, x0, stepsize=1.0, bounds=None):
     while go_along_line:
         print "Going along line"
         qval, qderiv = Qfunc(xval)
-        if qval > qold and check_bounds(xval,bound_terms):
+        print qval
+        if qval > qold or check_bounds(xval,bound_terms):
             go_along_line = False #started going up hill
             xval -= step
         else:
@@ -338,12 +343,12 @@ def solve_one_step(Qfunc, x0, stepsize=1.0, bounds=None):
     return xval
 
 def check_bounds(eps, bounds):
-    good = True
-    for i in eps:
-        if eps < bounds[0] or eps > bounds[1]:
-            good = False
+    bad = False
+    for idx,i in enumerate(eps):
+        if i < bounds[idx][0] or i > bounds[idx][1]:
+            bad = True
     
-    return good  
+    return bad  
         
 def max_likelihood_estimate(data, data_sets, observables, model, obs_data=None, solver="simplex", logq=False, x0=None, kwargs={}):
     """ Optimizes model's paramters using a max likelihood method
