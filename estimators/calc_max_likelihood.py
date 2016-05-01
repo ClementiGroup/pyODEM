@@ -309,29 +309,8 @@ def solve_one_step(Qfunc, x0, stepsize=1.0, bounds=None):
             bound_terms.append([0,10])
     else:
         bound_terms = bounds
-        
-    #Find an optimal step size
-    go_find_step = True
-    go_find_step_count = 0
-    while go_find_step:
-        xval = enforce_bounds(xval+step, bounds)
-        print np.max(np.abs(xval-xold))
-        qval, qderiv = Qfunc(xval)
-        if qval >= qold:
-            print "Scaling down the step"
-            step *= 0.1
-            xval = enforce_bounds(xval+step, bounds)
-            go_find_step_count += 1
-            if go_find_step_count == 4:
-                print "Failed to find a minima within 1/1000 of the step"
-                print "Exiting the Optimizer"
-                go = False
-                go_find_step = False
-                qval = qold
-        else:
-            print "Step is OKay now"
-            go_find_step = False
-            
+     
+    #go along line until it reaches a minima               
     go_along_line = True
     while go_along_line:
         print "Going along line"
