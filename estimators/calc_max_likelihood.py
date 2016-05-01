@@ -287,6 +287,7 @@ def solve_bfgs(Qfunc, x0, bounds=None):
 def solve_one_step(Qfunc, x0, stepsize=1.0, bounds=None):
     """ take steps in steepest decent until reaches the smallest value"""    
     xval = x0
+    xold = x0
     go = True
     count = 0
     qval, qderiv = Qfunc(xval)
@@ -295,7 +296,6 @@ def solve_one_step(Qfunc, x0, stepsize=1.0, bounds=None):
     #print np.min(np.abs(qderiv)) 
     #print np.max(np.abs(qderiv))
     qold = qval
-    xold = xval
     target = -qderiv
     step = target - xval
     if np.linalg.norm(step) > stepsize:
@@ -314,11 +314,12 @@ def solve_one_step(Qfunc, x0, stepsize=1.0, bounds=None):
     go_find_step = True
     go_find_step_count = 0
     while go_find_step:
+        xval = enforce_bounds(xval+step, bounds)
         qval, qderiv = Qfunc(xval)
         if qval >= qold:
             print "Scaling down the step"
             step *= 0.1
-            xval = xold + step
+            xval = enforce_bounds(xval+step, bounds)
             go_find_step_count += 1
             if go_find_step_count == 4:
                 print "Failed to find a minima within 1/1000 of the step"
@@ -333,24 +334,28 @@ def solve_one_step(Qfunc, x0, stepsize=1.0, bounds=None):
     go_along_line = True
     while go_along_line:
         print "Going along line"
+        xval = enforce_bounds(xold+step, bounds)
         qval, qderiv = Qfunc(xval)
         print qval
         if qval > qold:
             print "Started going uphill. Terminating"
             go_along_line = False #started going up hill
-            xval -= step
         elif check_bounds(xval,bound_terms):
             print "Hit the bounded wall"
             go_along_line = False #started going up hill
-            xval -= step
         else:
             qold = qval
-            xval += step
+            xold = xval
     
-    return xval
+    return xold
 
-def enforce_bounds():
-    pass
+def enforce_bounds(eps, bounds):
+    for idx,i in enumerate(eps):
+        if i < bounds[idx][0]:
+            eps[idx] = bounds[idx][0]
+        elif i > bounds[idx][1]:
+            eps[idx] = bounds[idx][1]         
+    return eps
 def check_bounds(eps, bounds):
     bad = False
     for idx,i in enumerate(eps):
