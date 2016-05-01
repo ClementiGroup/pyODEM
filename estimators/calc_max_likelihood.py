@@ -334,7 +334,7 @@ def solve_one_step(Qfunc, x0, stepsize=1.0, bounds=None):
         print "Going along line"
         qval, qderiv = Qfunc(xval)
         print qval
-        if qval > qold 
+        if qval > qold:
             print "Started going uphill. Terminating"
             go_along_line = False #started going up hill
             xval -= step
