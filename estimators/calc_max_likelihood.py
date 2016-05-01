@@ -295,6 +295,7 @@ def solve_one_step(Qfunc, x0, stepsize=1.0, bounds=None):
     #print np.min(np.abs(qderiv)) 
     #print np.max(np.abs(qderiv))
     qold = qval
+    xold = xval
     target = -qderiv
     step = target - xval
     if np.linalg.norm(step) > stepsize:
