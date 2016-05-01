@@ -236,7 +236,7 @@ class EstimatorsObject(object):
         
         return Q, np.array(dQ_vector)
 
-    def derivatives_log_Qfunction_epsilon(self, epsilons, K_shift=0, Count=0, K_shift_step=10000, Max_Count=10):
+    def derivatives_log_Qfunction_epsilon(self, epsilons, K_shift=0, Count=0, K_shift_step=100, Max_Count=10):
         #initialize final matrices
         next_observed = np.zeros(self.num_observable)
         derivative_observed_first = [np.zeros(self.num_observable) for j in range(self.number_params)]
