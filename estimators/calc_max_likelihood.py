@@ -290,16 +290,17 @@ def solve_one_step(Qfunc, x0, stepsize=1.0, bounds=None):
     go = True
     count = 0
     qval, qderiv = Qfunc(xval)
+    print "Starting Value for Q:"
     print qval
-    print np.min(np.abs(qderiv)) 
-    print np.max(np.abs(qderiv))
+    #print np.min(np.abs(qderiv)) 
+    #print np.max(np.abs(qderiv))
     qold = qval
     target = -qderiv
     step = target - xval
     if np.linalg.norm(step) > stepsize:
         step *= (stepsize/np.linalg.norm(step))
-    print np.min(np.abs(step)) 
-    print np.max(np.abs(step))
+    #print np.min(np.abs(step)) 
+    #print np.max(np.abs(step))
     #detemrine bounds
     bound_terms = []
     if bounds is None:
@@ -313,7 +314,7 @@ def solve_one_step(Qfunc, x0, stepsize=1.0, bounds=None):
     go_find_step_count = 0
     while go_find_step:
         qval, qderiv = Qfunc(xval)
-        if qval > qold:
+        if qval >= qold:
             print "Scaling down the step"
             step *= 0.1
             xval = xold + step
@@ -333,7 +334,12 @@ def solve_one_step(Qfunc, x0, stepsize=1.0, bounds=None):
         print "Going along line"
         qval, qderiv = Qfunc(xval)
         print qval
-        if qval > qold or check_bounds(xval,bound_terms):
+        if qval > qold 
+            print "Started going uphill. Terminating"
+            go_along_line = False #started going up hill
+            xval -= step
+        elif check_bounds(xval,bound_terms):
+            print "Hit the bounded wall"
             go_along_line = False #started going up hill
             xval -= step
         else:
@@ -342,6 +348,8 @@ def solve_one_step(Qfunc, x0, stepsize=1.0, bounds=None):
     
     return xval
 
+def enforce_bounds():
+    pass
 def check_bounds(eps, bounds):
     bad = False
     for idx,i in enumerate(eps):
