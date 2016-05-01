@@ -315,6 +315,7 @@ def solve_one_step(Qfunc, x0, stepsize=1.0, bounds=None):
     go_find_step_count = 0
     while go_find_step:
         xval = enforce_bounds(xval+step, bounds)
+        print np.max(np.abs(xval-xold))
         qval, qderiv = Qfunc(xval)
         if qval >= qold:
             print "Scaling down the step"
@@ -337,6 +338,7 @@ def solve_one_step(Qfunc, x0, stepsize=1.0, bounds=None):
         xval = enforce_bounds(xold+step, bounds)
         qval, qderiv = Qfunc(xval)
         print qval
+        print np.max(np.abs(xval-xold))
         if qval > qold:
             print "Started going uphill. Terminating"
             go_along_line = False #started going up hill
