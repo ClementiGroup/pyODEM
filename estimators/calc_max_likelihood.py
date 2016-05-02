@@ -345,7 +345,7 @@ def check_bounds(eps, bounds):
     
     return bad  
         
-def max_likelihood_estimate(data, data_sets, observables, model, obs_data=None, solver="simplex", logq=False, x0=None, kwargs={}, K_shift=0, K_shift_step=100, Max_Count=10):
+def max_likelihood_estimate(data, data_sets, observables, model, obs_data=None, solver="simplex", logq=False, x0=None, kwargs={}, stationary_distributions=None, K_shift=0, K_shift_step=100, Max_Count=10):
     """ Optimizes model's paramters using a max likelihood method
     
     Args:
@@ -380,7 +380,7 @@ def max_likelihood_estimate(data, data_sets, observables, model, obs_data=None, 
             
     """
     
-    eo = EstimatorsObject(data, data_sets, observables, model, obs_data=obs_data, K_shift=K_shift, K_shift_step=K_shift_step, Max_Count=Max_Count)
+    eo = EstimatorsObject(data, data_sets, observables, model, obs_data=obs_data, stationary_distributions=stationary_distributions, K_shift=K_shift, K_shift_step=K_shift_step, Max_Count=Max_Count)
 
     if solver in ["cg", "newton", "bfgs", "one"]:
         derivative = True

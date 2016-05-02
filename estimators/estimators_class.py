@@ -13,7 +13,7 @@ class EstimatorsObject(object):
     optimization routine.
     
     """
-    def __init__(self, data, data_sets, observables, model, obs_data=None, K_shift=0, K_shift_step=100, Max_Count=10):
+    def __init__(self, data, data_sets, observables, model, obs_data=None, stationary_distributions=None, K_shift=0, K_shift_step=100, Max_Count=10):
         """ initialize object and process all the inputted data 
         
         Args:
@@ -32,6 +32,10 @@ class EstimatorsObject(object):
                 Arrays are specified with first index corresponding to 
                 the frame and second index to the data. Default: Use the 
                 array specified in data for all observables.
+            stationary_distributions (list): List of values for pi for 
+                each stationary distribution. Must be same size as 
+                data_sets. Default will compute the distribution based 
+                upon the weighting of each data_sets. 
             K_shift (float): Value to shift exponents by. Default 0.
             K_shift_step (float): Value to increase the K_shift by in 
                 event exponential evaluation fails. Default 100.
@@ -98,6 +102,12 @@ class EstimatorsObject(object):
         self.num_observable = np.shape(observed)[0]   
         self.pi =  np.array(self.pi).astype(float)
         self.pi /= np.sum(self.pi)
+        
+        if not stationary_distributions is None:
+            if np.shape(stationary_distributions)[0] == len(ni):
+                self.pi = stationary_distributions
+            else:
+                raise IOError("Inputted stationary distributions does not number of equilibrium states.")
         
         ##Compute factors that don't depend on the re-weighting
         self.state_prefactors = []
