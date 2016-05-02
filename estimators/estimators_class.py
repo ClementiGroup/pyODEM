@@ -104,7 +104,11 @@ class EstimatorsObject(object):
         self.pi /= np.sum(self.pi)
         
         if not stationary_distributions is None:
-            if np.shape(stationary_distributions)[0] == len(ni):
+            print "Using Inputted Stationary Distribution"
+            if np.shape(stationary_distributions)[0] == len(self.ni):
+                print "Percent Difference of Selected Stationary Distribution from expected"
+                diff = self.pi - stationary_distributions
+                print np.abs(diff/self.pi)
                 self.pi = stationary_distributions
             else:
                 raise IOError("Inputted stationary distributions does not number of equilibrium states.")
