@@ -314,7 +314,7 @@ def solve_one_step(Qfunc, x0, stepsize=1.0, bounds=None):
     go_along_line = True
     while go_along_line:
         print "Going along line"
-        xval = enforce_bounds(xold+step, bounds)
+        xval = enforce_bounds(xold+step, bound_terms)
         qval, qderiv = Qfunc(xval)
         print qval
         print np.max(np.abs(xval-xold))
@@ -345,7 +345,7 @@ def check_bounds(eps, bounds):
     
     return bad  
         
-def max_likelihood_estimate(data, data_sets, observables, model, obs_data=None, solver="simplex", logq=False, x0=None, kwargs={}):
+def max_likelihood_estimate(data, data_sets, observables, model, obs_data=None, solver="simplex", logq=False, x0=None, kwargs={}, K_shift=0, K_shift_step=100, Max_Count=10):
     """ Optimizes model's paramters using a max likelihood method
     
     Args:
@@ -368,8 +368,6 @@ def max_likelihood_estimate(data, data_sets, observables, model, obs_data=None, 
             with first index corresponding to the frame and second index 
             to the data. Default: Use the array specified in data for 
             all observables. 
-        ntries (int): Number of random starting epsilons to generate in 
-            case solution. Defaults to 0.
         solver (str): Optimization procedures. Defaults to Simplex. 
             Available methods include: simplex, anneal, cg, custom.
         logq (bool): Use the logarithmic Q functions. Default: False.
@@ -382,7 +380,7 @@ def max_likelihood_estimate(data, data_sets, observables, model, obs_data=None, 
             
     """
     
-    eo = EstimatorsObject(data, data_sets, observables, model, obs_data=obs_data)
+    eo = EstimatorsObject(data, data_sets, observables, model, obs_data=obs_data, K_shift=K_shift, K_shift_step=K_shift_step, Max_Count=Max_Count)
 
     if solver in ["cg", "newton", "bfgs", "one"]:
         derivative = True
