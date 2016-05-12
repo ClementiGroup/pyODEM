@@ -147,7 +147,7 @@ class ExperimentalObservables(object):
             seen_this_observable = seen
             for TorF in seen_this_observable:
                 seen_this_time.append(TorF)
-        self.obs_seen = seen_this_time
+        self.obs_seen = [old_seen or new_seen for old_seen, new_seen in zip(self.obs_seen,seen_this_time)]
         
         assert len(self.obs_seen) == self.num_q_functions 
         return all_obs, all_std
