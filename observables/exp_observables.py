@@ -100,7 +100,12 @@ class ExperimentalObservables(object):
 	    
 	    #Default: all observables are by default seen.     
         self.prep_True()  
-    
+        assert len(self.obs_seen) == self.num_q_functions
+        assert len(self.q_functions) == self.num_q_functions
+        assert len(self.dq_functions) == self.num_q_functions
+        assert len(self.log_functions) == self.num_q_functions
+        assert len(self.dlog_functions) == self.num_q_functions
+        
     def prep(self):
         """ Sets obs_seen to False for all observables. """
 
@@ -134,11 +139,17 @@ class ExperimentalObservables(object):
         
         all_obs = np.array([])
         all_std = np.array([])
+        seen_this_time = []
         for idx,observable in enumerate(self.observables):
             obs, std, seen = observable.compute_observed(data[idx], weights)
             all_obs = np.append(all_obs, obs)
             all_std = np.append(all_std, std)
-            self.obs_seen = [seent or nott for seent, nott in zip(seen, self.obs_seen)] 
+            seen_this_observable = seen
+            for TorF in seen_this_observable:
+                seen_this_time.append(TorF)
+        self.obs_seen = seen_this_time
+        
+        assert len(self.obs_seen) == self.num_q_functions 
         return all_obs, all_std
     
     def get_q_functions(self):
@@ -152,7 +163,6 @@ class ExperimentalObservables(object):
         def q_simple(observations):
             if not np.shape(observations)[0] == self.num_q_functions:
                 #check to see if number of observations match
-                #NOTE: Depending on how values are arranged and passed in this wrapper  function, we can add q_functions later in a script and cause this to fail when trying ot use the same "old" function.
                 raise IOError("Number of observations not equal to number of q_functions. This is a problem")
             q_value = 1.0
             for i in range(self.num_q_functions):
@@ -164,7 +174,6 @@ class ExperimentalObservables(object):
         def dq_simple(observations, derivative_observed):
             if not np.shape(observations)[0] == self.num_q_functions:
                 #check to see if number of observations match
-                #NOTE: Depending on how values are arranged and passed in this wrapper  function, we can add q_functions later in a script and cause this to fail when trying ot use the same "old" function.
                 raise IOError("Number of observations not equal to number of q_functions. This is a problem")
             dq_value = 0.0
             for i in range(self.num_q_functions):
@@ -186,7 +195,6 @@ class ExperimentalObservables(object):
         def q_simple(observations):
             if not np.shape(observations)[0] == self.num_q_functions:
                 #check to see if number of observations match
-                #NOTE: Depending on how values are arranged and passed in this wrapper  function, we can add q_functions later in a script and cause this to fail when trying ot use the same "old" function.
                 raise IOError("Number of observations not equal to number of q_functions. This is a problem")
             q_value = 0.0
             for i in range(self.num_q_functions):
@@ -198,7 +206,6 @@ class ExperimentalObservables(object):
         def dq_simple(observations, derivative_observed):
             if not np.shape(observations)[0] == self.num_q_functions:
                 #check to see if number of observations match
-                #NOTE: Depending on how values are arranged and passed in this wrapper  function, we can add q_functions later in a script and cause this to fail when trying ot use the same "old" function.
                 raise IOError("Number of observations not equal to number of q_functions. This is a problem")
             dq_value = 0.0
             for i in range(self.num_q_functions):
