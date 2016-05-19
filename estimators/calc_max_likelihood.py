@@ -12,340 +12,9 @@ import numpy as np
 import scipy.optimize as optimize
 
 from estimators_class import EstimatorsObject
-
-def solve_simplex(Qfunc, x0):
-    """ Optimizes a function using the scipy siplex method.
-    
-    This method does not require computing the Jacobian and works in 
-    arbitrarily high dimensions. This method works by computing new 
-    values of the funciton to optimizie func in the vicinity of x0 and 
-    moves in the direction of minimizing func.
-    
-    Args:
-        Qfunc(x) (method): func returns a float and takes a list or 
-            array x of inputs
-        x0 (list/array floats): Initial guess of for optimal parameters
+from optimizers import function_dictionary 
         
-    Returns:
-        array(float): optimal value of x if found. 
-    
-    Raises:
-        IOerror: if optimization fails 
-        
-    """
-    
-    optimal = optimize.minimize(Qfunc, x0, method="Nelder-Mead")
-    
-    if not optimal.success == True:
-        print optimal.message
-        #raise IOError("Minimization failed to find a local minima using the simplex method") 
-        return x0
-           
-    return optimal.x
-
-    
-def solve_simplex_global(Qfunc, x0, ntries=0):
-    """ Attempts to find global minima using solve_simplex()
-    
-    Uses the solve_simplex() method by computing multiple random
-    frontier points nearby the local minima closest to starting epsilons
-    x0. Then optimizes each point and takes the most optimal result.
-    
-    Args:
-        ntries (int): Number of random startung epsilons to generate 
-            in case solution. Defaults to 0.
-    
-    Returns:
-        array(float): Array of optimal values of epsilons found.
-        
-    """
-    #best found epsilons so far
-    out_eps = solve_simplex(Qfunc, x0)
-    #best found Q so far
-    out_Q  = Qfunc(out_eps)
-    #starting minima to search around.
-    start_eps = np.copy(out_eps)
-     
-    #check for global minima near found minima if ntries >0
-    if not ntries <= 0:
-        print "Searching for a global minima. Trying %d times." % ntries
-        num_eps = np.shape(x0)[0] 
-        for i in range(ntries):
-            #generate random +/- perturbation to local minima found with 
-            #uniform distribution from -1 to 1'
-            rand = np.random.rand(num_eps)
-            for j in range(num_eps):
-                if np.random.rand(1)[0] < 0.5:
-                    rand[j] *= -1.0
-            
-            print "new starting epsilons:"
-            print start_eps + rand
-            
-            optime = solve_simplex(Qfunc, start_eps+rand)
-            optimQ = Qfunc(optime)
-            
-            #save if new found func Q value is better than the rest
-            if out_Q > optimQ:
-                out_eps = optime
-                print "found better global Q"
-                print "new finished epsilons:"
-                print optime
-                print "new Q"
-                print optimQ
-                    
-    return out_eps
-
-def solve_annealing(Qfunc, x0, ntries=1000, scale=0.2, logq=False):
-    """ Use the scipy basinhopping method """
-    def test_bounds(f_new=None, x_new=None, f_old=None, x_old=None):
-        if np.max(np.abs(x_new)) > 5:
-            return False
-        else:
-            return True
-    if logq:
-        Tbarrier = 200
-    else:
-        Tbarrier = 0.5        
-    optimal = optimize.basinhopping(Qfunc, x0, niter=ntries, T=Tbarrier, stepsize=scale, accept_test=test_bounds, interval=100)  
-    
-    return optimal.x
-
-def solve_annealing_experimental(Qfunc, x0, ntries=1000, scale=0.2, logq=False):
-    """ Experimental annealing methods for testing purposes only"""
-    numparams = np.shape(x0)[0]
-    def take_step_custom(x):
-        perturbation = np.array([random.choice([-0.1, 0.1]) for i in range(numparams)])
-        perturbation[np.where(np.random.rand(numparams)<0.8)] = 0
-        return x + perturbation
-    
-    def test_bounds(f_new=None, x_new=None, f_old=None, x_old=None):
-        if np.max(np.abs(x_new)) > 5:
-            return False
-        else:
-            return True
-    if logq:
-        Tbarrier = 200
-    else:
-        Tbarrier = 0.5   
-             
-    optimal = optimize.basinhopping(Qfunc, x0, niter=ntries, T=Tbarrier, accept_test=test_bounds, take_step=take_step_custom)  
-    
-    return optimal.x
-
-def solve_annealing_custom(Qfunc, x0,  ntries=1000, scale=0.2, logq=False, stuck=100, bounds=[-10,10]):
-    """ Custom stochastic method 
-    
-    Currently perturbs randomly and steps downhill.
-    """
-    
-    numparams = np.shape(x0)[0]
-    
-    #sort bounds so the smallest is first
-    if not np.shape(bounds)[0] == 2:
-        bounds = [-10, 10]
-        print "Invalid bounds, setting to default of (-10,10)"
-    
-    use_bounds = []
-    use_bounds.append(np.min(bounds))
-    use_bounds.append(np.max(bounds))
-    
-    #current vals
-    Qval = Qfunc(x0)
-    xval = x0
-    #global vals
-    minima = x0
-    minQ = Qval
-    for i in range(ntries):
-        perturbation = np.array([random.choice([-0.1, 0.1]) for i in range(numparams)])
-        perturbation[np.where(np.random.rand(numparams)<0.8)] = 0
-        xnext = xval+perturbation
-        xnext[xnext<use_bounds[0]] = use_bounds[0]
-        xnext[xnext>use_bounds[1]] = use_bounds[1]
-        
-        Qnext = Qfunc(xnext)
-        
-        if Qnext < Qval:
-            xval = xnext
-            Qval = Qnext
-        else:
-            pass
-        if Qval < minQ:
-            minima = xval 
-    
-    for i in range(ntries/10):
-        perturbation = np.array([random.uniform(-0.1, 0.1) for i in range(numparams)])
-        perturbation[np.where(np.random.rand(numparams)<0.8)] = 0
-        xnext = xval+perturbation
-        xnext[xnext<use_bounds[0]] = use_bounds[0]
-        xnext[xnext>use_bounds[1]] = use_bounds[1]
-        Qnext = Qfunc(xnext)
-        
-        if Qnext < Qval:
-            xval = xnext
-            Qval = Qnext
-        
-        else:
-            pass
-        if Qval < minQ:
-            minima = xval 
-    
-    return minima   
-
-def solve_newton_step_custom(Qfunc, x0, stepsize=1.0, logq=False, maxiters=200, proximity=1.0, qstop=1.0):
-    """ Solve by taking a newton step"""
-    
-    xval = x0
-    go = True
-    count = 0
-    qval, qderiv = Qfunc(xval)
-    while go:
-        count += 1
-        target =  -qderiv
-        step = target - xval
-        if np.linalg.norm(step) > stepsize:
-            step *= (stepsize/np.linalg.norm(step))
-        
-        qold = qval
-        qoldest = qval
-        xold = xval
-        xval = xval + step
-        print "Current Q Value:"
-        print qval
-        #print "moving to:"
-        #print xval
-        
-        #Find an optimal step size
-        go_find_step = True
-        go_find_step_count = 0
-        while go_find_step:
-            qval, qderiv = Qfunc(xval)
-            if qval > qold:
-                print "Scaling down the step"
-                step *= 0.1
-                xval = xold + step
-                go_find_step_count += 1
-                if go_find_step_count == 4:
-                    print "Failed to find a minima within 1/1000 of the step"
-                    print "Exiting the Optimizer"
-                    go = False
-                    go_find_step = False
-                    qval = qold
-            else:
-                print "Step is OKay now"
-                go_find_step = False
-                
-        go_along_line = True
-        while go_along_line:
-            print "Going along line"
-            qval, qderiv = Qfunc(xval)
-            if qval > qold:
-                go_along_line = False #started going up hill
-                xval -= step
-            else:
-                qold = qval
-                xval += step
-        
-        qval, qderiv = Qfunc(xval)
-                
-        diffq = qoldest - qval
-        if diffq > 0 and diffq < qstop:
-            print "Stopping as dq is within qstop"
-            go = False
-        if count > maxiters:
-            print "Reached the maximum number of iterations."
-            go = False
-            
-    return xval
-    
-def solve_cg(Qfunc, x0, norm=1):
-    """ use the scipy.optimize.minimize, method=CG """
-    def func(x):
-        return Qfunc(x)[0]
-    def dfunc(x):
-        return -Qfunc(x)[1]
-    optimal = optimize.fmin_cg(func, x0, fprime=dfunc, norm=norm)
-    #print optimal
-    #if not optimal[4] == 0:
-        
-        #raise IOError("Minimization failed to find a local minima. Code %d" % optimal[4]) 
-        
-    return optimal
-
-def solve_bfgs(Qfunc, x0, bounds=None):
-    """ Use the scipy.optimize.minimize (bfgs) method"""
-    if bounds is None:
-        optimal = optimize.minimize(Qfunc, x0, method="L-BFGS-B", jac=True)
-    else:
-        optimal = optimize.minimize(Qfunc, x0, method="L-BFGS-B", jac=True, bounds=bounds)
-    if not optimal.success == True:
-        print optimal.message
-        #raise IOError("Minimization failed to find a local minima using the simplex method") 
-        return x0
-           
-    return optimal.x
-
-def solve_one_step(Qfunc, x0, stepsize=1.0, bounds=None):
-    """ take steps in steepest decent until reaches the smallest value"""    
-    xval = x0
-    xold = x0
-    go = True
-    count = 0
-    qval, qderiv = Qfunc(xval)
-    print "Starting Value for Q:"
-    print qval
-    #print np.min(np.abs(qderiv)) 
-    #print np.max(np.abs(qderiv))
-    qold = qval
-    target = -qderiv
-    step = target - xval
-    if np.linalg.norm(step) > stepsize:
-        step *= (stepsize/np.linalg.norm(step))
-    #print np.min(np.abs(step)) 
-    #print np.max(np.abs(step))
-    #detemrine bounds
-    bound_terms = []
-    if bounds is None:
-        for i in xval:
-            bound_terms.append([0,10])
-    else:
-        bound_terms = bounds
-     
-    #go along line until it reaches a minima               
-    go_along_line = True
-    while go_along_line:
-        print "Going along line"
-        xval = enforce_bounds(xold+step, bound_terms)
-        qval, qderiv = Qfunc(xval)
-        print qval
-        print np.max(np.abs(xval-xold))
-        if qval > qold:
-            print "Started going uphill. Terminating"
-            go_along_line = False #started going up hill
-        elif check_bounds(xval,bound_terms):
-            print "Hit the bounded wall"
-            go_along_line = False #started going up hill
-        else:
-            qold = qval
-            xold = xval
-    
-    return xold
-
-def enforce_bounds(eps, bounds):
-    for idx,i in enumerate(eps):
-        if i < bounds[idx][0]:
-            eps[idx] = bounds[idx][0]
-        elif i > bounds[idx][1]:
-            eps[idx] = bounds[idx][1]         
-    return eps
-def check_bounds(eps, bounds):
-    bad = False
-    for idx,i in enumerate(eps):
-        if i < bounds[idx][0] or i > bounds[idx][1]:
-            bad = True
-    
-    return bad  
-        
-def max_likelihood_estimate(data, data_sets, observables, model, obs_data=None, solver="simplex", logq=False, x0=None, kwargs={}, stationary_distributions=None, K_shift=0, K_shift_step=100, Max_Count=10):
+def max_likelihood_estimate(data, data_sets, observables, model, obs_data=None, solver="simplex", logq=False, derivative=None, x0=None, kwargs={}, stationary_distributions=None, K_shift=0, K_shift_step=100, Max_Count=10):
     """ Optimizes model's paramters using a max likelihood method
     
     Args:
@@ -371,8 +40,12 @@ def max_likelihood_estimate(data, data_sets, observables, model, obs_data=None, 
         solver (str): Optimization procedures. Defaults to Simplex. 
             Available methods include: simplex, anneal, cg, custom.
         logq (bool): Use the logarithmic Q functions. Default: False.
+        derivative (bool): True if Q function returns a derivative. 
+            False if it does not. Default is None, automatically 
+            selected based upon the requested solver.
         x0 (array): Specify starting epsilons for optimization methods. 
             Defaults to current epsilons from the model.
+        kwargs (dictionary): Key word arguments passed to the solver.
             
     Returns:
         eo (EstimatorsObject): Object that contains the data used for 
@@ -382,18 +55,12 @@ def max_likelihood_estimate(data, data_sets, observables, model, obs_data=None, 
     
     eo = EstimatorsObject(data, data_sets, observables, model, obs_data=obs_data, stationary_distributions=stationary_distributions, K_shift=K_shift, K_shift_step=K_shift_step, Max_Count=Max_Count)
 
-    if solver in ["cg", "newton", "bfgs", "one"]:
-        derivative = True
-    else:
-        derivative = False
+    if derivative is None:
+        if solver in ["cg", "newton", "bfgs", "one"]:
+            derivative = True
+        else:
+            derivative = False
     Qfunction_epsilon = eo.get_function(derivative, logq)
-    
-    '''
-    if logq:
-        Qfunction_epsilon = eo.get_log_Q_function()
-    else:
-        Qfunction_epsilon = eo.get_Q_function()
-    '''
     
     if x0 is None:
         current_epsilons = eo.current_epsilons
@@ -407,17 +74,12 @@ def max_likelihood_estimate(data, data_sets, observables, model, obs_data=None, 
     ##add keyword args thatn need to be passed
     #kwargs["logq"] = logq
     
-    function_dictionary = {"simplex":solve_simplex_global}
-    function_dictionary["anneal"] = solve_annealing
-    function_dictionary["cg"] = solve_cg
-    function_dictionary["anneal_exp"] = solve_annealing_experimental
-    function_dictionary["custom"] = solve_annealing_custom
-    function_dictionary["newton"] = solve_newton_step_custom
-    function_dictionary["bfgs"] = solve_bfgs
-    function_dictionary["one"] = solve_one_step
-    if solver not in function_dictionary:
-        raise IOError("Invalid Solver. Please specify a valid solver")
-    func_solver = function_dictionary[solver]
+    if isinstance(solver, str):
+        if solver not in function_dictionary:
+            raise IOError("Invalid Solver. Please specify a valid solver")
+        func_solver = function_dictionary[solver]
+    else:
+        func_solver = solver #assume a valid method was passed to it
     
     new_epsilons = func_solver(Qfunction_epsilon, current_epsilons, **kwargs)
     
