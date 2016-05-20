@@ -18,25 +18,12 @@ def max_likelihood_estimate(data, data_sets, observables, model, obs_data=None, 
     """ Optimizes model's paramters using a max likelihood method
     
     Args:
-        data (array): Contains all the data for a system, First index 
-            should be for the frame number, remaining indices are up to 
-            the user to handle using the ExperimentalObservables object.
-        data_sets (list): List of arrays, where each array contains the 
-            indices in the data for each equilibrium state. 
-        observables (ExperimentalObservables): An object that is used
-            for computing Q function value as well as the observed
-            quantities. See: pyfexd/observables/exp_observables for
-            full description.
-        model (ModelLoader): Object that is used to load data and
-            compute potential energies for the data set. See: 
-            pyfexd/model_loaders/super_model for full description.
-        obs_data (list): Use if data set for computing observables is 
-            different from data for computing the energy. List  contains 
-            arrays where each array-entry corresponds to the observable 
-            in the ExperimentalObservables object. Arrays are specified 
-            with first index corresponding to the frame and second index 
-            to the data. Default: Use the array specified in data for 
-            all observables. 
+        See pyfexd.estimators.estimators_class.EstimatorsObject for:
+            data (array), data_sets (list), 
+            observables (ExperimentalObservables), model (ModelLoader), 
+            obs_data(list) and stationary_distributions (list), 
+            k_shift (float), K_shift_step (float), Max_Count (int)
+             
         solver (str): Optimization procedures. Defaults to Simplex. 
             Available methods include: simplex, anneal, cg, custom.
         logq (bool): Use the logarithmic Q functions. Default: False.

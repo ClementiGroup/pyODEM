@@ -17,14 +17,15 @@ class EstimatorsObject(object):
         """ initialize object and process all the inputted data 
         
         Args:
-            data (array): First index is the frame, the other indices are 
-                the data for the frame.
+            data (array): First index is the frame, the other indices 
+                are the data for the frame. Should be the data loaded 
+                from model.load_data()
             data_sets (list): Each entry is an array with the frames 
                 corresponding to that equilibrium state.      
-            observables (ExperimentalObservables): See object in the 
-                module <pyfexd/observables>.
+            observables (ExperimentalObservables): See object in
+                pyfexd.observables.exp_observables.ExperimentalObservables
             model (ModelLoader): See object in the module
-                 <pyfexd/model_loaders>.
+                 pyfexd.model_loaders.X for the particular model.
             obs_data (list): Use if data set for computing observables 
                 is different from data for computing the energy. List 
                 contains arrays where each array-entry corresponds to 
@@ -183,32 +184,8 @@ class EstimatorsObject(object):
         
     def Qfunction_epsilon(self, epsilons, K_shift=None, Count=0):
         #initiate value for observables:
-        next_observed = np.zeros(self.num_observable)
         
-        #set K_shift
-        if K_shift is None:
-            K_shift = self.K_shift
-        
-        #add up all re-weighted terms for normalizaiton
-        total_weight = 0.0
-        #calculate re-weighting for all terms 
-        for i in range(self.number_equilibrium_states):
-            try:
-                next_weight = np.sum(np.exp(self.epsilons_functions[i](epsilons) - self.h0[i] - K_shift)) / self.ni[i]
-            except:
-                print "Exponential Function Failed"
-                diff = self.epsilons_functions[i](epsilons) - self.h0[i] - K_shift
-                if Count > self.Max_Count:
-                    save_error_files(diff, epsilons, self.h0[i], K_shift)
-                    raise FloatingPointError("Automatic shifting of exponential function terms failed")
-                new_K = K_shift + self.K_shift_step
-                print "Shifting all exponential functions by: %f" % new_K
-                return self.derivatives_log_Qfunction_epsilon(epsilons, K_shift=new_K, Count=Count+1)
-            next_observed += next_weight * self.state_prefactors[i]
-            total_weight += next_weight * self.pi[i]
-        
-        #normalize so total re-weighted probability is = 1.0
-        next_observed /= total_weight
+        next_observed, total_weight, boltzman_weights = self.get_reweights(epsilons)
         
         #Minimization, so make maximal value a minimal value with a negative sign.
         Q = -1.0 * self.Q_function(next_observed) 
@@ -216,33 +193,7 @@ class EstimatorsObject(object):
         return Q
         
     def log_Qfunction_epsilon(self, epsilons, K_shift=None, Count=0):
-        #initiate value for observables:
-        next_observed = np.zeros(self.num_observable)
-        
-        #set K_shift
-        if K_shift is None:
-            K_shift = self.K_shift
-       
-        #add up all re-weighted terms for normalizaiton
-        total_weight = 0.0
-        #calculate re-weighting for all terms 
-        for i in range(self.number_equilibrium_states):
-            try:
-                next_weight = np.sum(np.exp(self.epsilons_functions[i](epsilons) - self.h0[i] - K_shift)) / self.ni[i]
-            except:
-                print "Exponential Function Failed"
-                diff = self.epsilons_functions[i](epsilons) - self.h0[i] - K_shift
-                if Count > self.Max_Count:
-                    save_error_files(diff, epsilons, self.h0[i], K_shift)
-                    raise FloatingPointError("Automatic shifting of exponential function terms failed")
-                new_K = K_shift + self.K_shift_step
-                print "Shifting all exponential functions by: %f" % new_K
-                return self.derivatives_log_Qfunction_epsilon(epsilons, K_shift=new_K, Count=Count+1)
-            next_observed += next_weight * self.state_prefactors[i]
-            total_weight += next_weight * self.pi[i]
-        
-        #normalize so total re-weighted probability is = 1.0
-        next_observed /= total_weight
+        next_observed, total_weight, boltzman_weights = self.get_reweights(epsilons)
         
         #Minimization, so make maximal value a minimal value with a negative sign.
         Q = self.log_Q_function(next_observed) 
@@ -250,105 +201,94 @@ class EstimatorsObject(object):
         return Q
 
     def derivatives_Qfunction_epsilon(self, epsilons, K_shift=None, Count=0):
-        #set K_shift
-        if K_shift is None:
-            K_shift = self.K_shift
-            
-        #initialize final matrices
-        next_observed = np.zeros(self.num_observable)
-        derivative_observed_first = [np.zeros(self.num_observable) for j in range(self.number_params)]
-        derivative_observed_second = [np.zeros(self.num_observable) for j in range(self.number_params)]
-        dQ_vector = []
-        #add up all re-weighted terms for normalizaiton
-        total_weight = 0.0
+        next_observed, total_weight, boltzman_weights = self.get_reweights(epsilons)
         
-        #Calculate the reweighting for all terms: Get Q, and next_observed and derivative terms
-        for i in range(self.number_equilibrium_states):
-            #terms for Q
-            try:
-                boltzman_weights = np.exp(self.epsilons_functions[i](epsilons) - self.h0[i] - K_shift)
-            except:
-                print "Exponential Function Failed"
-                diff = self.epsilons_functions[i](epsilons) - self.h0[i] - K_shift
-                if Count > self.Max_Count:
-                    save_error_files(diff, epsilons, self.h0[i], K_shift)
-                    raise FloatingPointError("Automatic shifting of exponential function terms failed")
-                new_K = K_shift + self.K_shift_step
-                print "Shifting all exponential functions by: %f" % new_K
-                return self.derivatives_log_Qfunction_epsilon(epsilons, K_shift=new_K, Count=Count+1)
-            next_weight = np.sum(boltzman_weights) / self.ni[i]
-            next_observed += next_weight * self.state_prefactors[i]
-            total_weight += next_weight * self.pi[i]
-            #terms for dQ/de
-            for j in range(self.number_params):
-                next_weight_derivatives = np.sum(boltzman_weights * self.derivatives_functions[i](epsilons)[j]) / self.ni[i]
-                derivative_observed_first[j] += next_weight_derivatives * self.state_prefactors[i]
-                derivative_observed_second[j] += next_weight_derivatives * self.pi[i]
-                
-        #normalize so total re-weighted probability is = 1.0
-        next_observed /= total_weight
-        
-        #Minimization, so make maximal value a minimal value with a negative sign.
         Q = self.Q_function(next_observed)
+        derivative_observed_first, derivative_observed_second = self.get_derivative_pieces(epsilons, boltzman_weights)
         
+        dQ_vector = []
         for j in range(self.number_params):
             derivative_observed = (derivative_observed_first[j]  - (next_observed * derivative_observed_second[j])) / total_weight 
             dQ = self.dQ_function(next_observed, derivative_observed) * Q
             dQ_vector.append(dQ)
-
-        
-        return Q, np.array(dQ_vector)
+            
+        dQ_vector = -1. * np.array(dQ_vector)
+        Q *= -1.
+        return Q, dQ_vector
 
     def derivatives_log_Qfunction_epsilon(self, epsilons, K_shift=None, Count=0):
-        #set K_shift
-        if K_shift is None:
-            K_shift = self.K_shift
-            
-        #initialize final matrices
-        next_observed = np.zeros(self.num_observable)
-        derivative_observed_first = [np.zeros(self.num_observable) for j in range(self.number_params)]
-        derivative_observed_second = [np.zeros(self.num_observable) for j in range(self.number_params)]
-        dQ_vector = []
-        #add up all re-weighted terms for normalizaiton
-        total_weight = 0.0
+        next_observed, total_weight, boltzman_weights = self.get_reweights(epsilons)
         
-        #Calculate the reweighting for all terms: Get Q, and next_observed and derivative terms
-        for i in range(self.number_equilibrium_states):
-            #terms for Q
-            try:
-                boltzman_weights = np.exp(self.epsilons_functions[i](epsilons) - self.h0[i] - K_shift)
-            except:
-                print "Exponential Function Failed"
-                diff = self.epsilons_functions[i](epsilons) - self.h0[i] - K_shift
-                if Count > self.Max_Count:
-                    save_error_files(diff, epsilons, self.h0[i], K_shift)
-                    raise FloatingPointError("Automatic shifting of exponential function terms failed")
-                new_K = K_shift + self.K_shift_step
-                print "Shifting all exponential functions by: %f" % new_K
-                return self.derivatives_log_Qfunction_epsilon(epsilons, K_shift=new_K, Count=Count+1)
-            next_weight = np.sum(boltzman_weights) / self.ni[i]
-            next_observed += next_weight * self.state_prefactors[i]
-            total_weight += next_weight * self.pi[i]
-            #terms for dQ/de
-            for j in range(self.number_params):
-                next_weight_derivatives = np.sum(boltzman_weights * self.derivatives_functions[i](epsilons)[j]) / self.ni[i]
-                derivative_observed_first[j] += next_weight_derivatives * self.state_prefactors[i]
-                derivative_observed_second[j] += next_weight_derivatives * self.pi[i]
-                
-        #normalize so total re-weighted probability is = 1.0
-        next_observed /= total_weight
-        
-        #Minimization, so make maximal value a minimal value with a negative sign.
         Q = self.log_Q_function(next_observed)
+        derivative_observed_first, derivative_observed_second = self.get_derivative_pieces(epsilons, boltzman_weights)
         
+        dQ_vector = []
         for j in range(self.number_params):
             derivative_observed = (derivative_observed_first[j]  - (next_observed * derivative_observed_second[j])) / total_weight 
             dQ = self.dlog_Q_function(next_observed, derivative_observed) 
             dQ_vector.append(dQ)
+        
+        dQ_vector = np.array(dQ_vector)
+        
+        return Q, dQ_vector
+    
+    def get_derivative_pieces(self, epsilons, boltzman_weights):
+        derivative_observed_first = [np.zeros(self.num_observable) for j in range(self.number_params)]
+        derivative_observed_second = [np.zeros(self.num_observable) for j in range(self.number_params)]
+        for i in range(self.number_equilibrium_states):
+            for j in range(self.number_params):
+                next_weight_derivatives = np.sum(boltzman_weights[i] * self.derivatives_functions[i](epsilons)[j]) / self.ni[i]
+                derivative_observed_first[j] += next_weight_derivatives * self.state_prefactors[i]
+                derivative_observed_second[j] += next_weight_derivatives * self.pi[i]
+        
+        return derivative_observed_first, derivative_observed_second
+        
+    def get_reweights(self, epsilons):
+        #initialize final matrices
+        next_observed = np.zeros(self.num_observable)
+        
+        #add up all re-weighted terms for normalizaiton
+        total_weight = 0.0
+        
+        #Calculate the reweighting for all terms
+        boltzman_weights = self.get_boltzman_weights(epsilons)
 
-        #print epsilons
-        return Q, np.array(dQ_vector)
-
+        for i in range(self.number_equilibrium_states):
+            next_weight = np.sum(boltzman_weights[i]) / self.ni[i]
+            next_observed += next_weight * self.state_prefactors[i]
+            total_weight += next_weight * self.pi[i]
+        next_observed /= total_weight
+        
+        return next_observed, total_weight, boltzman_weights
+        
+    def get_boltzman_weights(self, epsilons):
+        #calculate the boltzman weights. 
+        #If OverflowExcpetion, recompute with shift to all values
+        #shift is simply -max_val+K_Shift
+        K_shift = 700
+        try:
+            boltzman_weights = []
+            for i in range(self.number_equilibrium_states):
+                boltzman_wt = np.exp(self.epsilons_functions[i](epsilons) - self.h0[i])
+                boltzman_weights.append(boltzman_wt)
+        except:
+            print "Exponential Function Failed"
+            exponents = []
+            boltzman_weights = []
+            max_val = 0
+            for i in range(self.number_equilibrium_states):
+                exponent = self.epsilons_functions[i](epsilons) - self.h0[i]
+                max_exponent = np.max(exponent)
+                if max_exponent > max_val:
+                    max_val = max_exponent
+                exponents.append(exponent)
+            for i in range(self.number_equilibrium_states):
+                boltzman_wt = np.exp(exponents[i] - max_val + K_shift)
+                boltzman_weights.append(boltmzan_wt)
+        
+        assert len(boltzman_weights) == self.number_equilibrium_states
+        return boltzman_weights 
+        
 def save_error_files(diff, epsilons, h0, kshift):
     np.savetxt("ERROR_EXPONENTIAL_FUNCTION", diff)
     np.savetxt("ERROR_EPSILONS", epsilons)

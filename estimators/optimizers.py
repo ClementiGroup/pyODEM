@@ -72,10 +72,10 @@ def solve_simplex(Qfunc, x0):
            
     return optimal.x
     
-def solve_cg(Qfunc, x0, norm=1):
+def solve_cg(Qfunc, x0, norm=1, gtol=10**-5):
     """ use the scipy.optimize.minimize, method=CG """
-
-    optimal = optimize.minimize(Qfunc, x0, jac=True, method="CG", options={'norm':norm})
+    
+    optimal = optimize.minimize(Qfunc, x0, jac=True, method="CG", options={'norm':norm, 'gtol':gtol})
     
     if not optimal.success == True:
         terms = {"message":optimal.message}
@@ -83,12 +83,12 @@ def solve_cg(Qfunc, x0, norm=1):
         
     return optimal.x
 
-def solve_bfgs(Qfunc, x0, bounds=None):
+def solve_bfgs(Qfunc, x0, bounds=None, gtol=10**-5):
     """ Use the scipy.optimize.minimize (bfgs) method"""
     if bounds is None:
-        optimal = optimize.minimize(Qfunc, x0, method="L-BFGS-B", jac=True)
+        optimal = optimize.minimize(Qfunc, x0, method="L-BFGS-B", jac=True, options={'gtol':gtol})
     else:
-        optimal = optimize.minimize(Qfunc, x0, method="L-BFGS-B", jac=True, bounds=bounds)
+        optimal = optimize.minimize(Qfunc, x0, method="L-BFGS-B", jac=True, bounds=bounds, options={'gtol':gtol})
     if not optimal.success == True:
         terms = {"message":optimal.message}
         raise FailedToOptimizeException("BFGS", terms) 
