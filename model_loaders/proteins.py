@@ -113,7 +113,7 @@ class Protein(ModelLoader):
         
         #compute the function for the derivative of the potential energy
         def dhepsilon(epsilons):
-            #first index is frame, second index is for each epsilon
+            #first index is corresponding epsilon, second index is frame
             return constants_list
         
         return hepsilon, dhepsilon
@@ -131,6 +131,31 @@ class ProteinNonLinear(Protein):
     def get_potentials_epsilon(self, data):
         num_frames = np.shape(data)[0]
 
+        functions_list = []
+        dfunctions_list = []
+        for i in self.use_params:
+            functions_list.append(self.model.Hamiltonian._pairs[i].get_V_epsilons(data[:,i]))
+            dfunctions_list.append(self.model.Hamiltonian._pairs[i].get_dV_depsilons(data[:,i]))
+        #compute the function for the potential energy
+        def hepsilon(epsilons):
+            total = np.zeros(np.shape(data)[0])
+            for i in range(np.shape(epsilons)[0]):
+                total += functions_list[i](epsilons[i])
+            total *= -1. * self.beta
+            
+            return total     
+        
+        #compute the function for the derivative of the potential energy
+        def dhepsilon(epsilons):
+            #first index is corresponding epsilon, second index is frame
+            derivatives_list = []
+            for func in dfunctions_list:
+                derivatives_list.append(func(epsilons))
+            return derivatives_list
+        
+        return hepsilon, dhepsilon
+
+'''
         def hepsilon(epsilons):
             total_energy = np.zeros(np.shape(data)[0])
             for idx, param in enumerate(self.use_params):    
@@ -162,7 +187,7 @@ class ProteinNonLinear(Protein):
         
         return hepsilon, dhepsilon
         
-        
+'''        
         
         
         
