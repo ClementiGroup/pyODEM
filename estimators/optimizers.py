@@ -72,11 +72,13 @@ def solve_simplex(Qfunc, x0):
            
     return optimal.x
     
-def solve_cg(Qfunc, x0, norm=1, gtol=10**-5):
+def solve_cg(Qfunc, x0, norm=1, gtol=10**-5, bounds=None):
     """ use the scipy.optimize.minimize, method=CG """
     
-    optimal = optimize.minimize(Qfunc, x0, jac=True, method="CG", options={'norm':norm, 'gtol':gtol})
-    
+    if bounds is None:
+        optimal = optimize.minimize(Qfunc, x0, jac=True, method="CG", options={'norm':norm, 'gtol':gtol})
+    else:
+        optimal = optimize.minimize(Qfunc, x0, jac=True, method="CG", options={'norm':norm, 'gtol':gtol}, bounds=bounds)
     if not optimal.success == True:
         terms = {"message":optimal.message}
         raise FailedToOptimizeException("Conjugate-Gradient", terms) 

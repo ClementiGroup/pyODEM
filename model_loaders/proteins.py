@@ -119,16 +119,48 @@ class Protein(ModelLoader):
         return hepsilon, dhepsilon
         
         
+class ProteinNonLinear(Protein):
+    """ Same as protein, except handles nonlinear H(epsilons)
+    
+    Just like the class Protein, except it handles a non-linear 
+    Hamiltonian function of epsilons. Thusly, only the 
+    get_potentials_epsilon is overridden.
+    
+    """
+        
+    def get_potentials_epsilon(self, data):
+        num_frames = np.shape(data)[0]
+
+        def hepsilon(epsilons):
+            total_energy = np.zeros(np.shape(data)[0])
+            for idx, param in enumerate(self.use_params):    
+                self.model.Hamiltonian._pairs[param].set_epsilon(epsilons[idx])
+                energy = self.model.Hamiltonian._pairs[param].V(data[:,idx])
+                total_energy += energy
+            
+            return total_energy * self.beta * -1.
         
         
+        def dhepsilon(epsilons):
+            total_energy = np.zeros(np.shape(data))
+            for idx, param in enumerate(self.use_params):    
+                self.model.Hamiltonian._pairs[param].set_epsilon(epsilons[idx])
+            
+                energy = self.model.Hamiltonian._pairs[param].dVdeps(data[:,idx])
+                total_energy[:,idx] += energy
+            
+            total_energy *= self.beta * -1.
+            
+            gradient = [total_energy[:,idx] for idx in range(np.shape(self.use_params)[0])]
+            
+            
+            #assert len(gradient) == num_frames
+            #for term in gradient:
+            #    assert np.shape(term)[0] == np.shape(self.use_params)[0]
+            return gradient 
         
         
-        
-        
-        
-        
-        
-        
+        return hepsilon, dhepsilon
         
         
         
