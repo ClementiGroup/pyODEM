@@ -12,6 +12,7 @@ try:
 except:
     pass
 
+
 class Protein(ModelLoader):
     """ Subclass for making a ModelLoader for a Protein Model
     
@@ -108,12 +109,13 @@ class Protein(ModelLoader):
             total = np.zeros(np.shape(data)[0])
             for i in range(np.shape(epsilons)[0]):
                 total += epsilons[i]*constants_list[i]
-            
+
             return total     
         
         #compute the function for the derivative of the potential energy
         def dhepsilon(epsilons):
             #first index is corresponding epsilon, second index is frame
+
             return constants_list
         
         return hepsilon, dhepsilon
@@ -142,15 +144,15 @@ class ProteinNonLinear(Protein):
             for i in range(np.shape(epsilons)[0]):
                 total += functions_list[i](epsilons[i])
             total *= -1. * self.beta
-            
+
             return total     
         
         #compute the function for the derivative of the potential energy
         def dhepsilon(epsilons):
             #first index is corresponding epsilon, second index is frame
-            derivatives_list = []
-            for func in dfunctions_list:
-                derivatives_list.append(func(epsilons) * -1. * self.beta)
+            scaled_beta = -1. * self.beta
+            derivatives_list = [func(epsilons)*scaled_beta for func in dfunctions_list]
+
             return derivatives_list
         
         return hepsilon, dhepsilon

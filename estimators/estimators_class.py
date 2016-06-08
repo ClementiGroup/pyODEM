@@ -93,7 +93,6 @@ class EstimatorsObject(object):
             self.expectation_observables.append(observed)
             self.epsilons_functions.append(epsilons_function)
             self.derivatives_functions.append(derivatives_function)
-            
             self.h0.append(epsilons_function(self.current_epsilons))
             
             self.ni.append(num_in_set)
@@ -123,6 +122,11 @@ class EstimatorsObject(object):
         t2 = time.time()
         total_time = (t2-t1) / 60.0
         print "Initializaiton Completed: %f Minutes" % total_time 
+        
+        self.count_Qcalls = 0
+        self.count_hepsilon = 0
+        self.count_dhepsilon = 0
+        
     def get_reweighted_observable_function(self):
         return self.calculate_observables_reweighted
         
@@ -150,6 +154,7 @@ class EstimatorsObject(object):
         #calculate re-weighting for all terms 
         for i in range(self.number_equilibrium_states):
             next_weight = np.sum(np.exp(self.epsilons_functions[i](epsilons) - self.h0[i])) / self.ni[i]
+            self.count_hepsilon += 1
             next_observed += next_weight * self.state_prefactors[i]
             total_weight += next_weight * self.pi[i]
         
@@ -230,14 +235,18 @@ class EstimatorsObject(object):
         
         dQ_vector = np.array(dQ_vector)
         
+        ##debug
+        self.count_Qcalls += 1
         return Q, dQ_vector
     
     def get_derivative_pieces(self, epsilons, boltzman_weights):
         derivative_observed_first = [np.zeros(self.num_observable) for j in range(self.number_params)]
         derivative_observed_second = [np.zeros(self.num_observable) for j in range(self.number_params)]
         for i in range(self.number_equilibrium_states):
+            deriv_function = self.derivatives_functions[i](epsilons)
+            self.count_dhepsilon += 1
             for j in range(self.number_params):
-                next_weight_derivatives = np.sum(boltzman_weights[i] * self.derivatives_functions[i](epsilons)[j]) / self.ni[i]
+                next_weight_derivatives = np.sum(boltzman_weights[i] * deriv_function[j]) / self.ni[i]
                 derivative_observed_first[j] += next_weight_derivatives * self.state_prefactors[i]
                 derivative_observed_second[j] += next_weight_derivatives * self.pi[i]
         
@@ -270,6 +279,7 @@ class EstimatorsObject(object):
             boltzman_weights = []
             for i in range(self.number_equilibrium_states):
                 boltzman_wt = np.exp(self.epsilons_functions[i](epsilons) - self.h0[i])
+                self.count_hepsilon += 1
                 boltzman_weights.append(boltzman_wt)
         except:
             print "Exponential Function Failed"
@@ -278,6 +288,7 @@ class EstimatorsObject(object):
             max_val = 0
             for i in range(self.number_equilibrium_states):
                 exponent = self.epsilons_functions[i](epsilons) - self.h0[i]
+                self.count_hepsilon += 1
                 max_exponent = np.max(exponent)
                 if max_exponent > max_val:
                     max_val = max_exponent
