@@ -100,15 +100,16 @@ class Protein(ModelLoader):
         
         #list of constant pre factors to each model epsilons
         constants_list = [] 
-        
+        constants_list_derivatives = []
         for i in self.use_params:
-            constants_list.append(self.model.Hamiltonian._pairs[i].dVdeps(data[:,i]) * -1.0 * self.beta)
-        
+            constants_list.append(self.model.Hamiltonian._pairs[i].dVdeps(data[:,i]) )
+            constants_list_derivatives.append(self.model.Hamiltonian._pairs[i].dVdeps(data[:,i])* -1. * self.beta  )
         #compute the function for the potential energy
         def hepsilon(epsilons):
             total = np.zeros(np.shape(data)[0])
             for i in range(np.shape(epsilons)[0]):
-                total += epsilons[i]*constants_list[i]
+                value = epsilons[i]*constants_list[i]
+                total += value * -1. * self.beta
 
             return total     
         
@@ -116,7 +117,7 @@ class Protein(ModelLoader):
         def dhepsilon(epsilons):
             #first index is corresponding epsilon, second index is frame
 
-            return constants_list
+            return constants_list_derivatives
         
         return hepsilon, dhepsilon
         
@@ -142,8 +143,8 @@ class ProteinNonLinear(Protein):
         def hepsilon(epsilons):
             total = np.zeros(np.shape(data)[0])
             for i in range(np.shape(epsilons)[0]):
-                total += functions_list[i](epsilons[i])
-            total *= -1. * self.beta
+                total += functions_list[i](epsilons[i]) * -1. * self.beta
+            #total *= -1. * self.beta
 
             return total     
         

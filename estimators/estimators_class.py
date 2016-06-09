@@ -154,7 +154,6 @@ class EstimatorsObject(object):
         #calculate re-weighting for all terms 
         for i in range(self.number_equilibrium_states):
             next_weight = np.sum(np.exp(self.epsilons_functions[i](epsilons) - self.h0[i])) / self.ni[i]
-            self.count_hepsilon += 1
             next_observed += next_weight * self.state_prefactors[i]
             total_weight += next_weight * self.pi[i]
         
