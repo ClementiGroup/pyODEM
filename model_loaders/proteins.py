@@ -152,7 +152,7 @@ class ProteinNonLinear(Protein):
         def dhepsilon(epsilons):
             #first index is corresponding epsilon, second index is frame
             scaled_beta = -1. * self.beta
-            derivatives_list = [func(epsilons)*scaled_beta for func in dfunctions_list]
+            derivatives_list = [func(epsilons[idx])*scaled_beta for idx,func in enumerate(dfunctions_list)]
 
             return derivatives_list
         
