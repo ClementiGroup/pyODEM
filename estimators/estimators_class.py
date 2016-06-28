@@ -13,7 +13,7 @@ class EstimatorsObject(object):
     optimization routine.
     
     """
-    def __init__(self, data, data_sets, observables, model, obs_data=None, stationary_distributions=None, K_shift=0, K_shift_step=100, Max_Count=10):
+    def __init__(self, data, data_sets, observables, model, obs_data=None, stationary_distributions=None, model_state=None):
         """ initialize object and process all the inputted data 
         
         Args:
@@ -24,7 +24,7 @@ class EstimatorsObject(object):
                 corresponding to that equilibrium state.      
             observables (ExperimentalObservables): See object in
                 pyfexd.observables.exp_observables.ExperimentalObservables
-            model (ModelLoader): See object in the module
+            model (ModelLoader/list): See object in the module
                  pyfexd.model_loaders.X for the particular model.
             obs_data (list): Use if data set for computing observables 
                 is different from data for computing the energy. List 
@@ -37,29 +37,18 @@ class EstimatorsObject(object):
                 each stationary distribution. Must be same size as 
                 data_sets. Default will compute the distribution based 
                 upon the weighting of each data_sets. 
-            K_shift (float): Value to shift exponents by. Default 0.
-            K_shift_step (float): Value to increase the K_shift by in 
-                event exponential evaluation fails. Default 100.
-            Max_Count (int): Number of attempts of automatic re-scaling 
-                to attempt before the method will give up and raise an 
-                error.    
+            model_state (list): List which model object to use when 
+                model is a list. Default None.
         """
         print "Initializing EstimatorsObject"
         t1 = time.time()
-        #set k-shift parameters
-        self.K_shift = K_shift
-        self.K_shift_step = K_shift_step
-        self.Max_Count = Max_Count
         #observables get useful stuff like value of beta
-        self.beta = model.beta
         self.number_equilibrium_states = len(data_sets)
         self.observables = observables
-        self.model = model
+
         
         self.observables.prep()
         
-        self.current_epsilons = model.get_epsilons()
-        self.number_params = np.shape(self.current_epsilons)[0]
         self.Q_function, self.dQ_function = observables.get_q_functions()
         self.log_Q_function, self.dlog_Q_function = observables.get_log_q_functions()
         
@@ -74,29 +63,88 @@ class EstimatorsObject(object):
         self.pi = []
         self.ni = []
         
+        ####Format Inputs####
+        
+        ##Check obs_data
         if obs_data is None: #use sim data for calculating observables
             obs_data = [data for i in range(len(self.observables.observables))]
         else:
             pass
+        
+        ##check if model is a list or not
+        if isinstance(model, list):
+            if model_state is None:
+                raise IOError("model_state must be specified if model is a list")
+                
+        else: #convert model to be a list, construct model_state
+            model = [model]
+            if model_state is None:
+                model_state = np.array([0 for i in range(np.shape(data)[0])])
+        self.num_models = len(model)
+        self.model = model
+        self.current_epsilons = model[0].get_epsilons() #assumes the first model is the one you want
+        self.number_params = np.shape(self.current_epsilons)[0]
+        
+        #check model inputs
+        if not np.max(model_state) < len(model):
+            raise IOError("model_state formatted incorrectly. Values should be 0-X, where length of model is X+1") 
+        
+        if not np.shape(data)[0] == np.shape(model_state)[0]:
+            raise IOError("shape of model_state and data do not match")
             
         #load data for each set, and compute energies and observations
-        for i in data_sets:
-            use_data = data[i]
-            epsilons_function, derivatives_function = model.get_potentials_epsilon(use_data)
+        count = -1
+        for state_indices in data_sets:
+            count += 1
+            use_data = data[state_indices]
+            print np.shape(use_data)[0]
+            which_model = model_state[state_indices]
+            ##assumes order does not matter, so long as relative order is preserved.
+            ##since the epsilons_function and derivatives are summed up later
+            this_epsilons_function = []
+            this_derivatives_function = []
+            total_h0 = 0
+            for idx in range(self.num_models):
+                if idx in which_model:
+                    this_indices = np.where(which_model == idx)
+                    this_data = use_data[this_indices]
+                    epsilons_function, derivatives_function = model[idx].get_potentials_epsilon(this_data)
+                    this_epsilons_function.append(epsilons_function)
+                    this_derivatives_function.append(derivatives_function)
+                    this_h0 = epsilons_function(model[idx].get_epsilons())
+                    try:
+                        total_h0 = np.append(total_h0, this_h0, axis=0)
+                    except:
+                        print "here"
+                        total_h0 = this_h0
+                assert len(this_epsilons_function) == len(this_derivatives_function)
+            num_functions = len(this_epsilons_function)
+            
+            ##define new wrapper functions to wrap up the computation of several hamiltonians
+            ham_calc = HamiltonianCalculator(this_epsilons_function, this_derivatives_function, self.number_equilibrium_states)
+            
+            self.epsilons_functions.append(ham_calc.epsilon_function)
+            self.derivatives_functions.append(ham_calc.derivatives_function)
+            self.h0.append(total_h0)
+                
             #process obs_data so that only the desired frames are passed
             use_obs_data = []
             for obs_dat in obs_data:
-                use_obs_data.append(obs_dat[i])
+                use_obs_data.append(obs_dat[state_indices])
             observed, obs_std = observables.compute_observations(use_obs_data)
             num_in_set = np.shape(use_data)[0]
             
             self.expectation_observables.append(observed)
-            self.epsilons_functions.append(epsilons_function)
-            self.derivatives_functions.append(derivatives_function)
-            self.h0.append(epsilons_function(self.current_epsilons))
-            
+
             self.ni.append(num_in_set)
             self.pi.append(num_in_set)
+        
+        ##check the assertion. make sure everything same size
+        for i in range(len(self.h0)):
+            print "For state %d" % i
+            print np.shape(self.epsilons_functions[i](self.current_epsilons))[0]
+            print np.shape(self.h0[i])[0]
+            assert np.shape(self.epsilons_functions[i](self.current_epsilons))[0] == np.shape(self.h0[i])[0]
             
         ##number of observables
         self.num_observable = np.shape(observed)[0]   
@@ -186,7 +234,7 @@ class EstimatorsObject(object):
             
         return func
         
-    def Qfunction_epsilon(self, epsilons, K_shift=None, Count=0):
+    def Qfunction_epsilon(self, epsilons, Count=0):
         #initiate value for observables:
         
         next_observed, total_weight, boltzman_weights = self.get_reweights(epsilons)
@@ -196,7 +244,7 @@ class EstimatorsObject(object):
 
         return Q
         
-    def log_Qfunction_epsilon(self, epsilons, K_shift=None, Count=0):
+    def log_Qfunction_epsilon(self, epsilons, Count=0):
         next_observed, total_weight, boltzman_weights = self.get_reweights(epsilons)
         
         #Minimization, so make maximal value a minimal value with a negative sign.
@@ -204,7 +252,7 @@ class EstimatorsObject(object):
         #print epsilons
         return Q
 
-    def derivatives_Qfunction_epsilon(self, epsilons, K_shift=None, Count=0):
+    def derivatives_Qfunction_epsilon(self, epsilons, Count=0):
         next_observed, total_weight, boltzman_weights = self.get_reweights(epsilons)
         
         Q = self.Q_function(next_observed)
@@ -220,7 +268,7 @@ class EstimatorsObject(object):
         Q *= -1.
         return Q, dQ_vector
 
-    def derivatives_log_Qfunction_epsilon(self, epsilons, K_shift=None, Count=0):
+    def derivatives_log_Qfunction_epsilon(self, epsilons, Count=0):
         next_observed, total_weight, boltzman_weights = self.get_reweights(epsilons)
         
         Q = self.log_Q_function(next_observed)
@@ -298,6 +346,34 @@ class EstimatorsObject(object):
         
         assert len(boltzman_weights) == self.number_equilibrium_states
         return boltzman_weights 
+
+class HamiltonianCalculator(object):
+    def __init__(self, hamiltonian_list, derivative_list, number_equilibrium_states):
+        self.hamiltonian_list = hamiltonian_list
+        self.derivative_list = derivative_list
+        assert len(self.hamiltonian_list) == len(self.derivative_list)
+        self.num_functions = len(self.hamiltonian_list)
+        self.number_equilibrium_states = number_equilibrium_states
+        
+    def epsilon_function(self,epsilons):
+        for idx in range(self.num_functions):
+            this_array = self.hamiltonian_list[idx](epsilons)
+            try:
+                total_array = np.append(total_array, this_array, axis=0)
+            except:
+                total_array = this_array
+        return total_array
+    
+    def derivatives_function(self,epsilons):
+        for idx in range(self.num_functions):
+            this_list = self.derivative_list[idx](epsilons)
+            try:
+                for j in range(self.number_equilibrium_states):
+                    total_list[j] = np.append(total_list[j], this_list[j], axis=0)
+            except:
+                total_list = this_list
+        return total_list
+        
         
 def save_error_files(diff, epsilons, h0, kshift):
     np.savetxt("ERROR_EXPONENTIAL_FUNCTION", diff)
@@ -306,5 +382,4 @@ def save_error_files(diff, epsilons, h0, kshift):
     f = open("ERROR_LOG_EXPONENTIAL_FUNCTION", "w")
     f.write("\n\nCurrent Shift: %f\n" % kshift)
     f.close()    
-
 

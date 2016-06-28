@@ -14,15 +14,14 @@ import scipy.optimize as optimize
 from estimators_class import EstimatorsObject
 from optimizers import function_dictionary 
         
-def max_likelihood_estimate(data, data_sets, observables, model, obs_data=None, solver="simplex", logq=False, derivative=None, x0=None, kwargs={}, stationary_distributions=None, K_shift=0, K_shift_step=100, Max_Count=10):
+def max_likelihood_estimate(data, data_sets, observables, model, obs_data=None, solver="simplex", logq=False, derivative=None, x0=None, kwargs={}, stationary_distributions=None):
     """ Optimizes model's paramters using a max likelihood method
     
     Args:
         See pyfexd.estimators.estimators_class.EstimatorsObject for:
             data (array), data_sets (list), 
             observables (ExperimentalObservables), model (ModelLoader), 
-            obs_data(list) and stationary_distributions (list), 
-            k_shift (float), K_shift_step (float), Max_Count (int)
+            obs_data(list) and stationary_distributions (list)
              
         solver (str): Optimization procedures. Defaults to Simplex. 
             Available methods include: simplex, anneal, cg, custom.
@@ -40,7 +39,7 @@ def max_likelihood_estimate(data, data_sets, observables, model, obs_data=None, 
             
     """
     
-    eo = EstimatorsObject(data, data_sets, observables, model, obs_data=obs_data, stationary_distributions=stationary_distributions, K_shift=K_shift, K_shift_step=K_shift_step, Max_Count=Max_Count)
+    eo = EstimatorsObject(data, data_sets, observables, model, obs_data=obs_data, stationary_distributions=stationary_distributions)
 
     if derivative is None:
         if solver in ["cg", "newton", "bfgs", "one"]:
