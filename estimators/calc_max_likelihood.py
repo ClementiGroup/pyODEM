@@ -14,7 +14,7 @@ import scipy.optimize as optimize
 from estimators_class import EstimatorsObject
 from optimizers import function_dictionary 
         
-def max_likelihood_estimate(data, data_sets, observables, model, obs_data=None, solver="simplex", logq=False, derivative=None, x0=None, kwargs={}, stationary_distributions=None):
+def max_likelihood_estimate(data, data_sets, observables, model, obs_data=None, solver="simplex", logq=False, derivative=None, x0=None, kwargs={}, stationary_distributions=None, model_state=None):
     """ Optimizes model's paramters using a max likelihood method
     
     Args:
@@ -39,7 +39,7 @@ def max_likelihood_estimate(data, data_sets, observables, model, obs_data=None, 
             
     """
     
-    eo = EstimatorsObject(data, data_sets, observables, model, obs_data=obs_data, stationary_distributions=stationary_distributions)
+    eo = EstimatorsObject(data, data_sets, observables, model, obs_data=obs_data, stationary_distributions=stationary_distributions, model_state=model_state)
 
     if derivative is None:
         if solver in ["cg", "newton", "bfgs", "one"]:
