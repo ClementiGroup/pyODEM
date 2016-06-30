@@ -109,6 +109,9 @@ class EstimatorsObject(object):
                     this_indices = np.where(which_model == idx)
                     this_data = use_data[this_indices]
                     epsilons_function, derivatives_function = model[idx].get_potentials_epsilon(this_data)
+                    size_array = np.shape(epsilons_function(self.current_epsilons))[0]
+                    for test in derivatives_function(self.current_epsilons):
+                        assert np.shape(test)[0] == size_array 
                     this_epsilons_function.append(epsilons_function)
                     this_derivatives_function.append(derivatives_function)
                     this_h0 = epsilons_function(model[idx].get_epsilons())
@@ -145,8 +148,10 @@ class EstimatorsObject(object):
             print np.shape(self.epsilons_functions[i](self.current_epsilons))[0]
             print np.shape(self.h0[i])[0]
             assert np.shape(self.epsilons_functions[i](self.current_epsilons))[0] == np.shape(self.h0[i])[0]
-            assert np.shape(self.epsilons_functions[i](self.current_epsilons))[0] == self.derivatives_functions[i](self.current_epsilons))[0]
-            
+            size = np.shape(self.epsilons_functions[i](self.current_epsilons))[0] 
+            for arrr in self.derivatives_functions[i](self.current_epsilons):
+                assert np.shape(arrr)[0] == size
+           
         ##number of observables
         self.num_observable = np.shape(observed)[0]   
         self.pi =  np.array(self.pi).astype(float)
