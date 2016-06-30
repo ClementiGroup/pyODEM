@@ -145,6 +145,7 @@ class EstimatorsObject(object):
             print np.shape(self.epsilons_functions[i](self.current_epsilons))[0]
             print np.shape(self.h0[i])[0]
             assert np.shape(self.epsilons_functions[i](self.current_epsilons))[0] == np.shape(self.h0[i])[0]
+            assert np.shape(self.epsilons_functions[i](self.current_epsilons))[0] == self.derivatives_functions[i](self.current_epsilons))[0]
             
         ##number of observables
         self.num_observable = np.shape(observed)[0]   
