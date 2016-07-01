@@ -372,6 +372,7 @@ class HamiltonianCalculator(object):
     
     def derivatives_function(self,epsilons):
         count = 0
+        except_count = 0
         for idx in range(self.num_functions):
             this_list = self.derivative_list[idx](epsilons)
             count += np.shape(this_list[0])[0]
@@ -379,8 +380,13 @@ class HamiltonianCalculator(object):
                 for j in range(self.number_equilibrium_states):
                     total_list[j] = np.append(total_list[j], this_list[j], axis=0)
             except:
+                except_count += 1
                 total_list = this_list
+        assert except_count == 1
+        a_count = 0
         for arrr in total_list:
+            print a_count
+            a_count += 1
             assert np.shape(arrr) == count
         return total_list
         
