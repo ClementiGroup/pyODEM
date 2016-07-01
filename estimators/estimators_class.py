@@ -124,7 +124,7 @@ class EstimatorsObject(object):
             num_functions = len(this_epsilons_function)
             
             ##define new wrapper functions to wrap up the computation of several hamiltonians
-            ham_calc = HamiltonianCalculator(this_epsilons_function, this_derivatives_function, self.number_equilibrium_states)
+            ham_calc = HamiltonianCalculator(this_epsilons_function, this_derivatives_function, self.number_params)
             
             self.epsilons_functions.append(ham_calc.epsilon_function)
             self.derivatives_functions.append(ham_calc.derivatives_function)
@@ -354,12 +354,12 @@ class EstimatorsObject(object):
         return boltzman_weights 
 
 class HamiltonianCalculator(object):
-    def __init__(self, hamiltonian_list, derivative_list, number_equilibrium_states):
+    def __init__(self, hamiltonian_list, derivative_list, number_params):
         self.hamiltonian_list = hamiltonian_list
         self.derivative_list = derivative_list
         assert len(self.hamiltonian_list) == len(self.derivative_list)
         self.num_functions = len(self.hamiltonian_list)
-        self.number_equilibrium_states = number_equilibrium_states
+        self.number_params = number_params
         
     def epsilon_function(self,epsilons):
         for idx in range(self.num_functions):
@@ -377,7 +377,7 @@ class HamiltonianCalculator(object):
             this_list = self.derivative_list[idx](epsilons)
             count += np.shape(this_list[0])[0]
             try:
-                for j in range(self.number_equilibrium_states):
+                for j in range(self.number_params):
                     total_list[j] = np.append(total_list[j], this_list[j], axis=0)
             except:
                 except_count += 1
