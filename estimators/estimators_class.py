@@ -387,7 +387,7 @@ class HamiltonianCalculator(object):
         for arrr in total_list:
             print a_count
             a_count += 1
-            assert np.shape(arrr) == count
+            assert np.shape(arrr)[0] == count
         return total_list
         
         
