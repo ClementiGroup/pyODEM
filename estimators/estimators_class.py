@@ -94,10 +94,11 @@ class EstimatorsObject(object):
             
         #load data for each set, and compute energies and observations
         count = -1
+        self.state_size = []
         for state_indices in data_sets:
             count += 1
             use_data = data[state_indices]
-            print np.shape(use_data)[0]
+            self.state_size.append(np.shape(use_data)[0])
             which_model = model_state[state_indices]
             ##assumes order does not matter, so long as relative order is preserved.
             ##since the epsilons_function and derivatives are summed up later
@@ -118,13 +119,12 @@ class EstimatorsObject(object):
                     try:
                         total_h0 = np.append(total_h0, this_h0, axis=0)
                     except:
-                        print "here"
                         total_h0 = this_h0
                 assert len(this_epsilons_function) == len(this_derivatives_function)
             num_functions = len(this_epsilons_function)
             
             ##define new wrapper functions to wrap up the computation of several hamiltonians
-            ham_calc = HamiltonianCalculator(this_epsilons_function, this_derivatives_function, self.number_params)
+            ham_calc = HamiltonianCalculator(this_epsilons_function, this_derivatives_function, self.number_params, np.shape(use_data)[0])
             
             self.epsilons_functions.append(ham_calc.epsilon_function)
             self.derivatives_functions.append(ham_calc.derivatives_function)
@@ -143,7 +143,7 @@ class EstimatorsObject(object):
             self.pi.append(num_in_set)
         
         ##check the assertion. make sure everything same size
-        for i in range(len(self.h0)):
+        for i in range(self.number_equilibrium_states):
             print "For state %d" % i
             print np.shape(self.epsilons_functions[i](self.current_epsilons))[0]
             print np.shape(self.h0[i])[0]
@@ -299,7 +299,14 @@ class EstimatorsObject(object):
             deriv_function = self.derivatives_functions[i](epsilons)
             self.count_dhepsilon += 1
             for j in range(self.number_params):
-                next_weight_derivatives = np.sum(boltzman_weights[i] * deriv_function[j]) / self.ni[i]
+                try:
+                    next_weight_derivatives = np.sum(boltzman_weights[i] * deriv_function[j]) / self.ni[i]
+                except ValueError:
+                    print ValueError
+                    print self.state_size[i]
+                    print np.shape(boltzman_weights[i])
+                    print np.shape(deriv_function[j])
+                    print np.shape(self.ni[i])
                 derivative_observed_first[j] += next_weight_derivatives * self.state_prefactors[i]
                 derivative_observed_second[j] += next_weight_derivatives * self.pi[i]
         
@@ -351,23 +358,29 @@ class EstimatorsObject(object):
                 boltzman_weights.append(boltmzan_wt)
         
         assert len(boltzman_weights) == self.number_equilibrium_states
+        for idx,state in enumerate(boltzman_weights):
+            assert np.shape(state)[0] == self.state_size[idx]
         return boltzman_weights 
 
 class HamiltonianCalculator(object):
-    def __init__(self, hamiltonian_list, derivative_list, number_params):
+    def __init__(self, hamiltonian_list, derivative_list, number_params, size):
         self.hamiltonian_list = hamiltonian_list
         self.derivative_list = derivative_list
         assert len(self.hamiltonian_list) == len(self.derivative_list)
         self.num_functions = len(self.hamiltonian_list)
         self.number_params = number_params
-        
+        self.size = size
+
     def epsilon_function(self,epsilons):
+        except_count = 0
         for idx in range(self.num_functions):
             this_array = self.hamiltonian_list[idx](epsilons)
             try:
                 total_array = np.append(total_array, this_array, axis=0)
             except:
+                except_count += 1
                 total_array = this_array
+            assert except_count == 1
         return total_array
     
     def derivatives_function(self,epsilons):
@@ -383,11 +396,9 @@ class HamiltonianCalculator(object):
                 except_count += 1
                 total_list = this_list
         assert except_count == 1
-        a_count = 0
         for arrr in total_list:
-            print a_count
-            a_count += 1
             assert np.shape(arrr)[0] == count
+            assert np.shape(arrr)[0] == self.size
         return total_list
         
         
