@@ -95,6 +95,7 @@ class EstimatorsObject(object):
         #load data for each set, and compute energies and observations
         count = -1
         self.state_size = []
+        self.state_ham_functions = []#debugging 
         for state_indices in data_sets:
             count += 1
             use_data = data[state_indices]
@@ -124,12 +125,12 @@ class EstimatorsObject(object):
             num_functions = len(this_epsilons_function)
             
             ##define new wrapper functions to wrap up the computation of several hamiltonians
-            ham_calc = HamiltonianCalculator(this_epsilons_function, this_derivatives_function, self.number_params, np.shape(use_data)[0])
+            ham_calc = HamiltonianCalculator(this_epsilons_function, this_derivatives_function, self.number_params, np.shape(use_data)[0], count)
             
             self.epsilons_functions.append(ham_calc.epsilon_function)
             self.derivatives_functions.append(ham_calc.derivatives_function)
             self.h0.append(total_h0)
-                
+            self.state_ham_functions.append(ham_calc)
             #process obs_data so that only the desired frames are passed
             use_obs_data = []
             for obs_dat in obs_data:
@@ -299,14 +300,7 @@ class EstimatorsObject(object):
             deriv_function = self.derivatives_functions[i](epsilons)
             self.count_dhepsilon += 1
             for j in range(self.number_params):
-                try:
-                    next_weight_derivatives = np.sum(boltzman_weights[i] * deriv_function[j]) / self.ni[i]
-                except ValueError:
-                    print ValueError
-                    print self.state_size[i]
-                    print np.shape(boltzman_weights[i])
-                    print np.shape(deriv_function[j])
-                    print np.shape(self.ni[i])
+                next_weight_derivatives = np.sum(boltzman_weights[i] * deriv_function[j]) / self.ni[i]
                 derivative_observed_first[j] += next_weight_derivatives * self.state_prefactors[i]
                 derivative_observed_second[j] += next_weight_derivatives * self.pi[i]
         
@@ -363,14 +357,15 @@ class EstimatorsObject(object):
         return boltzman_weights 
 
 class HamiltonianCalculator(object):
-    def __init__(self, hamiltonian_list, derivative_list, number_params, size):
+    def __init__(self, hamiltonian_list, derivative_list, number_params, size, state):
         self.hamiltonian_list = hamiltonian_list
         self.derivative_list = derivative_list
         assert len(self.hamiltonian_list) == len(self.derivative_list)
         self.num_functions = len(self.hamiltonian_list)
         self.number_params = number_params
         self.size = size
-
+        self.state = state
+        
     def epsilon_function(self,epsilons):
         except_count = 0
         for idx in range(self.num_functions):
@@ -388,17 +383,22 @@ class HamiltonianCalculator(object):
         except_count = 0
         for idx in range(self.num_functions):
             this_list = self.derivative_list[idx](epsilons)
-            count += np.shape(this_list[0])[0]
+            count += np.shape(this_list[0])[0]    
             try:
                 for j in range(self.number_params):
                     total_list[j] = np.append(total_list[j], this_list[j], axis=0)
             except:
-                except_count += 1
-                total_list = this_list
-        assert except_count == 1
-        for arrr in total_list:
-            assert np.shape(arrr)[0] == count
-            assert np.shape(arrr)[0] == self.size
+                #must duplicate list
+                #if not duplicated, errors will result
+                #derivative_list functions might return a stored list
+                #List pass by reference, so python points to that list
+                #when it appends, it appends to the internal list as well
+                #this causes total_list to grow every function call
+                #this is not a problem, with arrays
+                #Arrays are pass by reference as well
+                #But np.append duplicates the array automatically
+                total_list = list(this_list)
+                
         return total_list
         
         

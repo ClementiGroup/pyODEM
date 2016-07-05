@@ -67,15 +67,21 @@ def max_likelihood_estimate(data, data_sets, observables, model, obs_data=None, 
     else:
         func_solver = solver #assume a valid method was passed to it
     
-    new_epsilons = func_solver(Qfunction_epsilon, current_epsilons, **kwargs)
-    
-    t2 = time.time()
-    total_time = (t2-t1) / 60.0
-    print "Optimization Complete: %f minutes" % total_time
-    
-    #then return a new set of epsilons inside the EstimatorsObject
-    eo.save_solutions(new_epsilons)
-    return eo
+    try:
+        new_epsilons = func_solver(Qfunction_epsilon, current_epsilons, **kwargs)
+        
+        t2 = time.time()
+        total_time = (t2-t1) / 60.0
+        print "Optimization Complete: %f minutes" % total_time
+        
+        #then return a new set of epsilons inside the EstimatorsObject
+        eo.save_solutions(new_epsilons)
+        return eo
+    except:
+        t2 = time.time()
+        total_time = (t2-t1) / 60.0
+        print "Optimization Failed: %f minutes" % total_time
+        return eo
     
     
     
