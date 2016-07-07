@@ -35,10 +35,6 @@ class Protein(ModelLoader):
         
         """
         self.GAS_CONSTANT_KJ_MOL = 0.0083144621 #kJ/mol*k
-        try:
-            from langevin_model.model import langevin_model as lmodel
-        except:
-            raise IOError("model_builder package is not installed.")
         
         ##remove .ini suffix
         self.model, self.fittingopts = mdb.inputs.load_model(ini_file_name)
