@@ -187,6 +187,55 @@ class ProteinNonLinear(Protein):
         return hepsilon, dhepsilon
         
 '''        
+
+class ProteinAwsem(model):
+    def __init__(self, ini_file_name):
+        self.GAS_CONSTANT_KJ_MOL = 0.0083144621 #kJ/mol*k
         
+        ##remove .ini suffix
+        self.model, self.fittingopts = mdb.inputs.load_model(ini_file_name)
         
+        if "fret_pairs" in self.fittingopts and not self.fittingopts["fret_pairs"] is None:
+            self.fret_pairs = self.fittingopts["fret_pairs"]
+        else:
+            self.fret_pairs = [None]
+            
+        
+        self.epsilons = self.model.fitted_epsilons
+        self.beta = 1.0 #set temperature
+    
+    def add_contact_params(self):
+        # get indices corresponding to epsilons to use
+        # Assumes only parameters to change are pair interactions
+        self.use_pairs = []
+        array_pairs = self.model.Hamiltonian._contact_pairs
+        for i in range(np.shape(array_pairs)[0]):
+             self.use_pairs.append(use_pairs[i,:])
+
+        self.gamma_indices = self.model.Hamiltonian._contact_gamma_idxs
+        self.gamma = self.model.Hamiltonian.gamma_direct        
+        
+        #go through gamma, append the parameters to use_params
+        self.use_indices = []
+        self.use_params = []
+        for i in range(20): #this potential is always 20x20
+            for j in np.arange(i,20):
+                if self._check_indices(i,j,self.gamma_indices):
+                    self.use_indices.append([i,j])
+                    self.use_params.append(self.gamma[i,j])
+    
+    def _check_indices(self, idx, jdx, list_indices):
+        num_params = np.shape(list_indices)[0]
+        i = 0
+        go = True
+        found = False
+        while go:
+            if list_indices[i,0] == idx and list_indices[i,1] == jdx:
+                go = False
+                found = True
+            i += 1
+            if i == num_params:
+                go = False
+        
+        return found
         
