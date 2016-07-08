@@ -283,12 +283,37 @@ class ProteinAwsem(ProtoProtein):
             self.param_assignment.append(param_idx)
             self.param_assigned_indices[param_idx].append(i)
         
+        self.epsilons = self.use_params #self.epsilons expected in places
+        
         ##### assertion checks #####
         # Check consistency of param_assignment and param_assigned_indices 
         for idx, lst in enumerate(self.param_assigned_indices):
             for index in lst:
                 assert self.param_assignment[index] == idx
+        
+        #Check consistent number of parameters
+        assert len(self.param_assigned_indices) == len(self.use_params)
+        
+    def load_data(self,fname):
+        """ Load a data file and format for later use
+        
+        For Proteins, it uses the self.pairs to load the pair-pair 
+        distances for every frame. This is the data format that would be 
+        used for computing the energy later.
+        
+        Args:
+            fname(string): Name of a file to load.
+        
+        Return:
+            traj(mdtraj.trajectory): Trajectory object in 3-bead 
+                representation. Will be converted to all-atom later.
             
+        """
+        
+        traj = md.load(fname, top=self.model.mapping.topology)
+
+        return traj  
+    
     def get_potentials_epsilon(self, data):
         """ Return PotentialEnergy(epsilons)  
         
@@ -299,19 +324,21 @@ class ProteinAwsem(ProtoProtein):
         
         """
         
-        #check to see if data is the expected shape for this analysis:
-        if not np.shape(data)[1] == np.shape(self.use_params)[0]:
-            err_str = "dimensions of data incompatible with number of parameters\n"
-            err_str += "Second index must equal number of parameters \n"
-            err_str += "data is: %s, number of parameters is: %d" %(str(np.shape(data)), len(self.use_params))
-            raise IOError(err_str)
-        
-        #list of constant pre factors to each model epsilons
         constants_list = [] 
         constants_list_derivatives = []
-        for i in self.use_params:
-            constants_list.append(self.model.Hamiltonian._pairs[i].dVdeps(data[:,i]) )
-            constants_list_derivatives.append(self.model.Hamiltonian._pairs[i].dVdeps(data[:,i])* -1. * self.beta  )
+        
+        #for potentials, 1st index is frame, 2nd index is potential function
+        potentials = self.model.Hamiltonian.calculate_direct_energy(data, total=False)
+        
+        assert np.shape(potentials)[1] == len(self.param_assignment)
+        
+        self.param_assigned_indices
+        
+        for indices,param in zip(self.param_assigned_indices,self.use_params):
+            constant_value = np.sum(potentials[:,indices]) / param
+            constants_list.append(constant_value)
+            constants_list_derivatives.append(constant_value * -1. * self.beta)
+            
         #compute the function for the potential energy
         def hepsilon(epsilons):
             total = np.zeros(np.shape(data)[0])
@@ -327,5 +354,5 @@ class ProteinAwsem(ProtoProtein):
 
             return constants_list_derivatives
         
-        return hepsilon, dhepsilon
-    
+        return hepsilon, dhepsilon  
+
