@@ -12,28 +12,16 @@ try:
 except:
     pass
 
-
-class Protein(ModelLoader):
-    """ Subclass for making a ModelLoader for a Protein Model
+class ProtoProtein(ModelLoader):
+    """ subclass of ModelLoaders, super class of all Protein models
     
-    Methods:
-        See ModelLoader in pyfexd/super_model/ModelLoader
+    The __init__ for most protein models have shared methods. This way, 
+    they can all call the same methods with modificaitons of their own 
+    later. 
     
     """
     
     def __init__(self, ini_file_name):
-        """ Initialize the Langevin model, override superclass
-        
-        Args:
-            ini_file_name: Name of a .ini file to load containing the 
-                model information.
-        
-        Attributes:
-            See superclass for generic attributes.
-            epsilons(array): Chosen from a specific list of tunable 
-                parameters from the .ini file.
-        
-        """
         self.GAS_CONSTANT_KJ_MOL = 0.0083144621 #kJ/mol*k
         
         ##remove .ini suffix
@@ -43,18 +31,8 @@ class Protein(ModelLoader):
             self.fret_pairs = self.fittingopts["fret_pairs"]
         else:
             self.fret_pairs = [None]
-            
-        # get indices corresponding to epsilons to use
-        # Assumes only parameters to change are pair interactions
-        self.use_params = np.arange(len(self.model.Hamiltonian._pairs)) #assumes you use all pairs
-        self.pairs = self.model.mapping._contact_pairs
-        self.use_pairs = []
-        for i in self.use_params: #only load relevant parameters
-            self.use_pairs.append([self.pairs[i][0].index, self.pairs[i][1].index])
         
-        self.epsilons = self.model.fitted_epsilons
         self.beta = 1.0 #set temperature
-        
     
     def load_data(self,fname):
         """ Load a data file and format for later use
@@ -75,7 +53,41 @@ class Protein(ModelLoader):
         traj = md.load(fname, top=self.model.mapping.topology)
         data = md.compute_distances(traj, self.use_pairs, periodic=False)
 
-        return data
+        return data    
+    
+class Protein(ProtoProtein):
+    """ Subclass for making a ModelLoader for a Protein Model
+    
+    Methods:
+        See ModelLoader in pyfexd/super_model/ModelLoader
+    
+    """
+    
+    def __init__(self, ini_file_name):
+        """ Initialize the Langevin model, override superclass
+        
+        Args:
+            ini_file_name: Name of a .ini file to load containing the 
+                model information.
+        
+        Attributes:
+            See superclass for generic attributes.
+            epsilons(array): Chosen from a specific list of tunable 
+                parameters from the .ini file.
+        
+        """
+        
+        ProtoProtein.__init__(self, ini_file_name)
+            
+        # get indices corresponding to epsilons to use
+        # Assumes only parameters to change are pair interactions
+        self.use_params = np.arange(len(self.model.Hamiltonian._pairs)) #assumes you use all pairs
+        self.pairs = self.model.mapping._contact_pairs
+        self.use_pairs = []
+        for i in self.use_params: #only load relevant parameters
+            self.use_pairs.append([self.pairs[i][0].index, self.pairs[i][1].index])
+        
+        self.epsilons = self.model.fitted_epsilons
     
     def get_potentials_epsilon(self, data):
         """ Return PotentialEnergy(epsilons)  
@@ -188,23 +200,44 @@ class ProteinNonLinear(Protein):
         
 '''        
 
-class ProteinAwsem(model):
+class ProteinAwsem(ProtoProtein):
     def __init__(self, ini_file_name):
-        self.GAS_CONSTANT_KJ_MOL = 0.0083144621 #kJ/mol*k
-        
-        ##remove .ini suffix
-        self.model, self.fittingopts = mdb.inputs.load_model(ini_file_name)
-        
-        if "fret_pairs" in self.fittingopts and not self.fittingopts["fret_pairs"] is None:
-            self.fret_pairs = self.fittingopts["fret_pairs"]
-        else:
-            self.fret_pairs = [None]
-            
-        
-        self.epsilons = self.model.fitted_epsilons
-        self.beta = 1.0 #set temperature
+        ProtoProtein.__init__(self, ini_file_name)
+        self.GAS_CONSTANT_KJ_MOL /= 4.184 #convert to kCal/mol*K
     
     def add_contact_params(self):
+        """ Add direct contact interactions for fitting
+        
+        Only uses the gammas that are present in the model. It has to 
+        assign each interaction to a corresponding gamma, as well as 
+        collect epsilon values(gammas) that exist. Code is weird, as its 
+        more memory intensive than it needs to be so that sorting things 
+        can be completed in 2N+210 time. Where N is the number of direct 
+        potentials in the model, and 210 is the number of possible 
+        unique gammas it has to sort through. N~R**2, where R is 
+        number of residues so minimizing the number of times it goes 
+        through each list. 
+        
+        Attributes:
+            use_pairs: list of pair interactions, list contains atom 
+                indices for interactions.
+            gamma: 20x20 gamma-matrix. gm(i,j) = gm(j,i). 
+            gamma_indices: Nx2 array of gamma-matrix indices for each 
+                parameter
+            use_indices: List with X attributes, where X is number of  
+                unique gammas. Values are gamma indices used.
+            use_params: List with X attributes. Values are gamma values 
+                from the gamma-matrix corresponding to indices in 
+                use_indices.
+            param_assignment: List of len=N, values are the index for 
+                each interaction's corresponding gamma in the use_params 
+                list.
+            param_assigned_indices: List of len=X, 
+                param_assigned_indices[i] = [indices], where indices are 
+                the index of the N parameters with the 
+                gamma indices = use_indices[i]
+        
+        """
         # get indices corresponding to epsilons to use
         # Assumes only parameters to change are pair interactions
         self.use_pairs = []
@@ -218,24 +251,81 @@ class ProteinAwsem(model):
         #go through gamma, append the parameters to use_params
         self.use_indices = []
         self.use_params = []
+        check_index_array = np.zeros((20,20))
+        check_index_assignment = []
+        #go through list, mark all positions where a potential is found
+        for i in range(np.shape(self.gamma_indices)[0]):
+            idx = self.gamma_indices[i,0]
+            jdx = self.gamma_indices[i,1]
+            check_index_array[idx,jdx] = 1 #set to 1 if found
+            check_index_assignment.append((i*20) + j) #convert 2-d to 1-d value
+            
+        #save index if check(i,j) = 1 or check(j, i) = 1
+        count = 0
+        check_index_conversion_array = np.zeros(400).astype(int)
+        check_index_conversion_array -= 1
         for i in range(20): #this potential is always 20x20
             for j in np.arange(i,20):
-                if self._check_indices(i,j,self.gamma_indices):
+                if check_index_array[i,j] == 1 or check_index_array[j,i] == 1:
                     self.use_indices.append([i,j])
                     self.use_params.append(self.gamma[i,j])
+                    coord1 = (i*20) + j
+                    coord2 = (j*20) + i
+                    check_index_conversion_array[coord1] = count
+                    check_index_conversion_array[coord2] = count
+                    
+        #Now we have which sets of gamma are indeed used.
+        #Next, assign each interaction to each parameter, for later
+        self.param_assignment = [] #each potential has value of parameter index
+        self.param_assigned_indices = [[] for i in range(len(self.use_indices))]
+        for i in range(len(check_index_assignment)):
+            param_idx = check_index_conversion_array[check_index_assignment[i]]
+            self.param_assignment.append(param_idx)
+            self.param_assigned_indices[param_idx].append(i)
+        
+        ##### assertion checks #####
+        # Check consistency of param_assignment and param_assigned_indices 
+        for idx, lst in enumerate(self.param_assigned_indices):
+            for index in lst:
+                assert self.param_assignment[index] == idx
+            
+    def get_potentials_epsilon(self, data):
+        """ Return PotentialEnergy(epsilons)  
+        
+        See superclass for full description of purpose.
+        Override superclass. Potential Energy is easily calculated since
+        for this model, all epsilons are linearly related to the 
+        potential energy.
+        
+        """
+        
+        #check to see if data is the expected shape for this analysis:
+        if not np.shape(data)[1] == np.shape(self.use_params)[0]:
+            err_str = "dimensions of data incompatible with number of parameters\n"
+            err_str += "Second index must equal number of parameters \n"
+            err_str += "data is: %s, number of parameters is: %d" %(str(np.shape(data)), len(self.use_params))
+            raise IOError(err_str)
+        
+        #list of constant pre factors to each model epsilons
+        constants_list = [] 
+        constants_list_derivatives = []
+        for i in self.use_params:
+            constants_list.append(self.model.Hamiltonian._pairs[i].dVdeps(data[:,i]) )
+            constants_list_derivatives.append(self.model.Hamiltonian._pairs[i].dVdeps(data[:,i])* -1. * self.beta  )
+        #compute the function for the potential energy
+        def hepsilon(epsilons):
+            total = np.zeros(np.shape(data)[0])
+            for i in range(np.shape(epsilons)[0]):
+                value = epsilons[i]*constants_list[i]
+                total += value * -1. * self.beta
+
+            return total     
+        
+        #compute the function for the derivative of the potential energy
+        def dhepsilon(epsilons):
+            #first index is corresponding epsilon, second index is frame
+
+            return constants_list_derivatives
+        
+        return hepsilon, dhepsilon
     
-    def _check_indices(self, idx, jdx, list_indices):
-        num_params = np.shape(list_indices)[0]
-        i = 0
-        go = True
-        found = False
-        while go:
-            if list_indices[i,0] == idx and list_indices[i,1] == jdx:
-                go = False
-                found = True
-            i += 1
-            if i == num_params:
-                go = False
-        
-        return found
-        
