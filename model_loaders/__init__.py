@@ -25,4 +25,4 @@ from super_model import ModelLoader
 from langevin_1d import Langevin
 from proteins import Protein
 from proteins import ProteinNonLinear
-
+from proteins import ProteinAwsem
