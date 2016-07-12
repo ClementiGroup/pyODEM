@@ -201,8 +201,11 @@ class ProteinNonLinear(Protein):
 '''        
 
 class ProteinAwsem(ProtoProtein):
-    def __init__(self, ini_file_name):
-        ProtoProtein.__init__(self, ini_file_name)
+    def __init__(self, top):
+        #ProtoProtein.__init__(self, ini_file_name) #not implemented Need to do so in future, but will require modelbuilder implementation as well
+        self.model = mdb.models.AwsemModel(top)
+        self.beta = 1.0
+        self.GAS_CONSTANT_KJ_MOL = 0.0083144621 #kJ/mol*k
         self.GAS_CONSTANT_KJ_MOL /= 4.184 #convert to kCal/mol*K
     
     def add_contact_params(self):
@@ -243,7 +246,7 @@ class ProteinAwsem(ProtoProtein):
         self.use_pairs = []
         array_pairs = self.model.Hamiltonian._contact_pairs
         for i in range(np.shape(array_pairs)[0]):
-             self.use_pairs.append(use_pairs[i,:])
+             self.use_pairs.append(array_pairs[i,:])
 
         self.gamma_indices = self.model.Hamiltonian._contact_gamma_idxs
         self.gamma = self.model.Hamiltonian.gamma_direct        
@@ -258,7 +261,7 @@ class ProteinAwsem(ProtoProtein):
             idx = self.gamma_indices[i,0]
             jdx = self.gamma_indices[i,1]
             check_index_array[idx,jdx] = 1 #set to 1 if found
-            check_index_assignment.append((i*20) + j) #convert 2-d to 1-d value
+            check_index_assignment.append((idx*20) + jdx) #convert 2-d to 1-d value
             
         #save index if check(i,j) = 1 or check(j, i) = 1
         count = 0
@@ -310,7 +313,10 @@ class ProteinAwsem(ProtoProtein):
             
         """
         
+        #remarkably, traj object is indexable like an array
+        #it is however only a 1-D array
         traj = md.load(fname, top=self.model.mapping.topology)
+        
 
         return traj  
     
@@ -335,7 +341,7 @@ class ProteinAwsem(ProtoProtein):
         self.param_assigned_indices
         
         for indices,param in zip(self.param_assigned_indices,self.use_params):
-            constant_value = np.sum(potentials[:,indices]) / param
+            constant_value = np.sum(potentials[:,indices], axis=1) / param
             constants_list.append(constant_value)
             constants_list_derivatives.append(constant_value * -1. * self.beta)
             
