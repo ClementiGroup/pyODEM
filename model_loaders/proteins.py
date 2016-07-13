@@ -201,11 +201,8 @@ class ProteinNonLinear(Protein):
 '''        
 
 class ProteinAwsem(ProtoProtein):
-    def __init__(self, top):
-        #ProtoProtein.__init__(self, ini_file_name) #not implemented Need to do so in future, but will require modelbuilder implementation as well
-        self.model = mdb.models.AwsemModel(top)
-        self.beta = 1.0
-        self.GAS_CONSTANT_KJ_MOL = 0.0083144621 #kJ/mol*k
+    def __init__(self, ini_file_name):
+        ProtoProtein.__init__(self, ini_file_name) #not implemented Need to do so in future, but will require modelbuilder implementation as well
         self.GAS_CONSTANT_KJ_MOL /= 4.184 #convert to kCal/mol*K
     
     def add_contact_params(self):
@@ -320,6 +317,17 @@ class ProteinAwsem(ProtoProtein):
 
         return traj  
     
+    def save_epsilons(self, new_epsilons):
+        assert np.shape(new_epsilons)[0] == len(self.use_indices)
+        gamma_matrix = self.model.Hamiltonian.gamma_direct
+        for idx,eps in zip(self.use_indices, new_epsilons):
+            gamma_matrix[idx[0], idx[1]] = eps
+            gamma_matrix[idx[1], idx[0]] = eps
+        
+        for i in range(20):
+            for j in range(i+1, 20):
+                assert gamma_matrix[i,j] == gamma_matrix[i,j]
+        
     def get_potentials_epsilon(self, data):
         """ Return PotentialEnergy(epsilons)  
         
