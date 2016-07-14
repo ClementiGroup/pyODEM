@@ -43,7 +43,7 @@ class FailedToOptimizeException(Exception):
         super(FailedToOptimizeException, self).__init__(message)
 
 #### SCIPY OPTIMIZER WRAPPERS ####
-def solve_simplex(Qfunc, x0):
+def solve_simplex(Qfunc, x0, tol=None):
     """ Optimizes a function using the scipy siplex method.
     
     This method does not require computing the Jacobian and works in 
@@ -64,7 +64,7 @@ def solve_simplex(Qfunc, x0):
         
     """
     
-    optimal = optimize.minimize(Qfunc, x0, method="Nelder-Mead")
+    optimal = optimize.minimize(Qfunc, x0, method="Nelder-Mead", tol=tol)
     
     if not optimal.success == True:
         terms = {"message":optimal.message}
@@ -72,25 +72,25 @@ def solve_simplex(Qfunc, x0):
            
     return optimal.x
     
-def solve_cg(Qfunc, x0, norm=1, gtol=10**-5, bounds=None):
+def solve_cg(Qfunc, x0, norm=1, gtol=10**-5, bounds=None, tol=None):
     """ use the scipy.optimize.minimize, method=CG """
     
     if bounds is None:
-        optimal = optimize.minimize(Qfunc, x0, jac=True, method="CG", options={'norm':norm, 'gtol':gtol})
+        optimal = optimize.minimize(Qfunc, x0, jac=True, method="CG", tol=None, options={'norm':norm, 'gtol':gtol})
     else:
-        optimal = optimize.minimize(Qfunc, x0, jac=True, method="CG", options={'norm':norm, 'gtol':gtol}, bounds=bounds)
+        optimal = optimize.minimize(Qfunc, x0, jac=True, method="CG", tol=None, options={'norm':norm, 'gtol':gtol}, bounds=bounds)
     if not optimal.success == True:
         terms = {"message":optimal.message}
         raise FailedToOptimizeException("Conjugate-Gradient", terms) 
         
     return optimal.x
 
-def solve_bfgs(Qfunc, x0, bounds=None, gtol=10**-5):
+def solve_bfgs(Qfunc, x0, bounds=None, gtol=10**-5, tol=None):
     """ Use the scipy.optimize.minimize (bfgs) method"""
     if bounds is None:
-        optimal = optimize.minimize(Qfunc, x0, method="L-BFGS-B", jac=True, options={'gtol':gtol})
+        optimal = optimize.minimize(Qfunc, x0, method="L-BFGS-B", jac=True, tol=None, options={'gtol':gtol})
     else:
-        optimal = optimize.minimize(Qfunc, x0, method="L-BFGS-B", jac=True, bounds=bounds, options={'gtol':gtol})
+        optimal = optimize.minimize(Qfunc, x0, method="L-BFGS-B", jac=True, bounds=bounds, tol=None, options={'gtol':gtol})
     if not optimal.success == True:
         terms = {"message":optimal.message}
         raise FailedToOptimizeException("BFGS", terms) 
