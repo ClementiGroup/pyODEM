@@ -178,9 +178,11 @@ class EstimatorsObject(object):
         total_time = (t2-t1) / 60.0
         print "Initializaiton Completed: %f Minutes" % total_time 
         
+        ##debugging options below
         self.count_Qcalls = 0
         self.count_hepsilon = 0
         self.count_dhepsilon = 0
+        self.trace_Q_values= []
         
     def get_reweighted_observable_function(self):
         return self.calculate_observables_reweighted
@@ -248,7 +250,11 @@ class EstimatorsObject(object):
         
         #Minimization, so make maximal value a minimal value with a negative sign.
         Q = -1.0 * self.Q_function(next_observed) 
-
+        
+        ##debug
+        self.count_Qcalls += 1
+        self.trace_Q_values.append(Q)
+        
         return Q
         
     def log_Qfunction_epsilon(self, epsilons, Count=0):
@@ -257,6 +263,11 @@ class EstimatorsObject(object):
         #Minimization, so make maximal value a minimal value with a negative sign.
         Q = self.log_Q_function(next_observed) 
         #print epsilons
+        
+        ##debug
+        self.count_Qcalls += 1
+        self.trace_Q_values.append(Q)
+        
         return Q
 
     def derivatives_Qfunction_epsilon(self, epsilons, Count=0):
@@ -289,8 +300,6 @@ class EstimatorsObject(object):
         
         dQ_vector = np.array(dQ_vector)
         
-        ##debug
-        self.count_Qcalls += 1
         return Q, dQ_vector
     
     def get_derivative_pieces(self, epsilons, boltzman_weights):
