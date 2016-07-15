@@ -409,7 +409,21 @@ class HamiltonianCalculator(object):
                 total_list = list(this_list)
                 
         return total_list
+    
+    def save_debug_files(self):
+        """ save debug files
         
+        file1: counts for functions calls.
+        file2: trace of Q values during optmization
+        
+        """
+        
+        f = open("function_calls.dat", "w")
+        f.write("Number of times Q was computed: %d\n" % self.count_Qcalls)
+        f.write("Number of times the Hamiltonian was computed: %d\n" % self.count_hepsilon)
+        f.write("Number of times the derivative of the Hamiltonian was computed: %d\n" % self.count_dhepsilon)
+        
+        np.savetxt("trace_Q_values.dat", self.trace_Q_values)
         
 def save_error_files(diff, epsilons, h0, kshift):
     np.savetxt("ERROR_EXPONENTIAL_FUNCTION", diff)
