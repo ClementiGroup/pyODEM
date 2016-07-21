@@ -2,6 +2,7 @@
 
 import numpy as np
 import time
+import mdtraj as md
 
 np.seterr(over="raise")
 
@@ -63,6 +64,12 @@ class EstimatorsObject(object):
         self.pi = []
         self.ni = []
         
+        ##calculate the number of frames data has
+        if type(data) is md.core.trajectory.Trajectory:
+            total_data_frames = data.n_frames
+        else: #its an array
+            total_data_frames = np.shape(data)[0]
+            
         ####Format Inputs####
         
         ##Check obs_data
@@ -79,7 +86,7 @@ class EstimatorsObject(object):
         else: #convert model to be a list, construct model_state
             model = [model]
             if model_state is None:
-                model_state = np.array([0 for i in range(np.shape(data)[0])])
+                model_state = np.array([0 for i in range(total_data_frames)
         self.num_models = len(model)
         self.model = model
         self.current_epsilons = model[0].get_epsilons() #assumes the first model is the one you want
@@ -89,7 +96,7 @@ class EstimatorsObject(object):
         if not np.max(model_state) < len(model):
             raise IOError("model_state formatted incorrectly. Values should be 0-X, where length of model is X+1") 
         
-        if not np.shape(data)[0] == np.shape(model_state)[0]:
+        if not total_data_frames == np.shape(model_state)[0]:
             raise IOError("shape of model_state and data do not match")
             
         #load data for each set, and compute energies and observations
@@ -99,7 +106,8 @@ class EstimatorsObject(object):
         for state_indices in data_sets:
             count += 1
             use_data = data[state_indices]
-            self.state_size.append(np.shape(use_data)[0])
+            num_in_set = np.shape(state_indices)[0]
+            self.state_size.append(num_in_set)
             which_model = model_state[state_indices]
             ##assumes order does not matter, so long as relative order is preserved.
             ##since the epsilons_function and derivatives are summed up later
@@ -125,7 +133,7 @@ class EstimatorsObject(object):
             num_functions = len(this_epsilons_function)
             
             ##define new wrapper functions to wrap up the computation of several hamiltonians
-            ham_calc = HamiltonianCalculator(this_epsilons_function, this_derivatives_function, self.number_params, np.shape(use_data)[0], count)
+            ham_calc = HamiltonianCalculator(this_epsilons_function, this_derivatives_function, self.number_params, num_in_set, count)
             
             self.epsilons_functions.append(ham_calc.epsilon_function)
             self.derivatives_functions.append(ham_calc.derivatives_function)
@@ -136,7 +144,6 @@ class EstimatorsObject(object):
             for obs_dat in obs_data:
                 use_obs_data.append(obs_dat[state_indices])
             observed, obs_std = observables.compute_observations(use_obs_data)
-            num_in_set = np.shape(use_data)[0]
             
             self.expectation_observables.append(observed)
 
