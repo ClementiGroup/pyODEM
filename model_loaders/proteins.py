@@ -327,7 +327,10 @@ class ProteinAwsem(ProtoProtein):
         for i in range(20):
             for j in range(i+1, 20):
                 assert gamma_matrix[i,j] == gamma_matrix[i,j]
-        
+    
+    def save_debug_files(self):
+        pass
+    
     def get_potentials_epsilon(self, data):
         """ Return PotentialEnergy(epsilons)  
         
