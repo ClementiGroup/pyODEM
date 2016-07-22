@@ -132,7 +132,7 @@ class EstimatorsObject(object):
                 assert len(this_epsilons_function) == len(this_derivatives_function)
             num_functions = len(this_epsilons_function)
             
-            ##define new wrapper functions to wrap up the computation of several hamiltonians
+            ##define new wrapper functions to wrap up the computation of several hamiltonians from different models
             ham_calc = HamiltonianCalculator(this_epsilons_function, this_derivatives_function, self.number_params, num_in_set, count)
             
             self.epsilons_functions.append(ham_calc.epsilon_function)
@@ -190,6 +190,7 @@ class EstimatorsObject(object):
         self.count_hepsilon = 0
         self.count_dhepsilon = 0
         self.trace_Q_values= []
+        self.trace_loq_Q_values= []
         
     def get_reweighted_observable_function(self):
         return self.calculate_observables_reweighted
@@ -273,7 +274,7 @@ class EstimatorsObject(object):
         
         ##debug
         self.count_Qcalls += 1
-        self.trace_Q_values.append(Q)
+        self.trace_log_Q_values.append(Q)
         
         return Q
 
@@ -291,6 +292,8 @@ class EstimatorsObject(object):
             
         dQ_vector = -1. * np.array(dQ_vector)
         Q *= -1.
+        
+        self.trace_Q_values.append(Q)
         return Q, dQ_vector
 
     def derivatives_log_Qfunction_epsilon(self, epsilons, Count=0):
@@ -307,6 +310,7 @@ class EstimatorsObject(object):
         
         dQ_vector = np.array(dQ_vector)
         
+        self.trace_log_Q_values.append(Q)
         return Q, dQ_vector
     
     def get_derivative_pieces(self, epsilons, boltzman_weights):
@@ -371,7 +375,25 @@ class EstimatorsObject(object):
         for idx,state in enumerate(boltzman_weights):
             assert np.shape(state)[0] == self.state_size[idx]
         return boltzman_weights 
-
+    
+    def save_debug_files(self):
+        """ save debug files
+        
+        file1: counts for functions calls.
+        file2: trace of Q values during optmization
+        
+        """
+        
+        f = open("function_calls.dat", "w")
+        f.write("Number of times Q was computed: %d\n" % self.count_Qcalls)
+        f.write("Number of times the Hamiltonian was computed: %d\n" % self.count_hepsilon)
+        f.write("Number of times the derivative of the Hamiltonian was computed: %d\n" % self.count_dhepsilon)
+        
+        np.savetxt("trace_Q_values.dat", self.trace_Q_values)
+        np.savetxt("trace_log_Q_values.dat", self.trace_log_Q_values)
+        
+        
+        
 class HamiltonianCalculator(object):
     def __init__(self, hamiltonian_list, derivative_list, number_params, size, state):
         self.hamiltonian_list = hamiltonian_list
@@ -417,21 +439,7 @@ class HamiltonianCalculator(object):
                 
         return total_list
     
-    def save_debug_files(self):
-        """ save debug files
-        
-        file1: counts for functions calls.
-        file2: trace of Q values during optmization
-        
-        """
-        
-        f = open("function_calls.dat", "w")
-        f.write("Number of times Q was computed: %d\n" % self.count_Qcalls)
-        f.write("Number of times the Hamiltonian was computed: %d\n" % self.count_hepsilon)
-        f.write("Number of times the derivative of the Hamiltonian was computed: %d\n" % self.count_dhepsilon)
-        
-        np.savetxt("trace_Q_values.dat", self.trace_Q_values)
-        
+    
 def save_error_files(diff, epsilons, h0, kshift):
     np.savetxt("ERROR_EXPONENTIAL_FUNCTION", diff)
     np.savetxt("ERROR_EPSILONS", epsilons)
