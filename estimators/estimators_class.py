@@ -86,7 +86,7 @@ class EstimatorsObject(object):
         else: #convert model to be a list, construct model_state
             model = [model]
             if model_state is None:
-                model_state = np.array([0 for i in range(total_data_frames)
+                model_state = np.array([0 for i in range(total_data_frames)])
         self.num_models = len(model)
         self.model = model
         self.current_epsilons = model[0].get_epsilons() #assumes the first model is the one you want
