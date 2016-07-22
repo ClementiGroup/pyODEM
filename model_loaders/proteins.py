@@ -355,7 +355,7 @@ class ProteinAwsem(ProtoProtein):
             
         #compute the function for the potential energy
         def hepsilon(epsilons):
-            total = np.zeros(np.shape(data)[0])
+            total = np.zeros(data.n_frames)
             for i in range(np.shape(epsilons)[0]):
                 value = epsilons[i]*constants_list[i]
                 total += value * -1. * self.beta
