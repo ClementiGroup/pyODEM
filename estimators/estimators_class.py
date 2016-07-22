@@ -190,7 +190,7 @@ class EstimatorsObject(object):
         self.count_hepsilon = 0
         self.count_dhepsilon = 0
         self.trace_Q_values= []
-        self.trace_loq_Q_values= []
+        self.trace_log_Q_values = []
         
     def get_reweighted_observable_function(self):
         return self.calculate_observables_reweighted
