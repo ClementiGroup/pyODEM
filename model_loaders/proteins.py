@@ -326,10 +326,32 @@ class ProteinAwsem(ProtoProtein):
         
         for i in range(20):
             for j in range(i+1, 20):
-                assert gamma_matrix[i,j] == gamma_matrix[i,j]
+                assert gamma_matrix[i,j] == gamma_matrix[j,i]
     
-    def save_debug_files(self):
-        pass
+    def save_debug_files(self, old_eps, new_eps):
+        f = open("debug_used_parameters.txt", "w")
+        for index in self.use_indices:
+            f.write(self.model.Hamiltonian.gamma_residues[index[0]])
+            f.write(" - ")
+            f.write(self.model.Hamiltonian.gamma_residues[index[1]])
+            f.write("\n")
+        f.close()
+        np.savetxt("debug_old_eps.dat", old_eps)
+        np.savetxt("debug_new_eps.dat", new_eps)
+        
+        diff = new_eps-old_eps
+        np.savetxt("debug_diff_eps.dat", diff)
+        sort_idxs = np.argsort(np.abs(diff))
+        wrt_str = ""
+        for idx in sort_idxs:
+            res1 = self.model.Hamiltonian.gamma_residues[use_indices[idx][0]]
+            res2 = self.model.Hamiltonian.gamma_residues[use_indices[idx][1]]
+            this_str =  "%s - %s   %f\n" %(res1, res2, diff[idx])
+            wrt_str = this_str + wrt_str
+        
+        f = open("debug_sorted_parameters.txt", "w")
+        f.write(wrt_str)
+        f.close()
     
     def get_potentials_epsilon(self, data):
         """ Return PotentialEnergy(epsilons)  
