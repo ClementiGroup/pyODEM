@@ -344,8 +344,8 @@ class ProteinAwsem(ProtoProtein):
         sort_idxs = np.argsort(np.abs(diff))
         wrt_str = ""
         for idx in sort_idxs:
-            res1 = self.model.Hamiltonian.gamma_residues[use_indices[idx][0]]
-            res2 = self.model.Hamiltonian.gamma_residues[use_indices[idx][1]]
+            res1 = self.model.Hamiltonian.gamma_residues[self.use_indices[idx][0]]
+            res2 = self.model.Hamiltonian.gamma_residues[self.use_indices[idx][1]]
             this_str =  "%s - %s   %f\n" %(res1, res2, diff[idx])
             wrt_str = this_str + wrt_str
         
