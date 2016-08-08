@@ -273,6 +273,7 @@ class ProteinAwsem(ProtoProtein):
                     coord2 = (j*20) + i
                     check_index_conversion_array[coord1] = count
                     check_index_conversion_array[coord2] = count
+                    count += 1
                     
         #Now we have which sets of gamma are indeed used.
         #Next, assign each interaction to each parameter, for later
