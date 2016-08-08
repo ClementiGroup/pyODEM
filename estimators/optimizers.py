@@ -76,9 +76,9 @@ def solve_cg(Qfunc, x0, norm=1, gtol=10**-5, bounds=None, tol=None):
     """ use the scipy.optimize.minimize, method=CG """
     
     if bounds is None:
-        optimal = optimize.minimize(Qfunc, x0, jac=True, method="CG", tol=None, options={'norm':norm, 'gtol':gtol})
+        optimal = optimize.minimize(Qfunc, x0, jac=True, method="CG", tol=tol, options={'norm':norm, 'gtol':gtol})
     else:
-        optimal = optimize.minimize(Qfunc, x0, jac=True, method="CG", tol=None, options={'norm':norm, 'gtol':gtol}, bounds=bounds)
+        optimal = optimize.minimize(Qfunc, x0, jac=True, method="CG", tol=tol, options={'norm':norm, 'gtol':gtol}, bounds=bounds)
     if not optimal.success == True:
         terms = {"message":optimal.message}
         raise FailedToOptimizeException("Conjugate-Gradient", terms) 
@@ -88,9 +88,9 @@ def solve_cg(Qfunc, x0, norm=1, gtol=10**-5, bounds=None, tol=None):
 def solve_bfgs(Qfunc, x0, bounds=None, gtol=10**-5, tol=None, maxiter=10000):
     """ Use the scipy.optimize.minimize (bfgs) method"""
     if bounds is None:
-        optimal = optimize.minimize(Qfunc, x0, method="L-BFGS-B", jac=True, tol=None, options={'gtol':gtol, 'maxiter':maxiter})
+        optimal = optimize.minimize(Qfunc, x0, method="L-BFGS-B", jac=True, tol=tol, options={'gtol':gtol, 'maxiter':maxiter})
     else:
-        optimal = optimize.minimize(Qfunc, x0, method="L-BFGS-B", jac=True, bounds=bounds, tol=None, options={'gtol':gtol, 'maxiter':maxiter})
+        optimal = optimize.minimize(Qfunc, x0, method="L-BFGS-B", jac=True, bounds=bounds, tol=tol, options={'gtol':gtol, 'maxiter':maxiter})
     if not optimal.success == True:
         terms = {"message":optimal.message}
         raise FailedToOptimizeException("BFGS", terms) 
