@@ -294,6 +294,8 @@ class EstimatorsObject(object):
         Q *= -1.
         
         self.trace_Q_values.append(Q)
+        self.count_Qcalls += 1
+
         return Q, dQ_vector
 
     def derivatives_log_Qfunction_epsilon(self, epsilons, Count=0):
@@ -311,6 +313,8 @@ class EstimatorsObject(object):
         dQ_vector = np.array(dQ_vector)
         
         self.trace_log_Q_values.append(Q)
+        self.count_Qcalls += 1
+        
         return Q, dQ_vector
     
     def get_derivative_pieces(self, epsilons, boltzman_weights):
@@ -388,6 +392,7 @@ class EstimatorsObject(object):
         f.write("Number of times Q was computed: %d\n" % self.count_Qcalls)
         f.write("Number of times the Hamiltonian was computed: %d\n" % self.count_hepsilon)
         f.write("Number of times the derivative of the Hamiltonian was computed: %d\n" % self.count_dhepsilon)
+        f.write("Number of equilibrium states used: %d\n" % self.number_equilibrium_states)
         
         np.savetxt("trace_Q_values.dat", self.trace_Q_values)
         np.savetxt("trace_log_Q_values.dat", self.trace_log_Q_values)
