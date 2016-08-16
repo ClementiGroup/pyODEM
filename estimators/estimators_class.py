@@ -397,6 +397,7 @@ class EstimatorsObject(object):
         np.savetxt("trace_Q_values.dat", self.trace_Q_values)
         np.savetxt("trace_log_Q_values.dat", self.trace_log_Q_values)
         
+        f.close()
         
         
 class HamiltonianCalculator(object):
