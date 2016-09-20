@@ -205,6 +205,16 @@ class ProteinAwsem(ProtoProtein):
         ProtoProtein.__init__(self, ini_file_name) #not implemented Need to do so in future, but will require modelbuilder implementation as well
         self.GAS_CONSTANT_KJ_MOL /= 4.184 #convert to kCal/mol*K
     
+    def add_fragment_memory_prams(self):
+        """ Add fragment memory interactions for fitting """
+        
+        self.use_frag = True
+        self.epsilons = []
+        for potential in self.model.Hamiltonian.fragment_potentials:
+            self.epsilons.append(potential.weight)
+        self.frag_scale = self.model.Hamiltonian.fragment_memory_scale
+        
+        
     def add_contact_params(self):
         """ Add direct contact interactions for fitting
         
@@ -238,6 +248,7 @@ class ProteinAwsem(ProtoProtein):
                 gamma indices = use_indices[i]
         
         """
+        self.use_gammas = True
         # get indices corresponding to epsilons to use
         # Assumes only parameters to change are pair interactions
         self.use_pairs = []
@@ -329,6 +340,15 @@ class ProteinAwsem(ProtoProtein):
             for j in range(i+1, 20):
                 assert gamma_matrix[i,j] == gamma_matrix[j,i]
     
+    def save_fragment_memory_parameters(self, new_eps, write=False):
+        assert np.shape(new_eps)[0] == np.shape(self.epsilons)[0]
+        
+        for i in range(np.shape(new_eps)[0]):
+            self.model.Hamiltonian.fragment_potentials[i].weight = new_eps[i]
+        
+        if write:
+            self.model.write_new_fragment_memory()
+            
     def save_debug_files(self, old_eps, new_eps):
         f = open("debug_used_parameters.txt", "w")
         for index in self.use_indices:
@@ -367,18 +387,27 @@ class ProteinAwsem(ProtoProtein):
         constants_list = [] 
         constants_list_derivatives = []
         
-        #for potentials, 1st index is frame, 2nd index is potential function
-        potentials = self.model.Hamiltonian.calculate_direct_energy(data, total=False)
-        
-        assert np.shape(potentials)[1] == len(self.param_assignment)
-        
-        self.param_assigned_indices
-        
-        for indices,param in zip(self.param_assigned_indices,self.use_params):
-            constant_value = np.sum(potentials[:,indices], axis=1) / param
-            constants_list.append(constant_value)
-            constants_list_derivatives.append(constant_value * -1. * self.beta)
+        if self.use_gammas == self.use_frag:
+            raise IOError("Both gammas and fragment memory are set to: %s" % (str(self.use_gammas)))
             
+        #Depending on which flag is on, it will compose constants_list and constants_list_derivatives     
+        if self.use_gammas:
+            #for potentials, 1st index is frame, 2nd index is potential function
+            potentials = self.model.Hamiltonian.calculate_direct_energy(data, total=False)
+            assert np.shape(potentials)[1] == len(self.param_assignment)
+        
+            for indices,param in zip(self.param_assigned_indices,self.use_params):
+                constant_value = np.sum(potentials[:,indices], axis=1) / param
+                constants_list.append(constant_value)
+                constants_list_derivatives.append(constant_value * -1. * self.beta)
+        elif self.use_frag:
+            potentials = self.model.Hamiltonian.calculate_fragment_memory_potential(data, total=False)
+            for idx in range(np.shape(potentials)[0]):
+                rescale_constants = potentials[idx,:]/self.epsilon[idx]
+                constants_list.append(rescale_constants)
+                constants_list_derivatives.append(rescale_constants * -1. * self.beta)
+            assert np.shape(epsilons)[0] == np.shape(potentials)[0]
+                
         #compute the function for the potential energy
         def hepsilon(epsilons):
             total = np.zeros(data.n_frames)
