@@ -204,7 +204,8 @@ class ProteinAwsem(ProtoProtein):
     def __init__(self, ini_file_name):
         ProtoProtein.__init__(self, ini_file_name) #not implemented Need to do so in future, but will require modelbuilder implementation as well
         self.GAS_CONSTANT_KJ_MOL /= 4.184 #convert to kCal/mol*K
-    
+        self.use_frag = False
+        self.use_gammas = False
     def add_fragment_memory_params(self):
         """ Add fragment memory interactions for fitting """
         
@@ -212,6 +213,7 @@ class ProteinAwsem(ProtoProtein):
         self.epsilons = []
         for potential in self.model.Hamiltonian.fragment_potentials:
             self.epsilons.append(potential.weight)
+        self.epsilons = np.array(self.epsilons)
         self.frag_scale = self.model.Hamiltonian.fragment_memory_scale
         
         
@@ -401,12 +403,12 @@ class ProteinAwsem(ProtoProtein):
                 constants_list.append(constant_value)
                 constants_list_derivatives.append(constant_value * -1. * self.beta)
         elif self.use_frag:
-            potentials = self.model.Hamiltonian.calculate_fragment_memory_potential(data, total=False)
+            potentials = self.model.Hamiltonian.compute_fragment_memory_potential(data, total=False)
             for idx in range(np.shape(potentials)[0]):
-                rescale_constants = potentials[idx,:]/self.epsilon[idx]
+                rescale_constants = potentials[idx,:]/self.epsilons[idx]
                 constants_list.append(rescale_constants)
                 constants_list_derivatives.append(rescale_constants * -1. * self.beta)
-            assert np.shape(epsilons)[0] == np.shape(potentials)[0]
+            assert np.shape(self.epsilons)[0] == np.shape(potentials)[0]
                 
         #compute the function for the potential energy
         def hepsilon(epsilons):
