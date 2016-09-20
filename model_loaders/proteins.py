@@ -205,7 +205,7 @@ class ProteinAwsem(ProtoProtein):
         ProtoProtein.__init__(self, ini_file_name) #not implemented Need to do so in future, but will require modelbuilder implementation as well
         self.GAS_CONSTANT_KJ_MOL /= 4.184 #convert to kCal/mol*K
     
-    def add_fragment_memory_prams(self):
+    def add_fragment_memory_params(self):
         """ Add fragment memory interactions for fitting """
         
         self.use_frag = True
