@@ -340,14 +340,14 @@ class ProteinAwsem(ProtoProtein):
             for j in range(i+1, 20):
                 assert gamma_matrix[i,j] == gamma_matrix[j,i]
     
-    def save_fragment_memory_parameters(self, new_eps, write=False):
+    def save_fragment_memory_parameters(self, new_eps, name, directory, write=False):
         assert np.shape(new_eps)[0] == np.shape(self.epsilons)[0]
         
         for i in range(np.shape(new_eps)[0]):
             self.model.Hamiltonian.fragment_potentials[i].weight = new_eps[i]
         
         if write:
-            self.model.write_new_fragment_memory()
+            self.model.write_new_fragment_memory(directory, name)
             
     def save_debug_files(self, old_eps, new_eps):
         f = open("debug_used_parameters.txt", "w")
