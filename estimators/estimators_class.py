@@ -373,7 +373,7 @@ class EstimatorsObject(object):
                 exponents.append(exponent)
             for i in range(self.number_equilibrium_states):
                 boltzman_wt = np.exp(exponents[i] - max_val + K_shift)
-                boltzman_weights.append(boltmzan_wt)
+                boltzman_weights.append(boltzman_wt)
         
         assert len(boltzman_weights) == self.number_equilibrium_states
         for idx,state in enumerate(boltzman_weights):
