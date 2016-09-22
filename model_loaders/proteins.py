@@ -206,10 +206,10 @@ class ProteinAwsem(ProtoProtein):
         self.GAS_CONSTANT_KJ_MOL /= 4.184 #convert to kCal/mol*K
         self.use_frag = False
         self.use_gammas = False
-    def add_fragment_memory_params(self, param_path, mem_file, max_frag_length=9, cycle = True, fragment_memory_scale=0.1):
+    def add_fragment_memory_params(self, param_path, mem_file, max_frag_length=9, cycle=True, fragment_memory_scale=0.1):
         """ Add fragment memory interactions for fitting """
         
-        self.model.add_fragment_memory(self, param_path, mem_file, max_frag_length=max_frag_length, cycle = cycle, fragment_memory_scale=fragment_memory_scale)
+        self.model.add_fragment_memory(param_path, mem_file, max_frag_length=max_frag_length, cycle=cycle, fragment_memory_scale=fragment_memory_scale)
         
         self.use_frag = True
         self.epsilons = []
