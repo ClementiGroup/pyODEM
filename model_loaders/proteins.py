@@ -206,8 +206,10 @@ class ProteinAwsem(ProtoProtein):
         self.GAS_CONSTANT_KJ_MOL /= 4.184 #convert to kCal/mol*K
         self.use_frag = False
         self.use_gammas = False
-    def add_fragment_memory_params(self):
+    def add_fragment_memory_params(self, param_path, mem_file, max_frag_length=9, cycle = True, fragment_memory_scale=0.1):
         """ Add fragment memory interactions for fitting """
+        
+        self.model.add_fragment_memory(self, param_path, mem_file, max_frag_length=max_frag_length, cycle = cycle, fragment_memory_scale=fragment_memory_scale)
         
         self.use_frag = True
         self.epsilons = []
@@ -403,13 +405,13 @@ class ProteinAwsem(ProtoProtein):
                 constants_list.append(constant_value)
                 constants_list_derivatives.append(constant_value * -1. * self.beta)
         elif self.use_frag:
-            potentials = self.model.Hamiltonian.compute_fragment_memory_potential(data, total=False)
+            potentials = self.model.Hamiltonian.calculate_fragment_memory_potential(data, total=False)
             for idx in range(np.shape(potentials)[0]):
-                rescale_constants = potentials[idx,:]/self.epsilons[idx]
+                rescale_constants = potentials[idx,:] / self.epsilons[idx]
                 constants_list.append(rescale_constants)
                 constants_list_derivatives.append(rescale_constants * -1. * self.beta)
             assert np.shape(self.epsilons)[0] == np.shape(potentials)[0]
-                
+            
         #compute the function for the potential energy
         def hepsilon(epsilons):
             total = np.zeros(data.n_frames)
