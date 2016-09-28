@@ -152,9 +152,10 @@ class EstimatorsObject(object):
         
         ##check the assertion. make sure everything same size
         for i in range(self.number_equilibrium_states):
-            print "For state %d" % i
-            print np.shape(self.epsilons_functions[i](self.current_epsilons))[0]
-            print np.shape(self.h0[i])[0]
+            #in future, should add debug flags to print out extra stuff
+            #print "For state %d" % i
+            #print np.shape(self.epsilons_functions[i](self.current_epsilons))[0]
+            #print np.shape(self.h0[i])[0]
             assert np.shape(self.epsilons_functions[i](self.current_epsilons))[0] == np.shape(self.h0[i])[0]
             size = np.shape(self.epsilons_functions[i](self.current_epsilons))[0] 
             for arrr in self.derivatives_functions[i](self.current_epsilons):
