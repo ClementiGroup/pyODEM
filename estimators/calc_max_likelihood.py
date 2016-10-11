@@ -70,13 +70,13 @@ def max_likelihood_estimate(data, data_sets, observables, model, obs_data=None, 
     
     try:
         new_epsilons = func_solver(Qfunction_epsilon, current_epsilons, **kwargs)
-    except FailedToOptimizeException:
+    except:
         debug_dir = "debug_0"
-        for count in range(100)
+        for count in range(100):
             debug_dir = "debug_%d" % count
             if not os.path.isdir(debug_dir):
                 break
-        
+        os.mkdir(debug_dir)
         cwd = os.getcwd()
         os.chdir(debug_dir)
         eo.save_debug_files()

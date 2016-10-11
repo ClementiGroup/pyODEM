@@ -389,8 +389,8 @@ class EstimatorsObject(object):
         file2: trace of Q values during optmization
         
         """
-        cwd = os.getcwd
-        "Saving Debug files to %s" % cwd
+        cwd = os.getcwd()
+        print "Saving Debug files to %s" % cwd
         f = open("function_calls.dat", "w")
         f.write("Number of times Q was computed: %d\n" % self.count_Qcalls)
         f.write("Number of times the Hamiltonian was computed: %d\n" % self.count_hepsilon)
