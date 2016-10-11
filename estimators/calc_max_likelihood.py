@@ -10,6 +10,7 @@ import random
 import time
 import numpy as np
 import scipy.optimize as optimize
+import os
 
 from estimators_class import EstimatorsObject
 from optimizers import function_dictionary 
@@ -67,9 +68,21 @@ def max_likelihood_estimate(data, data_sets, observables, model, obs_data=None, 
     else:
         func_solver = solver #assume a valid method was passed to it
     
-
-    new_epsilons = func_solver(Qfunction_epsilon, current_epsilons, **kwargs)
-    
+    try:
+        new_epsilons = func_solver(Qfunction_epsilon, current_epsilons, **kwargs)
+    except FailedToOptimizeException:
+        debug_dir = "debug_0"
+        for count in range(100)
+            debug_dir = "debug_%d" % count
+            if not os.path.isdir(debug_dir):
+                break
+        
+        cwd = os.getcwd()
+        os.chdir(debug_dir)
+        eo.save_debug_files()
+        os.chdir(cwd)
+        raise
+        
     t2 = time.time()
     total_time = (t2-t1) / 60.0
     
