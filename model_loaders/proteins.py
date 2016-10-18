@@ -211,12 +211,14 @@ class ProteinAwsem(ProtoProtein):
         self.code_to_function = {"direct":self._get_gammas_potentials, "frag":self._get_frag_potentials}
         self._num_frag_parameters = 0
         self._num_gamma_parameters = 0
-    def make_epsilons_array(self, epsilons):
+
+    def make_epsilons_array(self, epsilons, code):
         if hasattr(self, "epsilons"):
             self.epsilons = np.append(self.epsilons, epsilons, axis=0)
         else:
             self.epsilons = np.array(epsilons)
-
+        for i in range(len(epsilons))
+            self.epsilons_codes.append(code)
         assert hasattr(self, "epsilons")
         assert self.epsilons.ndim == 1
 
@@ -230,14 +232,13 @@ class ProteinAwsem(ProtoProtein):
         self.frag_gammas = []
         for potential in self.model.Hamiltonian.fragment_potentials:
             self.frag_gammas.append(potential.weight)
-            self.epsilons_codes.append("frag")
             self._num_frag_parameters += 1
-        self.make_epsilons_array(self.frag_gammas)
+        self.make_epsilons_array(self.frag_gammasm "frag")
 
         self.frag_scale = self.model.Hamiltonian.fragment_memory_scale
 
 
-    def add_contact_params(self):
+    def add_contact_params(self, water_mediated=False):
         """ Add direct contact interactions for fitting
 
         Only uses the gammas that are present in the model. It has to
@@ -249,6 +250,10 @@ class ProteinAwsem(ProtoProtein):
         unique gammas it has to sort through. N~R**2, where R is
         number of residues so minimizing the number of times it goes
         through each list.
+
+        Args:
+            water_mediated: (bool) True will also add the water mediated
+                gammas to the end of the epsilons list. Default False.
 
         Attributes:
             use_pairs: list of pair interactions, list contains atom
@@ -271,6 +276,10 @@ class ProteinAwsem(ProtoProtein):
 
         """
         self.param_codes.append("direct")
+        self.water_mediated = water_mediated
+        if water_mediated:
+            self.param_codes.append("water_mediated")
+
         # get indices corresponding to epsilons to use
         # Assumes only parameters to change are pair interactions
         self.use_pairs = []
@@ -279,11 +288,15 @@ class ProteinAwsem(ProtoProtein):
              self.use_pairs.append(array_pairs[i,:])
 
         self.gamma_indices = self.model.Hamiltonian._contact_gamma_idxs
-        self.gamma = self.model.Hamiltonian.gamma_direct
-
+        self.direct_matrix = self.model.Hamiltonian.gamma_direct
+        self.water_matrix = self.model.Hamiltonian.gamma_water
+        self.protein_matrix = self.model.Hamiltonian.gamma_protein
         #go through gamma, append the parameters to use_params
         self.use_indices = []
-        self.use_params = []
+        self.direct_gammas = []
+        if water_mediated:
+            self.water_gammas = []
+            self.protein_gammas = []
         check_index_array = np.zeros((20,20))
         check_index_assignment = []
         #go through list, mark all positions where a potential is found
@@ -301,8 +314,10 @@ class ProteinAwsem(ProtoProtein):
             for j in np.arange(i,20):
                 if check_index_array[i,j] == 1 or check_index_array[j,i] == 1:
                     self.use_indices.append([i,j])
-                    self.use_params.append(self.gamma[i,j])
-                    self.epsilons_codes.append("direct")
+                    self.direct_gammas.append(self.direct_matrix[i,j])
+                    if water_mediated:
+                        self.water_gammas.append(self.water_matrix[i,j])
+                        self.protein_gammas.append(self.water_matrix[i,j])
                     coord1 = (i*20) + j
                     coord2 = (j*20) + i
                     check_index_conversion_array[coord1] = count
@@ -318,8 +333,10 @@ class ProteinAwsem(ProtoProtein):
             self.param_assignment.append(param_idx)
             self.param_assigned_indices[param_idx].append(i)
 
-        self.make_epsilons_array(self.use_params) #self.epsilons expected in places
-
+        self.make_epsilons_array(self.direct_gammas, "direct") #self.epsilons expected in places
+        if water_mediated:
+            self.make_epsilons_array(self.water_gammas, "water_mediated-water")
+            self.make_epsilons_array(self.protein_gammas, "water_mediated-protein")
         ##### assertion checks #####
         # Check consistency of param_assignment and param_assigned_indices
         for idx, lst in enumerate(self.param_assigned_indices):
@@ -327,8 +344,8 @@ class ProteinAwsem(ProtoProtein):
                 assert self.param_assignment[index] == idx
 
         #Check consistent number of parameters
-        assert len(self.param_assigned_indices) == len(self.use_params)
-        self._num_gamma_parameters = len(self.use_params)
+        assert len(self.param_assigned_indices) == len(self.direct_gammas)
+        self._num_gamma_parameters = len(self.direct_gammas)
 
     def load_data(self,fname):
         """ Load a data file and format for later use
@@ -415,11 +432,32 @@ class ProteinAwsem(ProtoProtein):
         potentials = self.model.Hamiltonian.calculate_direct_energy(data, total=False)
         assert np.shape(potentials)[1] == len(self.param_assignment)
 
-        for indices,param in zip(self.param_assigned_indices, self.use_params):
+        for indices,param in zip(self.param_assigned_indices, self.direct_gammas):
             constant_value = np.sum(potentials[:,indices], axis=1) / param
             constants_list.append(constant_value)
             constants_list_derivatives.append(constant_value * -1. * self.beta)
             self._check_code_potential_assignment.append("direct")
+        return constants_list, constants_list_derivatives
+    def _get_water_mediated_potentials(self, data):
+        #for potentails, 1st index is frame, 2nd index is potential function
+        constants_list = []
+        constants_list_derivatives = []
+        water_mediated, protein_mediated = self.model.Hamiltonian.calculate_water_energy(data, total=False, split=False)
+        assert np.shape(water_mediated)[1] == len(self.param_assignment)
+        assert np.shape(protein_mediated)[1] == len(self.param_assignment)
+
+        for indices,param in zip(self.param_assigned_indices, self.water_gammas):
+            constant_value = np.sum(water_mediated[:,indices], axis=1) / param
+            constants_list.append(constant_value)
+            constants_list_derivatives.append(constant_value * -1. * self.beta)
+            self._check_code_potential_assignment.append("water_mediated")
+
+        for indices,param in zip(self.param_assigned_indices, self.protein_gammas):
+            constant_value = np.sum(protein_mediated[:,indices], axis=1) / param
+            constants_list.append(constant_value)
+            constants_list_derivatives.append(constant_value * -1. * self.beta)
+            self._check_code_potential_assignment.append("water_mediated")
+
         return constants_list, constants_list_derivatives
 
     def _get_frag_potentials(self, data):
