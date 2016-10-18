@@ -276,7 +276,7 @@ class ProteinAwsem(ProtoProtein):
 
         """
         self.param_codes.append("direct")
-        self.water_mediated = water_mediated
+        self.water_mediated_used = water_mediated
         if water_mediated:
             self.param_codes.append("water_mediated")
 
@@ -369,22 +369,40 @@ class ProteinAwsem(ProtoProtein):
 
         return traj
 
-    def save_gamma_paramters(self, new_eps, directory, write=False):
+    def save_gamma_parameters(self, new_eps, directory, write=False):
         assert np.shape(new_eps)[0] == np.shape(self.epsilons)[0]
-        count = 0
+        count_direct = 0
+        count_water = 0
+        count_protein = 0
         gamma_matrix = self.model.Hamiltonian.gamma_direct
+        water_matrix = self.model.Hamiltonian.gamma_water
+        protein_matrix = self.model.Hamiltonian.gamma_protein
         for i in range(np.shape(new_eps)[0]):
             if self.epsilons_codes[i] == "direct":
-                idx = self.use_indices[count]
+                idx = self.use_indices[count_direct]
                 gamma_matrix[idx[0], idx[1]] = new_eps[i]
                 gamma_matrix[idx[1], idx[0]] = new_eps[i]
-                count += 1
-        assert count == self._num_gamma_parameters
+                count_direct += 1
+            elif self.epsilons_codes[i] == "water_mediated-water":
+                idx = self.use_indices[count_water]
+                water_matrix[idx[0], idx[1]] = new_eps[i]
+                water_matrix[idx[1], idx[0]] = new_eps[i]
+                count_water += 1
+            elif self.epsilons_codes[i] == "water_mediated-protein":
+                idx = self.use_indices[count_protein]
+                protein_matrix[idx[0], idx[1]] = new_eps[i]
+                protein_matrix[idx[1], idx[0]] = new_eps[i]
+                count_protein += 1
+
+        assert count_direct == self._num_gamma_parameters
+        assert count_water == self._num_gamma_parameters
+        assert count_protein == self._num_gamma_parameters
 
         for i in range(20):
             for j in range(i+1, 20):
                 assert gamma_matrix[i,j] == gamma_matrix[j,i]
-
+                assert water_matrix[i,j] == water_matrix[j,i]
+                assert protein_matrix[i,j] == protein_matrix[j,i]
         if write:
             self.model.write_new_gammas(directory)
 
