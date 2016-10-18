@@ -357,7 +357,6 @@ class ProteinAwsem(ProtoProtein):
         count = 0
         gamma_matrix = self.model.Hamiltonian.gamma_direct
         for i in range(np.shape(new_eps)[0]):
-        idx,eps in zip(self.use_indices, new_eps):
             if self.epsilons_codes[i] == "direct":
                 idx = self.use_indices[count]
                 gamma_matrix[idx[0], idx[1]] = new_eps[i]
