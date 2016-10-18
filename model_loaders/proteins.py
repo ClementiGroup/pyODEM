@@ -208,7 +208,7 @@ class ProteinAwsem(ProtoProtein):
         self.use_gammas = False
         self.param_codes = [] #fragment memory potential
         self.epsilons_codes = []
-        self.code_to_function = {"direct":self._get_gammas_potentials, "frag":self._get_frag_potentials}
+        self.code_to_function = {"direct":self._get_gammas_potentials, "frag":self._get_frag_potentials, "water_mediated":self._get_water_mediated_potentials}
         self._num_frag_parameters = 0
         self._num_gamma_parameters = 0
 
@@ -217,7 +217,7 @@ class ProteinAwsem(ProtoProtein):
             self.epsilons = np.append(self.epsilons, epsilons, axis=0)
         else:
             self.epsilons = np.array(epsilons)
-        for i in range(len(epsilons))
+        for i in range(len(epsilons)):
             self.epsilons_codes.append(code)
         assert hasattr(self, "epsilons")
         assert self.epsilons.ndim == 1
@@ -233,7 +233,7 @@ class ProteinAwsem(ProtoProtein):
         for potential in self.model.Hamiltonian.fragment_potentials:
             self.frag_gammas.append(potential.weight)
             self._num_frag_parameters += 1
-        self.make_epsilons_array(self.frag_gammasm "frag")
+        self.make_epsilons_array(self.frag_gammas, "frag")
 
         self.frag_scale = self.model.Hamiltonian.fragment_memory_scale
 
@@ -438,11 +438,12 @@ class ProteinAwsem(ProtoProtein):
             constants_list_derivatives.append(constant_value * -1. * self.beta)
             self._check_code_potential_assignment.append("direct")
         return constants_list, constants_list_derivatives
+
     def _get_water_mediated_potentials(self, data):
         #for potentails, 1st index is frame, 2nd index is potential function
         constants_list = []
         constants_list_derivatives = []
-        water_mediated, protein_mediated = self.model.Hamiltonian.calculate_water_energy(data, total=False, split=False)
+        water_mediated, protein_mediated = self.model.Hamiltonian.calculate_water_energy(data, total=False, split=True)
         assert np.shape(water_mediated)[1] == len(self.param_assignment)
         assert np.shape(protein_mediated)[1] == len(self.param_assignment)
 
@@ -450,13 +451,13 @@ class ProteinAwsem(ProtoProtein):
             constant_value = np.sum(water_mediated[:,indices], axis=1) / param
             constants_list.append(constant_value)
             constants_list_derivatives.append(constant_value * -1. * self.beta)
-            self._check_code_potential_assignment.append("water_mediated")
+            self._check_code_potential_assignment.append("water_mediated-water")
 
         for indices,param in zip(self.param_assigned_indices, self.protein_gammas):
             constant_value = np.sum(protein_mediated[:,indices], axis=1) / param
             constants_list.append(constant_value)
             constants_list_derivatives.append(constant_value * -1. * self.beta)
-            self._check_code_potential_assignment.append("water_mediated")
+            self._check_code_potential_assignment.append("water_mediated-protein")
 
         return constants_list, constants_list_derivatives
 
@@ -501,7 +502,12 @@ class ProteinAwsem(ProtoProtein):
 
         assert len(self._check_code_potential_assignment) == len(self.epsilons_codes)
         for i in range(len(self.epsilons_codes)):
-            assert self._check_code_potential_assignment[i] == self.epsilons_codes[i]
+            try:
+                assert self._check_code_potential_assignment[i] == self.epsilons_codes[i]
+            except:
+                print self._check_code_potential_assignment[i]
+                print self.epsilons_codes[i]
+                raise
 
         #compute the function for the potential energy
         def hepsilon(epsilons):
