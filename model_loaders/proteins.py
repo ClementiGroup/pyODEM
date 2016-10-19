@@ -395,8 +395,9 @@ class ProteinAwsem(ProtoProtein):
                 count_protein += 1
 
         assert count_direct == self._num_gamma_parameters
-        assert count_water == self._num_gamma_parameters
-        assert count_protein == self._num_gamma_parameters
+        if self.water_mediated_used:
+            assert count_water == self._num_gamma_parameters
+            assert count_protein == self._num_gamma_parameters
 
         for i in range(20):
             for j in range(i+1, 20):
