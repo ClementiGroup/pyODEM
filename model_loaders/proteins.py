@@ -452,6 +452,12 @@ class ProteinAwsem(ProtoProtein):
         assert np.shape(potentials)[1] == len(self.param_assignment)
 
         for indices,param in zip(self.param_assigned_indices, self.direct_gammas):
+            try:
+                assert param != 0 # Temporary check as we do  divide by zero later
+            except:
+                print param
+                print indices
+                raise
             constant_value = np.sum(potentials[:,indices], axis=1) / param
             constants_list.append(constant_value)
             constants_list_derivatives.append(constant_value * -1. * self.beta)
@@ -467,12 +473,24 @@ class ProteinAwsem(ProtoProtein):
         assert np.shape(protein_mediated)[1] == len(self.param_assignment)
 
         for indices,param in zip(self.param_assigned_indices, self.water_gammas):
+            try:
+                assert param != 0 # Temporary check as we do  divide by zero later
+            except:
+                print param
+                print indices
+                raise
             constant_value = np.sum(water_mediated[:,indices], axis=1) / param
             constants_list.append(constant_value)
             constants_list_derivatives.append(constant_value * -1. * self.beta)
             self._check_code_potential_assignment.append("water_mediated-water")
 
         for indices,param in zip(self.param_assigned_indices, self.protein_gammas):
+            try:
+                assert param != 0 # Temporary check as we do  divide by zero later
+            except:
+                print param
+                print indices
+                raise
             constant_value = np.sum(protein_mediated[:,indices], axis=1) / param
             constants_list.append(constant_value)
             constants_list_derivatives.append(constant_value * -1. * self.beta)
