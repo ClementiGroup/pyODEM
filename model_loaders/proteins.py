@@ -444,11 +444,11 @@ class ProteinAwsem(ProtoProtein):
         f.write(wrt_str)
         f.close()
 
-    def _get_gammas_potentials(self, data, dgamma=False):
+    def _get_gammas_potentials(self, data):
         #for potentials, 1st index is frame, 2nd index is potential function
         constants_list = []
         constants_list_derivatives = []
-        potentials = self.model.Hamiltonian.calculate_direct_energy(data, total=False, dgamma=dgamma)
+        potentials = self.model.Hamiltonian.calculate_direct_energy(data, total=False, dgamma=True)
         assert np.shape(potentials)[1] == len(self.param_assignment)
 
         for indices,param in zip(self.param_assigned_indices, self.direct_gammas):
@@ -459,19 +459,16 @@ class ProteinAwsem(ProtoProtein):
                 print indices
                 raise
             constant_value = np.sum(potentials[:,indices], axis=1)
-            if not dgamma:
-                constant_value /= param
-
             constants_list.append(constant_value)
             constants_list_derivatives.append(constant_value * -1. * self.beta)
             self._check_code_potential_assignment.append("direct")
         return constants_list, constants_list_derivatives
 
-    def _get_water_mediated_potentials(self, data, dgamma=False):
+    def _get_water_mediated_potentials(self, data):
         #for potentails, 1st index is frame, 2nd index is potential function
         constants_list = []
         constants_list_derivatives = []
-        water_mediated, protein_mediated = self.model.Hamiltonian.calculate_water_energy(data, total=False, split=True, dgamma=dgamma)
+        water_mediated, protein_mediated = self.model.Hamiltonian.calculate_water_energy(data, total=False, split=True, dgamma=True)
         assert np.shape(water_mediated)[1] == len(self.param_assignment)
         assert np.shape(protein_mediated)[1] == len(self.param_assignment)
 
@@ -483,8 +480,6 @@ class ProteinAwsem(ProtoProtein):
                 print indices
                 raise
             constant_value = np.sum(water_mediated[:,indices], axis=1)
-            if not dgamma:
-                constant_value /= param
             constants_list.append(constant_value)
             constants_list_derivatives.append(constant_value * -1. * self.beta)
             self._check_code_potential_assignment.append("water_mediated-water")
@@ -497,30 +492,26 @@ class ProteinAwsem(ProtoProtein):
                 print indices
                 raise
             constant_value = np.sum(protein_mediated[:,indices], axis=1)
-            if not dgamma:
-                constant_value /= param
             constants_list.append(constant_value)
             constants_list_derivatives.append(constant_value * -1. * self.beta)
             self._check_code_potential_assignment.append("water_mediated-protein")
 
         return constants_list, constants_list_derivatives
 
-    def _get_frag_potentials(self, data, dgamma=False):
+    def _get_frag_potentials(self, data):
         #for potentials, 1st index is frame, 2nd index is potential function
         constants_list = []
         constants_list_derivatives = []
-        potentials = self.model.Hamiltonian.calculate_fragment_memory_potential(data, total=False, dgamma=dgamma)
+        potentials = self.model.Hamiltonian.calculate_fragment_memory_potential(data, total=False, dgamma=True)
         assert np.shape(self.frag_gammas)[0] == np.shape(potentials)[0]
         for idx in range(np.shape(potentials)[0]):
             rescale_constants = potentials[idx,:]
-            if not dgamma:
-                rescale_constants /= self.frag_gammas[idx]
             constants_list.append(rescale_constants)
             constants_list_derivatives.append(rescale_constants * -1. * self.beta)
             self._check_code_potential_assignment.append("frag")
         return constants_list, constants_list_derivatives
 
-    def get_potentials_epsilon(self, data, dgamma=False):
+    def get_potentials_epsilon(self, data):
         """ Return PotentialEnergy(epsilons)
 
         See superclass for full description of purpose.
@@ -540,7 +531,7 @@ class ProteinAwsem(ProtoProtein):
 
         #Depending on which flag is on, it will compose constants_list and constants_list_derivatives
         for code in self.param_codes:
-            consts, dconsts = self.code_to_function[code](data, dgamma=dgamma)
+            consts, dconsts = self.code_to_function[code](data)
             for v in consts:
                 constants_list.append(v)
             for dv in dconsts:
