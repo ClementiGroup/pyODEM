@@ -129,6 +129,13 @@ class Protein(ProtoProtein):
 
         return hepsilon, dhepsilon
 
+    def save_model_parameters(self, parameters):
+
+        for idx,param in enumerate(self.use_params):
+            self.model.Hamiltonian._pairs[param].set_epsilon(parameters[idx])
+        
+
+
 
 class ProteinNonLinear(Protein):
     """ Same as protein, except handles nonlinear H(epsilons)
