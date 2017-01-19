@@ -23,16 +23,22 @@ class HistogramO(Observable):
                 hist, edges = np.histogram(x, weights=weights, range=[((xmin*spacing)/(xmax*spacing))], bins=xmax-xmin)
         else:
             hist, edges = np.histogram(data, weights=weights, bins=self.edges)
-
+        
+        assert not np.any(np.isnan(hist))
         normalization = math.fabs(integrate_simple(hist, edges))
+        assert not np.any(np.isnan(normalization))
+        print normalization
+        print hist
         with np.errstate():
             try:
                 stdev = np.sqrt(hist) / normalization
                 hist = hist / normalization
             except:
+                raise
                 print normalization
                 print hist
                 print np.sqrt(hist)
+        print hist
         stdev = np.sqrt(hist) / normalization
         hist = hist / normalization
         bincenters = 0.5*(edges[1:] + edges[:-1])
