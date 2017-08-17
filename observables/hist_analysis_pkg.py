@@ -108,8 +108,8 @@ def histogram_data_spacing(data, spacing, weights=None):
 
 
 def integrate_simple(hist, edges):
-    sum = 0.0
+    total = 0.0
     for i, val in enumerate(hist):
-        sum += val*(edges[i+1] - edges[i])
+        total += val*(edges[i+1] - edges[i])
 
-    return sum
+    return total
