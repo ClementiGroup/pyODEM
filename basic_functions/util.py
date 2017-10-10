@@ -2,6 +2,8 @@
 Utility functions for organizing and preparing data for input
 """
 
+import numpy as np
+
 def get_state_indices(dtrajs):
     equilibrium_frames = []
     indices = np.arange(np.shape(dtrajs)[0])
