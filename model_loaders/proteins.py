@@ -112,12 +112,14 @@ class Protein(ProtoProtein):
         for i in self.use_params:
             constants_list.append(self.model.Hamiltonian._pairs[i].dVdeps(data[:,i]) )
             constants_list_derivatives.append(self.model.Hamiltonian._pairs[i].dVdeps(data[:,i])* -1. * self.beta  )
+
+        constants_array = np.array(constants_list)
+        constants_array_derivatives = np.array(constants_list_derivatives)
         #compute the function for the potential energy
         def hepsilon(epsilons):
-            total = np.zeros(np.shape(data)[0])
-            for i in range(np.shape(epsilons)[0]):
-                value = epsilons[i]*constants_list[i]
-                total += value * -1. * self.beta
+            epsilons = np.array(epsilons)
+            value = epsilons[:,np.newaxis] * constants_array
+            total = np.sum(value, axis=0) * -1. * self.beta
 
             return total
 

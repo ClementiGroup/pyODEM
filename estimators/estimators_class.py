@@ -322,15 +322,16 @@ class EstimatorsObject(object):
         return Q, dQ_vector
 
     def get_derivative_pieces(self, epsilons, boltzman_weights):
-        derivative_observed_first = [np.zeros(self.num_observable) for j in range(self.number_params)]
-        derivative_observed_second = [np.zeros(self.num_observable) for j in range(self.number_params)]
+        derivative_observed_first = np.zeros((self.number_params, self.num_observable))
+        derivative_observed_second = np.zeros((self.number_params, self.num_observable))
         for i in range(self.number_equilibrium_states):
             deriv_function = self.derivatives_functions[i](epsilons)
             self.count_dhepsilon += 1
-            for j in range(self.number_params):
-                next_weight_derivatives = np.sum(boltzman_weights[i] * deriv_function[j]) / self.ni[i]
-                derivative_observed_first[j] += next_weight_derivatives * self.state_prefactors[i]
-                derivative_observed_second[j] += next_weight_derivatives * self.pi[i]
+            next_weight_derivatives = np.sum(boltzman_weights[i] * deriv_function, axis=1) / self.ni[i]
+            #next_weight_derivatives = np.expand_dims(next_weight_derivatives, axis=1)
+            next_weight_derivatives = next_weight_derivatives[:,np.newaxis]
+            derivative_observed_first += next_weight_derivatives * self.state_prefactors[i]
+            derivative_observed_second += next_weight_derivatives * self.pi[i]
 
         return derivative_observed_first, derivative_observed_second
 
