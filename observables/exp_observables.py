@@ -12,8 +12,8 @@ observables refers to the actual observations each object makes.
 
 import numpy as np
 
-from pyfexd.observables.hist_analysis_pkg import HistogramO
-import pyfexd.basic_functions as bf
+from pyODEM.observables.hist_analysis_pkg import HistogramO
+import pyODEM.basic_functions as bf
 
 
 

@@ -2,7 +2,7 @@ import numpy as np
 import scipy.stats as stats
 
 import math
-from pyfexd.observables import Observable
+from pyODEM.observables import Observable
 
 
 class HistogramO(Observable):

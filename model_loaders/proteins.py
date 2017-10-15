@@ -6,7 +6,7 @@ Requires package: https://github.com/ajkluber/model_builder
 import numpy as np
 import mdtraj as md
 
-from pyfexd.model_loaders import ModelLoader
+from pyODEM.model_loaders import ModelLoader
 try:
     import model_builder as mdb
 except:
@@ -133,7 +133,7 @@ class Protein(ProtoProtein):
 
         for idx,param in enumerate(self.use_params):
             self.model.Hamiltonian._pairs[param].set_epsilon(parameters[idx])
-        
+
 
 
 

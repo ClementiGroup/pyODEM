@@ -276,7 +276,7 @@ def kfold_crossvalidation_max_likelihood(list_data, list_dtrajs, observables, mo
         os.mkdir(iteration_save_dir)
 
     for entry in best_hyper_params:
-        np.savetxt("%s/param_%s.dat" % (iteration_save_dir, entry), best_hyper_params[entry])
+        np.savetxt("%s/param_%s.dat" % (iteration_save_dir, entry), np.array(best_hyper_params[entry]))
 
     new_epsilons_cv = func_solver(complete_estimator, current_epsilons, **best_hyper_params)
 
