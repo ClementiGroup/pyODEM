@@ -1,5 +1,5 @@
 """
-Utility functions for organizing and preparing data for input
+Utility functions for organizing and preparing data for optimization
 """
 
 import numpy as np

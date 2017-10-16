@@ -10,37 +10,42 @@ np.seterr(over="raise")
 class EstimatorsObject(object):
     """ Contains inputted formatted data and results from analysis
 
-    This object contains the necessary data formatted appropriately, as
-    well as the resultant Q functions and the results of any
-    optimization routine.
+    This object contains the necessary data formatted appropriately, as well as
+    the resultant Q functions and the results of any optimization routine.
+
+    Attributes:
+        new_epsilons (array of float): Optimized values of epsilons.
+        old_epsilons (array of float): Starting values of epsilons.
+        oldQ (float): Starting Q value.
+        newQ (float): Optimized Q value.
 
     """
     def __init__(self, data, data_sets, observables, model, obs_data=None, stationary_distributions=None, model_state=None):
-        """ initialize object and process all the inputted data
+        """ Initialize object and process all the inputted data
 
         Args:
-            data (array): First index is the frame, the other indices
-                are the data for the frame. Should be the data loaded
-                from model.load_data()
-            data_sets (list): Each entry is an array with the frames
+            data (array): First index is the frame, the other indices are the
+                data for the frame. Should be the data loaded from
+                model.load_data().
+            data_sets (list of array): Each entry is an array with the frames
                 corresponding to that equilibrium state.
             observables (ExperimentalObservables): See object in
                 pyfexd.observables.exp_observables.ExperimentalObservables
             model (ModelLoader/list): See object in the module
                  pyfexd.model_loaders.X for the particular model.
-            obs_data (list): Use if data set for computing observables
-                is different from data for computing the energy. List
-                contains arrays where each array-entry corresponds to
-                the observable in the ExperimentalObservables object.
-                Arrays are specified with first index corresponding to
-                the frame and second index to the data. Default: Use the
-                array specified in data for all observables.
-            stationary_distributions (list): List of values for pi for
-                each stationary distribution. Must be same size as
-                data_sets. Default will compute the distribution based
-                upon the weighting of each data_sets.
-            model_state (list): List which model object to use when
-                model is a list. Default None.
+            obs_data (list): Use if data set for computing observables is
+                different from data for computing the energy. List contains
+                arrays where each array-entry corresponds to the observable in
+                the ExperimentalObservables object. Arrays are specified with
+                first index corresponding to the frame and second index to the
+                data. Default: Use the array specified in data for all
+                observables.
+            stationary_distributions (list of float): List of values for pi for
+                each stationary distribution. Must be same size as data_sets.
+                Default will compute the distribution based upon the weighting
+                of each data_sets.
+            model_state (list): List which model object to use when model is a
+                list. Default None.
         """
         print "Initializing EstimatorsObject"
         t1 = time.time()
@@ -200,15 +205,15 @@ class EstimatorsObject(object):
     def calculate_observables_reweighted(self, epsilons):
         """ Calculates the observables using a set of epsilons
 
-        Takes as input a new set of epsilons (model parameters).
-        Calculates a new set of observables using self.observables and
-        outputs the observables as an array.
+        Takes as input a new set of epsilons (model parameters). Calculates a
+        new set of observables using self.observables and outputs the
+        observables as an array.
 
         Args:
-            epsilons (array): Model parameters
+            epsilons (array of float): Model parameters
 
         Returns:
-            next_observed (array): Values for all the observables.
+            next_observed (array of float): Values for all the observables.
 
         """
 
@@ -238,7 +243,18 @@ class EstimatorsObject(object):
         self.old_epsilons = self.current_epsilons
 
     def get_function(self, derivatives, logq):
-        """ Returns the necessary function for later use """
+        """ Returns the function of the specific type
+
+        Args:
+            derivatives (bool): If true, return a function that also computes
+                the derivative.
+            logq (bool): If true, return a function that computes using the
+                logarithmic version of the statistical functions in observables.
+
+        return:
+            method: Computes the Q value.
+
+        """
 
         if derivatives:
             if logq:
@@ -253,7 +269,16 @@ class EstimatorsObject(object):
 
         return func
 
-    def Qfunction_epsilon(self, epsilons, Count=0):
+    def Qfunction_epsilon(self, epsilons):
+        """ Compute the Q value.
+
+        Args:
+            epsilons (array of float): Model parameters
+
+        return:
+            float: Q value.
+
+        """
         #initiate value for observables:
 
         next_observed, total_weight, boltzman_weights = self.get_reweights(epsilons)
@@ -267,7 +292,17 @@ class EstimatorsObject(object):
 
         return Q
 
-    def log_Qfunction_epsilon(self, epsilons, Count=0):
+    def log_Qfunction_epsilon(self, epsilons):
+        """ Compute the -log(Q) value.
+
+        Args:
+            epsilons (array of float): Model parameters
+
+        return:
+            float: -log(Q) value.
+
+        """
+
         next_observed, total_weight, boltzman_weights = self.get_reweights(epsilons)
 
         #Minimization, so make maximal value a minimal value with a negative sign.
@@ -280,7 +315,17 @@ class EstimatorsObject(object):
 
         return Q
 
-    def derivatives_Qfunction_epsilon(self, epsilons, Count=0):
+    def derivatives_Qfunction_epsilon(self, epsilons):
+        """ Compute the Q value and its derivative.
+
+        Args:
+            epsilons (array of float): Model parameters
+
+        return:
+            float: Q value.
+            array of float: dQ/dEpsilon
+
+        """
         next_observed, total_weight, boltzman_weights = self.get_reweights(epsilons)
 
         Q = self.Q_function(next_observed)
@@ -300,7 +345,18 @@ class EstimatorsObject(object):
 
         return Q, dQ_vector
 
-    def derivatives_log_Qfunction_epsilon(self, epsilons, Count=0):
+    def derivatives_log_Qfunction_epsilon(self, epsilons):
+        """ Compute the -log(Q) value and its derivative.
+
+        Args:
+            epsilons (array of float): Model parameters
+
+        return:
+            float: Q value.
+            array of float: dQ/dEpsilon
+
+        """
+
         next_observed, total_weight, boltzman_weights = self.get_reweights(epsilons)
 
         Q = self.log_Q_function(next_observed)

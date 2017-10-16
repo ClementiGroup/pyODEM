@@ -20,20 +20,22 @@ import pyODEM.basic_functions as bf
 class ExperimentalObservables(object):
     """ Object for holding observables and computing Q values
 
-    Specific observables are added by calling the associated Methods.
-    This will set up the necessary lists of functions.
+    Specific observables are added by calling the associated Methods. This will
+    set up the necessary lists of functions.
 
     Attributes:
-        observables (list): List of ObservableObjects. Used for
-            computing the observables on a trajectory.
-        q_functions (list): List of q_function associated with each
-            value of all the observables.
-        dq_functions (list): List of derivatives of each q_function.
-        log_funtions (list): Logarithm of each q_function
-        dlog_functions (list): derivative of the log_functions
-        num_q_functions (float): Number of q_functions added thus far.
-        obs_seen (list): List of bool. True for observables that were
-            seen in the simulation. Used internally in other methods.
+        observables (list of ObservableObjects): Used for computing the
+            observables on a trajectory.
+        q_functions (list of method): Functions compute Q value for each
+            observable.
+        dq_functions (list of method): Derivatives of q_functions.
+        log_functions (list of method): Logarithm of each q_function
+        dlog_functions (list of method): Derivative of the log_functions
+        num_q_functions (float): Total number of q_functions.
+        obs_seen (list of bool): True for q_functions to use when computing the
+            Q value. Used internally to avoid unnecessary computations during
+            the optimization procedure. Defaults to using all q_functions when
+            computing during the optimization procedure. Defaults to
 
     Example:
         obs = ExperimentalObservables()
@@ -53,21 +55,24 @@ class ExperimentalObservables(object):
 
         Method will add appropriate objects to the list and generate the
         necessary functions for a histogram observable such as FRET pair
-        distance or position distribution.
+        distance or position distribution. Can either give the histogram results
+        and edges, or a trace of data and parameters for histogramming the data.
+
 
         Args:
-            exp_file (str): Properly formatted data file. Either in two
-                columns, representing value and std, or a trace of
-                numbers to be histogrammed.
-            compute (bool): True if the data file is a trace of numbers
-                to histogram. Default to False.
-            nbins (int): Specify number of bins for histogramming.
-            histrange(tuple): Range to histogram over.
-            spacing (float): Spacing to histogram the data over.
+            exp_file (str): Data file name. Formatted as either 1) two columns,
+                representing value and std, or 2) a trace of numbers to be
+                histogrammed.
+            compute (bool): True if the data file is a trace of numbers to
+                histogram. Defaults to False.
+            nbins (int): Number of bins if data file is a trace.
+            histrange(tuple): Range to histogram over if data file is a trace.
+            spacing (float): Spacing to histogram the data over if data file is
+                a trace.
             edges (array): 1-D column of edges for histogram bins.
             errortype (str): Type of error to use for the observables.
-            scale (float): Scale the error values by this factor.
-                Default to 1.0 (no scaling).
+            scale (float): Scale the error values by this factor. Important for
+                numerical efficiency. Defaults to 1.0 (no scaling).
 
             Histogram parameters default to None.
             Must give a valid set of parameters:
@@ -119,20 +124,20 @@ class ExperimentalObservables(object):
     def compute_observations(self, data, weights=None, all=False):
         """ Compute the observables from a data set.
 
-        Assumes the data set is formulated correctly for the observables
-        to interpret.
+        Assumes the data set is formulated correctly for the observables to
+        interpret.
 
         Args:
-            data (list): List of data sets. Each entry is an array where
-                the first index corresponds to the frames and the second
-                index and above are for coordinates.
-            weights (array): Weight values for each frame. 1-D array,
+            data (list of arrays): List of data sets. For each entry, the first
+                index corresponds to the frames and the second index and above
+                are for coordinates.
+            weights (array of float): Weight values for each frame. 1-D array,
                 same size as first dimension of data.
 
         Returns:
-            all_obs (list): Value of observables for every
+            all_obs (list of float): Value of observables for every
                 ObservableObject.
-            all_std (list): Value of std for each observable in all_obs.
+            all_std (list of float): Value of std for each value in all_obs.
         """
         if weights == None:
             weights = np.ones(np.shape(data[0])[0])
