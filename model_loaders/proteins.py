@@ -87,7 +87,7 @@ class Protein(ProtoProtein):
         for i in self.use_params: #only load relevant parameters
             self.use_pairs.append([self.pairs[i][0].index, self.pairs[i][1].index])
 
-        self.epsilons = self.model.fitted_epsilons
+        self.epsilons = np.array(self.model.fitted_epsilons)
 
     def get_potentials_epsilon(self, data):
         """ Return PotentialEnergy(epsilons)
@@ -117,7 +117,6 @@ class Protein(ProtoProtein):
         constants_array_derivatives = np.array(constants_list_derivatives)
         #compute the function for the potential energy
         def hepsilon(epsilons):
-            epsilons = np.array(epsilons)
             value = epsilons[:,np.newaxis] * constants_array
             total = np.sum(value, axis=0) * -1. * self.beta
 
