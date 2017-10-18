@@ -43,11 +43,10 @@ class HistogramO(Observable):
 def histogram_distance(data, nbins=10, histrange=(0,10), spacing=None, edges=None, weights=None):
     """ Formats the output from histogram_data
 
-    histogram_distance will output things as a hist and stdev.
-    histogram_data does all the heavy lifting. As the user can
-    note, histogrma_dat outputs everything while this will
-    output only the necessary variables for the max_likelihood
-    method.
+    histogram_distance will output things as a hist and stdev. histogram_data
+    does all the heavy lifting. As the user can note, histogrma_dat outputs
+    everything while this will output only the necessary variables for the
+    max_likelihood method.
 
     """
     if spacing == None:
@@ -60,10 +59,9 @@ def histogram_distance(data, nbins=10, histrange=(0,10), spacing=None, edges=Non
 def histogram_data(data, nbins=10, histrange=(0,10), edges=None, weights=None):
     """ Histogram a 1-d Array, integral normalized
 
-    Histogram is integral normalized. A stdev is outputted as
-    sqrt(N)/norm where N is the total counts of each bin and
-    norm is the normalization factor the whole histogram is
-    divided by.
+    Histogram is integral normalized. A stdev is outputted as sqrt(N)/norm where
+    N is the total counts of each bin and norm is the normalization factor
+    the whole histogram is divided by.
 
     Must specify range and number of bins
     Or a list of edges to histogram inside

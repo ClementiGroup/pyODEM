@@ -45,19 +45,19 @@ def max_likelihood_estimate(data, data_sets, observables, model, obs_data=None, 
             observables (ExperimentalObservables), model (ModelLoader),
             obs_data(list) and stationary_distributions (list)
 
-        solver (str): Optimization procedures. Defaults to Simplex.
-            Available methods include: simplex, anneal, cg, custom.
+        solver (str): Optimization procedures. Defaults to Simplex. Available
+            methods include: simplex, anneal, cg, custom.
         logq (bool): Use the logarithmic Q functions. Default: False.
-        derivative (bool): True if Q function returns a derivative.
-            False if it does not. Default is None, automatically
-            selected based upon the requested solver.
-        x0 (array): Specify starting epsilons for optimization methods.
-            Defaults to current epsilons from the model.
+        derivative (bool): True if Q function returns a derivative. False if it
+            does not. Default is None, automatically selected based upon the
+            requested solver.
+        x0 (array): Specify starting epsilons for optimization methods. Defaults
+            to current epsilons from the model.
         kwargs (dictionary): Key word arguments passed to the solver.
 
     Returns:
-        eo (EstimatorsObject): Object that contains the data used for
-            the computation and the results.
+        eo (EstimatorsObject): Object that contains the data used for the
+            computation and the results.
 
     """
 

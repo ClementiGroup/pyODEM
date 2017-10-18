@@ -15,9 +15,8 @@ except:
 class ProtoProtein(ModelLoader):
     """ subclass of ModelLoaders, super class of all Protein models
 
-    The __init__ for most protein models have shared methods. This way,
-    they can all call the same methods with modificaitons of their own
-    later.
+    The __init__ for most protein models have shared methods. This way, they can
+    all call the same methods with modificaitons of their own later.
 
     """
 
@@ -37,15 +36,15 @@ class ProtoProtein(ModelLoader):
     def load_data(self,fname):
         """ Load a data file and format for later use
 
-        For Proteins, it uses the self.pairs to load the pair-pair
-        distances for every frame. This is the data format that would be
-        used for computing the energy later.
+        For Proteins, it uses the self.pairs to load the pair-pair distances for
+        every frame. This is the data format that would be used for computing
+        the energy later.
 
         Args:
-            fname(string): Name of a file to load.
+            fname (string): Name of a file to load.
 
         Return:
-            Array(floats): First index is frame, second index is every
+            Array (floats): First index is frame, second index is every
                 pair in the order of pairs.
 
         """
@@ -59,7 +58,7 @@ class Protein(ProtoProtein):
     """ Subclass for making a ModelLoader for a Protein Model
 
     Methods:
-        See ModelLoader in pyfexd/super_model/ModelLoader
+        See ModelLoader in pyODEM/super_model/ModelLoader
 
     """
 
@@ -67,12 +66,12 @@ class Protein(ProtoProtein):
         """ Initialize the Langevin model, override superclass
 
         Args:
-            ini_file_name: Name of a .ini file to load containing the
+            ini_file_name (str): Name of a .ini file to load containing the
                 model information.
 
         Attributes:
             See superclass for generic attributes.
-            epsilons(array): Chosen from a specific list of tunable
+            epsilons (array of float): Chosen from a specific list of tunable
                 parameters from the .ini file.
 
         """
@@ -92,10 +91,9 @@ class Protein(ProtoProtein):
     def get_potentials_epsilon(self, data):
         """ Return PotentialEnergy(epsilons)
 
-        See superclass for full description of purpose.
-        Override superclass. Potential Energy is easily calculated since
-        for this model, all epsilons are linearly related to the
-        potential energy.
+        See superclass for full description of purpose. Override superclass.
+        Potential Energy is easily calculated since for this model, all epsilons
+        are linearly related to the potential energy.
 
         """
 
@@ -141,9 +139,8 @@ class Protein(ProtoProtein):
 class ProteinNonLinear(Protein):
     """ Same as protein, except handles nonlinear H(epsilons)
 
-    Just like the class Protein, except it handles a non-linear
-    Hamiltonian function of epsilons. Thusly, only the
-    get_potentials_epsilon is overridden.
+    Just like the class Protein, except it handles a non-linear Hamiltonian
+    function of epsilons. Thusly, only the get_potentials_epsilon is overridden.
 
     """
 
@@ -249,38 +246,36 @@ class ProteinAwsem(ProtoProtein):
     def add_contact_params(self, water_mediated=False):
         """ Add direct contact interactions for fitting
 
-        Only uses the gammas that are present in the model. It has to
-        assign each interaction to a corresponding gamma, as well as
-        collect epsilon values(gammas) that exist. Code is weird, as its
-        more memory intensive than it needs to be so that sorting things
-        can be completed in 2N+210 time. Where N is the number of direct
-        potentials in the model, and 210 is the number of possible
-        unique gammas it has to sort through. N~R**2, where R is
-        number of residues so minimizing the number of times it goes
+        Only uses the gammas that are present in the model. It has to assign
+        each interaction to a corresponding gamma, as well as collect epsilon
+        values(gammas) that exist. Code is weird, as its more memory intensive
+        than it needs to be so that sorting things can be completed in 2N+210
+        time. Where N is the number of direct potentials in the model, and 210
+        is the number of possible unique gammas it has to sort through. N~R**2,
+        where R is number of residues so minimizing the number of times it goes
         through each list.
 
         Args:
-            water_mediated: (bool) True will also add the water mediated
-                gammas to the end of the epsilons list. Default False.
+            water_mediated (bool): True will also add the water mediated gammas
+            to the end of the epsilons list. Default False.
 
         Attributes:
-            use_pairs: list of pair interactions, list contains atom
-                indices for interactions.
-            gamma: 20x20 gamma-matrix. gm(i,j) = gm(j,i).
-            gamma_indices: Nx2 array of gamma-matrix indices for each
-                parameter
-            use_indices: List with X attributes, where X is number of
-                unique gammas. Values are gamma indices used.
-            use_params: List with X attributes. Values are gamma values
+            use_pairs (list of int): List contains atom indices.
+            gamma (array of float): 20x20 gamma-matrix. gm(i,j) = gm(j,i).
+            gamma_indices (array of int): Nx2 array of gamma-matrix indices for
+                each parameter.
+            use_indices (list of int): Has len of X. Where X is number of unique
+                gammas. Values are gamma indices used.
+            use_params (list of float): Has len of X. Values are gamma values
                 from the gamma-matrix corresponding to indices in
                 use_indices.
-            param_assignment: List of len=N, values are the index for
-                each interaction's corresponding gamma in the use_params
+            param_assignment (list of int): Has len of X, values are the index
+                for each interaction's corresponding gamma in the use_params
                 list.
-            param_assigned_indices: List of len=X,
-                param_assigned_indices[i] = [indices], where indices are
-                the index of the N parameters with the
-                gamma indices = use_indices[i]
+            param_assigned_indices (list of int): Has len X,
+                param_assigned_indices[i] = [indices], where indices are the
+                index of the N parameters with the gamma indices =
+                use_indices[i]
 
         """
         self.param_codes.append("direct")
@@ -358,15 +353,15 @@ class ProteinAwsem(ProtoProtein):
     def load_data(self,fname):
         """ Load a data file and format for later use
 
-        For Proteins, it uses the self.pairs to load the pair-pair
-        distances for every frame. This is the data format that would be
-        used for computing the energy later.
+        For Proteins, it uses the self.pairs to load the pair-pair distances for
+        every frame. This is the data format that would be used for computing
+        the energy later.
 
         Args:
-            fname(string): Name of a file to load.
+            fname (string): Name of a file to load.
 
         Return:
-            traj(mdtraj.trajectory): Trajectory object in 3-bead
+            traj (mdtraj.trajectory): Trajectory object in 3-bead
                 representation. Will be converted to all-atom later.
 
         """
@@ -523,9 +518,8 @@ class ProteinAwsem(ProtoProtein):
         """ Return PotentialEnergy(epsilons)
 
         See superclass for full description of purpose.
-        Override superclass. Potential Energy is easily calculated since
-        for this model, all epsilons are linearly related to the
-        potential energy.
+        Override superclass. Potential Energy is easily calculated since for
+        this model, all epsilons are linearly related to the potential energy.
 
         """
 

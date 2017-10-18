@@ -23,8 +23,8 @@ class Langevin(ModelLoader):
         """ Initialize the Langevin model, override superclass
 
         Args:
-            ini_file_name: Name of a .ini file to load containing the
-                model information.
+            ini_file_name: Name of a .ini file to load containing the model
+            information.
 
         Attributes:
             See superclass for generic attributes.
@@ -49,10 +49,8 @@ class Langevin(ModelLoader):
     def get_potentials_epsilon(self, data):
         """ Return PotentialEnergy(epsilons)
 
-        See superclass for full description of purpose.
-        Override superclass. Potential Energy is easily calculated since
-        for this model, all epsilons are linearly related to the
-        potential energy.
+        Potential Energy is calculated since as a factors * epsilons, as the
+        Hamiltonian only depends linearly on each epsilon.
 
         """
 

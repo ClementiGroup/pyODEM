@@ -1,6 +1,6 @@
 """ model_loaders contains modules for various models
 
-Organized such that different models are separated into different files. 
+Organized such that different models are separated into different files.
 Keep all specific features of a model to each of its respective files.
 
 Modules:
@@ -9,9 +9,14 @@ Modules:
         methods each model must have.
 
 Specific Models Implemented:
-    langevin_1d: For analyzing 1-dimensional langevin dynamics data. 
+    langevin_1d: For analyzing 1-dimensional langevin dynamics data.
         Associated with the github repository langevin_model.
-
+    Protein: Uses model_builder to analyze protein trajectories using mdtraj. It
+        assumes the Hamiltonian depends only linearly on the epsilons.
+    ProteinNonLinear: Uses model_builder to analyze protein trajectories using
+        mdtraj. It assumes the Hamiltonian does not depend linearly on the
+        epsilons.
+        
 """
 
 

@@ -1,7 +1,7 @@
-pyfexd
+pyODEM
 ======
 
-This package, pyfexd (**py**thon-**f**itting-**ex**perimental-**d**ata), adjusts model parameters based upon experimental data. The method was developed in the Clementi Group at Rice University. 
+This package, pyfexd (**py**thon **O**bservable-driven **D**design-of **E**ffective **M**olecular-models), adjusts model parameters based upon experimental data. The method was developed in the Clementi Group at Rice University.
 
 #Prerequisites
 The `TensorDuck/langevin_model` repository needs to be  cloned and in your PYTHONPATH variable for using the `model_loaders.Langevin()` loader.
@@ -28,18 +28,18 @@ Modules for loading experimental results, computing Q values, and computing obse
 ##estimators
 
 
-Modules for estimating the Maximum Likelihood set of parameters for a model based on some experimental data (obsevables). 
+Modules for estimating the Maximum Likelihood set of parameters for a model based on some experimental data (obsevables).
 
 `estimators.max_likelihood_estimate()`: Estimates the most likely set of model parameters given the data.
 
-Currently supports several different solvers. Options are: simplex, cg, anneal and custom. See documentation. 
+Currently supports several different solvers. Options are: simplex, cg, anneal and custom. See documentation.
 
 
 ##Examples
 
-example_1: Compute the Q-value for the data files present in the folder.
+example_0: Compute the Q-value for the data files present in the folder.
 
-example_2: Compute a new set of model parameters for the data files present in the folder.
+example_1: Compute a new set of model parameters for the Langevin model using the data files present in the folder.
 
 To Run, use execute multirun.sh in the folder to run a langevin 1-D simulation using the current set of starting parameters. There are 3-steps per an iteration in multirun.sh:
 
@@ -49,6 +49,4 @@ To Run, use execute multirun.sh in the folder to run a langevin 1-D simulation u
 
 `python -m langevin_model.simulation next --name $name --start`: Update the input files for the next simulation run (i.e. update model parameters).
 
-
-
-
+example_2: Compute a new set of model parameters on a Protein model. To run, use the jupyter notebook file.

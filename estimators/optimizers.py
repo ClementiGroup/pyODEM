@@ -1,30 +1,27 @@
-""" Optimizers implemented for pyfexd package
+""" Optimizers implemented for pyODEM package
 
-This module contains several optimization routines. In particular, I
-found these to work well under certain conditions for applications
-pyfexd was intended. It should be noted that the user is not limited to
-only these functions. Users should feel free to add their own functions
-either by adding it to this package or by passing the optimizer directly
-to the estimators.
+This module contains several optimization routines. In particular, I found these
+to work well under certain conditions for which pyODEM was intended. It should
+be noted that the user is not limited to only these functions. Users should feel
+free to add their own functions either by adding it to this package or by
+passing the optimizer directly to the estimators.
 
 Positional Arguments for all optimizers:
     Qfunc (method): Q function to be minimized.
     x0 (array): Array of starting epsilons.
 
-Keyword Arguments are explained in the relevant method as each optimizer
-has a unique set of user options.
+Keyword Arguments are explained in the relevant method as each optimizer has a
+unique set of user options.
 
 There are two sections for this module:
 1) scipy optimizer wrappers methods
 2) custom methods
 
-The scipy wrappers are meant to wrap a sciyp optimizer to be called from
-the script directly and output only the necessary information. Internal
-checks can be built in to make sure it doesn't fail. The custom methods
-are methods written specifically for this package. These are not
-necessarily new methods, but are rather implementations for which no
-good scipy or numpy implementation exists. Note to developers: Please
-keep this module organized.
+The scipy wrappers are meant to wrap a sciyp optimizer to be called from the
+script directly and output only the necessary information. Internal checks can
+be built in to make sure it doesn't fail. The custom methods are methods written
+specifically for this package. These are not necessarily new methods, but are
+rather implementations for which no good scipy or numpy implementation exists.
 
 """
 
@@ -46,14 +43,14 @@ class FailedToOptimizeException(Exception):
 def solve_simplex(Qfunc, x0, tol=None):
     """ Optimizes a function using the scipy siplex method.
 
-    This method does not require computing the Jacobian and works in
-    arbitrarily high dimensions. This method works by computing new
-    values of the funciton to optimizie func in the vicinity of x0 and
-    moves in the direction of minimizing func.
+    This method does not require computing the Jacobian and works in arbitrarily
+    high dimensions. This method works by computing new values of the funciton
+    to optimizie func in the vicinity of x0 and moves in the direction of
+    minimizing func.
 
     Args:
-        Qfunc(x) (method): func returns a float and takes a list or
-            array x of inputs
+        Qfunc (method): func returns a float and takes a list or array x of
+            inputs.
         x0 (list/array floats): Initial guess of for optimal parameters
 
     Returns:
@@ -86,7 +83,7 @@ def solve_cg(Qfunc, x0, norm=1, gtol=10**-5, bounds=None, tol=None):
     return optimal.x
 
 def solve_bfgs(Qfunc, x0, bounds=None, gtol=None, ftol=None, tol=None, maxiter=10000):
-    """ Use the scipy.optimize.minimize (bfgs) method"""
+    """ Use the scipy.optimize.minimize (bfgs) method """
 
     if ftol is None and gtol is None:
         # default termination criterion
@@ -124,13 +121,13 @@ def solve_annealing(Qfunc, x0, ntries=1000, scale=0.2, Tbarrier=200):
 def solve_simplex_global(Qfunc, x0, ntries=0):
     """ Attempts to find global minima using solve_simplex()
 
-    Uses the solve_simplex() method by computing multiple random
-    frontier points nearby the local minima closest to starting epsilons
-    x0. Then optimizes each point and takes the most optimal result.
+    Uses the solve_simplex() method by computing multiple random frontier points
+    nearby the local minima closest to starting epsilons x0. Then optimizes each
+    point and takes the most optimal result.
 
     Args:
-        ntries (int): Number of random startung epsilons to generate
-            in case solution. Defaults to 0.
+        ntries (int): Number of random startung epsilons to generate in case
+            solution is stuck in a local minima. Defaults to 0.
 
     Returns:
         array(float): Array of optimal values of epsilons found.
@@ -177,7 +174,7 @@ def solve_simplex_global(Qfunc, x0, ntries=0):
     return out_eps
 
 def solve_annealing_experimental(Qfunc, x0, ntries=1000, scale=0.2, Tbarrier=200):
-    """ Experimental annealing methods for testing purposes only"""
+    """ Experimental annealing methods for testing purposes only """
     numparams = np.shape(x0)[0]
     def take_step_custom(x):
         perturbation = np.array([random.choice([-0.1, 0.1]) for i in range(numparams)])
@@ -198,6 +195,7 @@ def solve_annealing_custom(Qfunc, x0,  ntries=1000, scale=0.2, stuck=100, bounds
     """ Custom stochastic method
 
     Currently perturbs randomly and steps downhill.
+
     """
 
     numparams = np.shape(x0)[0]
@@ -254,7 +252,7 @@ def solve_annealing_custom(Qfunc, x0,  ntries=1000, scale=0.2, stuck=100, bounds
     return minima
 
 def solve_newton_step_custom(Qfunc, x0, stepsize=1.0, maxiters=200, proximity=1.0, qstop=1.0):
-    """ Solve by taking a newton step"""
+    """ Solve by taking a newton step """
 
     xval = x0
     go = True
@@ -321,7 +319,7 @@ def solve_newton_step_custom(Qfunc, x0, stepsize=1.0, maxiters=200, proximity=1.
 
 
 def solve_one_step(Qfunc, x0, stepsize=1.0, bounds=None):
-    """ take steps in steepest decent until reaches the smallest value"""
+    """ take steps in steepest decent until reaches the smallest value """
     xval = x0
     xold = x0
     go = True
