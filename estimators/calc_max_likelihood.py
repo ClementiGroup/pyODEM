@@ -113,6 +113,7 @@ def add_estimator_to_list(dtrajs, data, observables, model, obs_data, stationary
 
 class EstimateMulti(threading.Thread):
     def __init__(self, solver, current_epsilons, iter_container):
+        threading.Thread.__init__(self)
         self.solver = get_solver(solver)
         self.current_epsilons = current_epsilons
         self.iter_container = iter_container
@@ -124,7 +125,7 @@ class EstimateMulti(threading.Thread):
         kwargs, position, training_function, validation_function = self.iter_container.get_params()
         go = kwargs is not None
         while go:
-            new_epsilons = self.solver(validation_function, self.current_epsilons)
+            new_epsilons = self.solver(training_function, self.current_epsilons, **kwargs)
             go = kwargs is not None
             this_score = validation_function(new_epsilons)
             self.iter_container.save(this_score, position)
@@ -133,6 +134,8 @@ class EstimateMulti(threading.Thread):
             kwargs, position, training_function, validation_function = self.iter_container.get_params()
             go = kwargs is not None
         self.still_going = False
+
+        return
 
 class IterContainer(object):
     """ Contains the parameters and solution for cross validation """
@@ -151,7 +154,7 @@ class IterContainer(object):
             for j in range(self.num_functions):
                 self.send_indices.append([i,j])
 
-        total_send = len(self.send_indices)
+        self.total_send = len(self.send_indices)
         self.current_index = 0
         self.still_going = True
         self.lock = lock
@@ -159,6 +162,12 @@ class IterContainer(object):
             self.get_params = self._get_params_basic
         else:
             self.get_params = self._get_params_lock
+
+        if self.total_send < 10:
+            self.print_every = 1
+        else:
+            self.print_every = int(self.total_send / 10)
+        print "Total of %d Optimizations Necessary" % self.total_send
 
     def _get_params_lock(self):
         self.lock.acquire()
@@ -169,14 +178,17 @@ class IterContainer(object):
         return all_args
 
     def _get_params_basic(self):
-        if self.current_index < total_send:
+        if self.current_index < self.total_send:
+            if (self.current_index % self.print_every) == 0:
+                print "Analysis of %d/%d" % (self.current_index, self.total_send)
             send_indices = self.send_indices[self.current_index]
-            kwargs = self.all_kwargs[self.current_index]
+            kwargs = self.all_kwargs[send_indices[0]]
             position = ()
             for i in send_indices:
                 position += (i,)
-            training_function = self.training_functions(send_indices[1])
-            validation_function = self.validation_functions(send_indices[1])
+            training_function = self.training_functions[send_indices[1]]
+            validation_function = self.validation_functions[send_indices[1]]
+            self.current_index += 1
         else:
             kwargs = None
             position = None
