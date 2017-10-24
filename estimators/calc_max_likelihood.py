@@ -10,12 +10,36 @@ import random
 import time
 import numpy as np
 import scipy.optimize as optimize
-import threading # only for the cross-validation function
+import multiprocessing # only for the cross-validation function
+import multiprocessing.managers as mpmanagers
 import os
+#import copy_reg
+#import types
 
 from estimators_class import EstimatorsObject
 from optimizers import function_dictionary
 from pyODEM.basic_functions import util
+
+"""
+# pickle is required for serializing the class methods
+def _pickle_method(method):
+    func_name = method.im_func.__name__
+    obj = method.im_self
+    cls = method.im_class
+    return _unpickle_method, (func_name, obj, cls)
+
+def _unpickle_method(func_name, obj, cls):
+    for cls in cls.mro():
+        try:
+            func = cls.__dict__[func_name]
+        except KeyError:
+            pass
+        else:
+            break
+    return func.__get__(obj, cls)
+
+copy_reg.pickle(types.MethodType, _pickle_method, _unpickle_method)
+"""
 
 def ensure_derivative(derivative, solver):
     if derivative is None:
@@ -103,51 +127,194 @@ def max_likelihood_estimate(data, data_sets, observables, model, obs_data=None, 
     eo.save_solutions(new_epsilons)
     return eo
 
-def add_estimator_to_list(dtrajs, data, observables, model, obs_data, stationary_distributions, model_state, estimator_list, function_list, derivative, logq):
+class GenerateEstimatorMulti(multiprocessing.Process):
 
-    indices = util.get_state_indices(dtrajs)
-    estimators = EstimatorsObject(data, indices, observables, model, obs_data=obs_data, stationary_distributions=stationary_distributions, model_state=model_state)
-    Qfunction_epsilon = estimators.get_function(derivative, logq) # use the logq function only
-    estimator_list.append(estimators)
-    function_list.append(Qfunction_epsilon)
+    def __init__(self, observables, model, stationary_distributions, model_state, input_q):
+        multiprocessing.Process.__init__(self)
+        self.observables = observables
+        self.model = model
+        self.stationary_distributions = stationary_distributions
+        self.model_state = model_state
+        self.input_q = input_q
+        self.solutions = []
 
-class EstimateMulti(threading.Thread):
-    def __init__(self, solver, current_epsilons, iter_container):
-        threading.Thread.__init__(self)
+    def run(self):
+        while not self.input_q.empty():
+            stuff = self.input_q.get()
+            dtrajs = stuff[0]
+            data = stuff[1]
+            obs_data = stuff[2]
+            derivative = stuff[3]
+            logq = stuff[4]
+            index = stuff[5]
+            indices = util.get_state_indices(dtrajs)
+            estimators = EstimatorsObject(data, indices, self.observables, self.model, obs_data=obs_data, stationary_distributions=self.stationary_distributions, model_state = self.model_state)
+            Qfunction_epsilon = estimators.get_function(derivative, logq)
+            self.solutions.append([estimators, Qfunction_epsilon, index])
+
+class ListDataConstructors(object):
+    def __init__(self, list_data, list_dtrajs, list_obs_data, n_validations, derivative, logq):
+        if list_obs_data is None:
+            # if list_obs_data, make a list of None
+            list_obs_data = [None for i in range(n_validations)]
+
+        self.list_train_estimators = []
+        self.list_validation_estimators = []
+
+        self.list_train_qfunctions = []
+        self.list_validation_qfunctions = []
+
+        self.inputs_collected = []
+        self.estimators_collected = []
+        self.functions_collected = []
+        self.estimator_size = []
+
+        self.n_validations = n_validations
+
+        all_training = None
+        all_dtrajs = None
+        all_observables = None
+
+        for validation_index in range(n_validations):
+            # For each validation index: make the q_functions and EO objects
+            this_training = None
+            this_dtrajs = None
+            this_observables = None
+            all_training, all_dtrajs, all_observables = self._check_and_append_inputs(all_training, all_dtrajs, all_observables, list_data[validation_index], list_dtrajs[validation_index], list_obs_data[validation_index])
+            for idx in range(n_validations):
+                if idx == validation_index:
+                    temp_params = self._convert_and_add_parameters_to_list(list_dtrajs[idx], list_data[idx], list_obs_data[idx], False, True, True)
+                else:
+                    this_training, this_dtrajs, this_observables = self._check_and_append_inputs(this_training, this_dtrajs, this_observables, list_data[idx], list_dtrajs[idx], list_obs_data[idx])
+
+            this_n_frames = np.shape(this_dtrajs)[0]
+            assert np.shape(this_training)[0] == this_n_frames
+            for item in this_observables:
+                assert np.shape(item)[0] == this_n_frames
+            self._convert_and_add_parameters_to_list(this_dtrajs, this_training, this_observables, derivative, logq, False)
+
+        self._convert_and_add_parameters_to_list(all_dtrajs, all_training, all_observables, derivative, logq, None)
+
+    def get_queue(self):
+        """ Get Queue sorted so larger estimators are selected first """
+
+        generator_sync_manager = mpmanagers.SyncManager()
+        generator_sync_manager.start()
+        new_q = generator_sync_manager.Queue()
+
+        sorted_args = np.argsort(np.array(self.estimator_size) * -1)
+        print "Estimator Sizes: "
+        print self.estimator_size
+        for idx in sorted_args:
+            new_q.put(self.inputs_collected[idx])
+
+        return new_q, generator_sync_manager
+
+    def add_estimators_to_list(self, results_q):
+        num_found = len(results_q)
+        print "Found %d/%d Estimators" % (num_found, (self.n_validations*2)+1)
+        i_collected = []
+        e_collected = []
+        f_collected = []
+        for stuff in results_q:
+            i_collected.append(stuff[2])
+            e_collected.append(stuff[0])
+            f_collected.append(stuff[1])
+
+        sorted_indices = np.argsort(i_collected)
+
+        for idx in sorted_indices:
+            index = i_collected[idx]
+            this_estimator = e_collected[idx]
+            this_function = f_collected[idx]
+
+            if index < (self.n_validations*2)-1:
+                self.estimators_collected[index].append(this_estimator)
+                self.functions_collected[index].append(this_function)
+            else:
+                all_estimator = this_estimator
+                all_function = this_function
+
+        return self.list_train_estimators, self.list_validation_estimators, self.list_train_qfunctions, self.list_validation_qfunctions, all_estimator, all_function
+
+
+    def _check_and_append_inputs(self, this_training, this_dtrajs, this_observables, data, dtraj, obs):
+        if this_training is None:
+            this_training = np.copy(data)
+            this_dtrajs = np.copy(dtraj)
+            if obs is not None:
+                this_observables = []
+                for item in obs:
+                    this_observables.append(np.copy(item))
+        else:
+            this_training = np.append(this_training, data, axis=0)
+            this_dtrajs = np.append(this_dtrajs, dtraj)
+            if obs is not None:
+                old_this_observables = this_observables
+                this_observables = []
+                for obs_count,item in enumerate(old_this_observables):
+                    this_observables.append(np.append(item, obs[obs_count], axis=0))
+
+        return this_training, this_dtrajs, this_observables
+
+    def _convert_and_add_parameters_to_list(self, dtrajs, data, obs_data, derivative, logq, validation_thing):
+        index = len(self.inputs_collected)
+        temp_params =  [dtrajs, data, obs_data, derivative, logq, index]
+        self.inputs_collected.append(temp_params)
+        self.estimator_size.append(np.shape(dtrajs)[0])
+
+        if validation_thing is None:
+            self.estimators_collected.append(None)
+            self.functions_collected.append(None)
+        elif validation_thing:
+            self.estimators_collected.append(self.list_validation_estimators)
+            self.functions_collected.append(self.list_validation_qfunctions)
+        else:
+            self.estimators_collected.append(self.list_train_estimators)
+            self.functions_collected.append(self.list_train_qfunctions)
+
+        n_size = len(self.inputs_collected)
+        assert len(self.estimators_collected) == n_size
+        assert len(self.functions_collected) == n_size
+        assert len(self.estimator_size) == n_size
+
+class EstimateMulti(multiprocessing.Process):
+    def __init__(self, solver, current_epsilons, iter_q, save_q, training_functions, validation_functions):
+        multiprocessing.Process.__init__(self)
         self.solver = get_solver(solver)
         self.current_epsilons = current_epsilons
-        self.iter_container = iter_container
+        self.iter_q = iter_q
+        self.save_q = save_q
+        self.training_functions = training_functions
+        self.validation_functions = validation_functions
 
         self.still_going = False # True when the loop is running
 
     def run(self):
         self.still_going = True
-        kwargs, position, training_function, validation_function = self.iter_container.get_params()
-        go = kwargs is not None
-        while go:
+        while not self.iter_q.empty():
+            new_params = self.iter_q.get()
+            kwargs = new_params[0]
+            position = new_params[1]
+            training_function = self.training_functions[position[1]]
+            validation_function = self.validation_functions[position[1]]
             new_epsilons = self.solver(training_function, self.current_epsilons, **kwargs)
-            go = kwargs is not None
             this_score = validation_function(new_epsilons)
-            self.iter_container.save(this_score, position)
-
-            # get next params. If None, then the queue is empty
-            kwargs, position, training_function, validation_function = self.iter_container.get_params()
-            go = kwargs is not None
+            print "Final Score: %f" % this_score
+            self.save_q.put([this_score, position])
         self.still_going = False
 
         return
 
 class IterContainer(object):
     """ Contains the parameters and solution for cross validation """
-    def __init__(self, training_functions, validation_functions, all_kwargs, all_kwargs_printable, order_list, order_sizes, lock=None):
+    def __init__(self, n_functions, all_kwargs, all_kwargs_printable, order_list, order_sizes):
         self.all_kwargs = all_kwargs
         self.all_kwargs_printable = all_kwargs_printable
-        self.training_functions = training_functions
-        self.validation_functions = validation_functions
-        self.num_functions = len(self.training_functions)
-        assert self.num_functions == len(self.validation_functions)
+        self.num_functions = n_functions
         self.num_params = len(all_kwargs)
         self.save_array = np.zeros((self.num_params, self.num_functions))
+        self.save_complete = np.copy(self.save_array) - 1
 
         self.send_indices = []
         for i in range(self.num_params):
@@ -157,11 +324,6 @@ class IterContainer(object):
         self.total_send = len(self.send_indices)
         self.current_index = 0
         self.still_going = True
-        self.lock = lock
-        if self.lock is None:
-            self.get_params = self._get_params_basic
-        else:
-            self.get_params = self._get_params_lock
 
         if self.total_send < 10:
             self.print_every = 1
@@ -169,39 +331,49 @@ class IterContainer(object):
             self.print_every = int(self.total_send / 10)
         print "Total of %d Optimizations Necessary" % self.total_send
 
-    def _get_params_lock(self):
-        self.lock.acquire()
-
-        all_args = self._get_params_basic()
-
-        self.lock.release()
-        return all_args
-
-    def _get_params_basic(self):
-        if self.current_index < self.total_send:
-            if (self.current_index % self.print_every) == 0:
-                print "Analysis of %d/%d" % (self.current_index, self.total_send)
-            send_indices = self.send_indices[self.current_index]
+    def get_queue(self):
+        new_sync_manager = mpmanagers.SyncManager()
+        new_sync_manager.start()
+        new_q = new_sync_manager.Queue()
+        for idx in range(self.total_send):
+            send_indices = self.send_indices[idx]
             kwargs = self.all_kwargs[send_indices[0]]
             position = ()
-            for i in send_indices:
-                position += (i,)
-            training_function = self.training_functions[send_indices[1]]
-            validation_function = self.validation_functions[send_indices[1]]
-            self.current_index += 1
-        else:
-            kwargs = None
-            position = None
-            training_function = None
-            validation_function = None
-            self.still_going = False
+            for jdx in send_indices:
+                position += (jdx,)
 
-        return kwargs, position, training_function, validation_function
+            new_list = [kwargs, position]
+            new_q.put(new_list)
+
+        return new_q, new_sync_manager
+
+    def save_queue(self, queue):
+        count = 0
+        while not queue.empty():
+            stuff = queue.get()
+            score = stuff[0]
+            position = stuff[1]
+            self.save(score, position)
+            print self.save_array
+            count += 1
+
+        if count == self.total_send:
+            print "Success!"
+        else:
+            print "Failure!"
+        print "Completed %d/%d computations" % (count, self.total_send)
 
     def save(self, score, position):
         self.save_array[position] = score
+        self.save_complete[position] = 1
+
+    def reset_q(self):
+        self.current_index = 0
 
     def get_best(self):
+        if np.any(self.save_complete < 0):
+            print "Warning: Many parameters were not saved. See the save_complete attribute for which ones."
+
         total_scores = np.sum(self.save_array, axis=1)
         pos = 0
         best_score = None
@@ -285,108 +457,37 @@ def kfold_crossvalidation_max_likelihood(list_data, list_dtrajs, observables, mo
             print this_str
 
     # Make all the eo objects and qfunctions
-    print "Initializing Training and Validation Functions"
+    print_str = "Initializing Training and Validation Functions"
+    if use_multi:
+        print_str += " with %d threads" % n_threads
+    print print_str
     t1 = time.time()
-    list_train_estimators = []
-    list_validation_estimators = []
+    data_constructor = ListDataConstructors(list_data, list_dtrajs, list_obs_data, n_validations, derivative, logq)
+    input_q, server_manager = data_constructor.get_queue()
 
-    list_train_qfunctions = []
-    list_validation_qfunctions = []
+    if use_multi:
+        generate_estimator_threads = []
+        for i in range(n_threads):
+            generate_estimator_threads.append(GenerateEstimatorMulti(observables, model, stationary_distributions, model_state, input_q))
 
-    dtrajs_collected = []
-    data_collected = []
-    obs_data_collected = []
-    estimators_collected = []
-    functions_collected = []
-    derivative_collected = []
-    logq_collected = []
+        for thrd in generate_estimator_threads:
+            thrd.start()
 
-    func_solver = get_solver(solver)
+        for thrd in generate_estimator_threads:
+            thrd.join()
 
-    # determine which functions must be made
-    for validation_index in range(n_validations):
-        # For each validation index: make the q_functions and EO objects
-        this_training = None
-        this_dtrajs = None
-        this_observables = None
-        for idx in range(n_validations):
-            if idx == validation_index:
-                dtrajs_collected.append(list_dtrajs[idx])
-                data_collected.append(list_data[idx])
-                obs_data_collected.append(list_obs_data[idx])
-                estimators_collected.append(list_validation_estimators)
-                functions_collected.append(list_validation_qfunctions)
-                derivative_collected.append(False)
-                logq_collected.append(True)
+    else:
+        new_generator = GenerateEstimatorMulti(observables, model, stationary_distributions, model_state, input_q)
+        generate_estimator_threads = [new_generator]
+        new_generator.run()
 
-            else:
-                if this_training is None:
-                    this_training = np.copy(list_data[idx])
-                    this_dtrajs = np.copy(list_dtrajs[idx])
-                    if list_obs_data is not None:
-                        this_observables = []
-                        for item in list_obs_data[idx]:
-                            this_observables.append(np.copy(item))
-                else:
-                    this_training = np.append(this_training, list_data[idx], axis=0)
-                    this_dtrajs = np.append(this_dtrajs, list_dtrajs[idx])
-                    if list_obs_data is not None:
-                        old_this_observables = this_observables
-                        this_observables = []
-                        for obs_count,item in enumerate(old_this_observables):
-                            this_observables.append(np.append(item, list_obs_data[idx][obs_count], axis=0))
+    collected_solutions = []
+    for thrd in generate_estimator_threads:
+        for thing in thrd.solutions:
+            collected_solutions.append(thing)
 
-        this_n_frames = np.shape(this_dtrajs)[0]
-        assert np.shape(this_training)[0] == this_n_frames
-        for item in this_observables:
-            assert np.shape(item)[0] == this_n_frames
-        dtrajs_collected.append(this_dtrajs)
-        data_collected.append(this_training)
-        obs_data_collected.append(this_observables)
-        estimators_collected.append(list_train_estimators)
-        functions_collected.append(list_train_qfunctions)
-        derivative_collected.append(derivative)
-        logq_collected.append(logq)
-
-    n_collected = len(dtrajs_collected)
-    assert len(data_collected) == n_collected
-    assert len(obs_data_collected) == n_collected
-    assert len(estimators_collected) == n_collected
-    assert len(functions_collected) == n_collected
-    assert len(derivative_collected) == n_collected
-    assert len(logq_collected) == n_collected
-
-    for i in range(n_collected):
-        add_estimator_to_list(dtrajs_collected[i], data_collected[i], observables, model, obs_data_collected[i], stationary_distributions, model_state, estimators_collected[i], functions_collected[i], derivative_collected[i], logq_collected[i])
-
-
-    assert len(list_validation_estimators) == n_validations
-    assert len(list_validation_qfunctions) == n_validations
-    assert len(list_train_estimators) == n_validations
-    assert len(list_train_qfunctions) == n_validations
-
-    this_training = None
-    this_dtrajs = None
-    this_observables = None
-    for idx in range(n_validations):
-        if this_training is None:
-            this_training = np.copy(list_data[idx])
-            this_dtrajs = np.copy(list_dtrajs[idx])
-            if list_obs_data is not None:
-                this_observables = []
-                for item in list_obs_data[idx]:
-                    this_observables.append(np.copy(item))
-        else:
-            this_training = np.append(this_training, list_data[idx], axis=0)
-            this_dtrajs = np.append(this_dtrajs, list_dtrajs[idx])
-            if list_obs_data is not None:
-                old_this_observables = this_observables
-                this_observables = []
-                for obs_count,item in enumerate(old_this_observables):
-                    this_observables.append(np.append(item, list_obs_data[idx][obs_count], axis=0))
-
-    all_the_indices = util.get_state_indices(this_dtrajs)
-    complete_estimator = EstimatorsObject(this_training, all_the_indices, observables, model, obs_data=this_observables, stationary_distributions=stationary_distributions, model_state=model_state)
+    server_manager.shutdown()
+    list_train_estimators, list_validation_estimators, list_train_qfunctions, list_validation_qfunctions, complete_estimator, complete_qfunction = data_constructor.add_estimators_to_list(collected_solutions)
 
     t2 = time.time()
     print "Finished Initializing %d-Fold cross-validation in %f minutes" % (n_validations, (t2-t1)/60.)
@@ -395,12 +496,10 @@ def kfold_crossvalidation_max_likelihood(list_data, list_dtrajs, observables, mo
     # then perform a grid search for the ideal hyper parameters
     print "Beginning Grid Search of Hyper Parameters"
 
-    if use_multi:
-        qLock = threading.Lock()
-    else:
-        qLock = None
+    iter_container = IterContainer(n_validations, all_kwargs, all_kwargs_printable, all_entries, all_entry_sizes)
 
-    iter_container = IterContainer(list_train_qfunctions, list_validation_qfunctions, all_kwargs, all_kwargs_printable, all_entries, all_entry_sizes, lock=qLock)
+    inputs_q, server_manager = iter_container.get_queue()
+    results_q = multiprocessing.Queue()
 
     if x0 is None:
         current_epsilons = complete_estimator.current_epsilons
@@ -410,20 +509,25 @@ def kfold_crossvalidation_max_likelihood(list_data, list_dtrajs, observables, mo
     if use_multi:
         all_threads = []
         for i in range(n_threads):
-            all_threads.append(EstimateMulti(solver, current_epsilons, iter_container))
+            all_threads.append(EstimateMulti(solver, current_epsilons, inputs_q, results_q, list_train_qfunctions, list_validation_qfunctions))
 
         all_check = [iter_container]
         for thrd in all_threads:
             thrd.start()
             all_check.append(thrd)
 
-        while check_going(all_check):
-            pass # wait until all objects register completion
+        for thrd in all_threads:
+            thrd.join()
+
+        #while check_going(all_check):
+        #    pass # wait until all objects register completion
 
     else:
-        new_estimator = EstimateMulti(solver, current_epsilons, iter_container)
+        new_estimator = EstimateMulti(solver, current_epsilons, inputs_q, results_q, list_train_qfunctions, list_validation_qfunctions)
         new_estimator.run()
 
+    server_manager.shutdown()
+    iter_container.save_queue(results_q)
     best_hyper_params = iter_container.get_best()
 
     iteration_save_dir = "%s/best_params" % cwd
@@ -433,7 +537,7 @@ def kfold_crossvalidation_max_likelihood(list_data, list_dtrajs, observables, mo
     for entry in best_hyper_params:
         np.savetxt("%s/param_%s.dat" % (iteration_save_dir, entry), np.array(best_hyper_params[entry]))
 
-    new_epsilons_cv = func_solver(complete_estimator, current_epsilons, **best_hyper_params)
+    new_epsilons_cv = func_solver(complete_qfunction, current_epsilons, **best_hyper_params)
 
     f_check.close()
 
