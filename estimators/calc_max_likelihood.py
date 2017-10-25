@@ -505,7 +505,7 @@ def kfold_crossvalidation_max_likelihood(list_data, list_dtrajs, observables, mo
         current_epsilons = complete_estimator.current_epsilons
     else:
         current_epsilons = x0
-
+    '''
     if use_multi:
         all_threads = []
         for i in range(n_threads):
@@ -523,8 +523,9 @@ def kfold_crossvalidation_max_likelihood(list_data, list_dtrajs, observables, mo
         #    pass # wait until all objects register completion
 
     else:
-        new_estimator = EstimateMulti(solver, current_epsilons, inputs_q, results_q, list_train_qfunctions, list_validation_qfunctions)
-        new_estimator.run()
+    '''
+    new_estimator = EstimateMulti(solver, current_epsilons, inputs_q, results_q, list_train_qfunctions, list_validation_qfunctions)
+    new_estimator.run()
 
     server_manager.shutdown()
     iter_container.save_queue(results_q)
