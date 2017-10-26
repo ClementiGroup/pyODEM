@@ -228,15 +228,29 @@ class ListDataConstructors(object):
             this_estimator = e_collected[idx]
             this_function = f_collected[idx]
 
-            if index < (self.n_validations*2)-1:
+            if index < (self.n_validations*2):
                 self.estimators_collected[index].append(this_estimator)
                 self.functions_collected[index].append(this_function)
             else:
                 all_estimator = this_estimator
                 all_function = this_function
 
+        self._check_list_sizes()
+
         return self.list_train_estimators, self.list_validation_estimators, self.list_train_qfunctions, self.list_validation_qfunctions, all_estimator, all_function
 
+    def _check_list_sizes(self):
+        try:
+            assert len(self.list_train_estimators) == self.n_validations
+            assert len(self.list_validation_estimators) == self.n_validations
+            assert len(self.list_train_qfunctions) == self.n_validations
+            assert len(self.list_validation_qfunctions) == self.n_validations
+        except:
+            print len(self.list_train_estimators)
+            print len(self.list_validation_estimators)
+            print len(self.list_train_qfunctions)
+            print len(self.list_validation_qfunctions)
+            raise
 
     def _check_and_append_inputs(self, this_training, this_dtrajs, this_observables, data, dtraj, obs):
         if this_training is None:
@@ -390,7 +404,7 @@ class IterContainer(object):
             print_str += "%s:%s  " % (thing, self.all_kwargs_printable[pos][thing])
         print print_str
 
-        return self.all_kwargs[pos]
+        return self.all_kwargs[pos], self.all_kwargs_printable[pos]
 
 
 def kfold_crossvalidation_max_likelihood(list_data, list_dtrajs, observables, model, list_obs_data=None, solver="bfgs", logq=False, derivative=None, x0=None, kwargs={}, list_kwargs={}, list_kwargs_printable={},  stationary_distributions=None, model_state=None, checkpoint_file=None, verbose=False, n_threads=1):
@@ -464,7 +478,7 @@ def kfold_crossvalidation_max_likelihood(list_data, list_dtrajs, observables, mo
     t1 = time.time()
     data_constructor = ListDataConstructors(list_data, list_dtrajs, list_obs_data, n_validations, derivative, logq)
     input_q, server_manager = data_constructor.get_queue()
-
+    '''
     if use_multi:
         generate_estimator_threads = []
         for i in range(n_threads):
@@ -477,9 +491,10 @@ def kfold_crossvalidation_max_likelihood(list_data, list_dtrajs, observables, mo
             thrd.join()
 
     else:
-        new_generator = GenerateEstimatorMulti(observables, model, stationary_distributions, model_state, input_q)
-        generate_estimator_threads = [new_generator]
-        new_generator.run()
+    '''
+    new_generator = GenerateEstimatorMulti(observables, model, stationary_distributions, model_state, input_q)
+    generate_estimator_threads = [new_generator]
+    new_generator.run()
 
     collected_solutions = []
     for thrd in generate_estimator_threads:
@@ -505,7 +520,7 @@ def kfold_crossvalidation_max_likelihood(list_data, list_dtrajs, observables, mo
         current_epsilons = complete_estimator.current_epsilons
     else:
         current_epsilons = x0
-    '''
+
     if use_multi:
         all_threads = []
         for i in range(n_threads):
@@ -523,21 +538,28 @@ def kfold_crossvalidation_max_likelihood(list_data, list_dtrajs, observables, mo
         #    pass # wait until all objects register completion
 
     else:
-    '''
-    new_estimator = EstimateMulti(solver, current_epsilons, inputs_q, results_q, list_train_qfunctions, list_validation_qfunctions)
-    new_estimator.run()
+        new_estimator = EstimateMulti(solver, current_epsilons, inputs_q, results_q, list_train_qfunctions, list_validation_qfunctions)
+        new_estimator.run()
 
     server_manager.shutdown()
     iter_container.save_queue(results_q)
-    best_hyper_params = iter_container.get_best()
+    best_hyper_params, best_hyper_params_printable = iter_container.get_best()
 
     iteration_save_dir = "%s/best_params" % cwd
     if not os.path.isdir(iteration_save_dir):
         os.mkdir(iteration_save_dir)
 
-    for entry in best_hyper_params:
-        np.savetxt("%s/param_%s.dat" % (iteration_save_dir, entry), np.array(best_hyper_params[entry]))
+    try:
+        f_save_printable = open("%s/param_%s.dat" % (iteration_save_dir, entry), "w")
+        for entry in best_hyper_params_printable:
+            f_save_printable.write("%s\n" % entry)
+            f_save_printable.write("%s\n\n" % str(best_hyper_params_printable[entry]))
+        f_save_printable.close()
+    except:
+        print "Failed to save best hyper params. The printable form is not easy to save"
+        print best_hyper_params_printable
 
+    func_solver = get_solver(solver)
     new_epsilons_cv = func_solver(complete_qfunction, current_epsilons, **best_hyper_params)
 
     f_check.close()
