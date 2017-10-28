@@ -189,6 +189,7 @@ class ListDataConstructors(object):
 
             this_n_frames = np.shape(this_dtrajs)[0]
             assert np.shape(this_training)[0] == this_n_frames
+
             for item in this_observables:
                 assert np.shape(item)[0] == this_n_frames
             self._convert_and_add_parameters_to_list(this_dtrajs, this_training, this_observables, derivative, logq, False)
@@ -322,13 +323,16 @@ class EstimateMulti(multiprocessing.Process):
 
 class IterContainer(object):
     """ Contains the parameters and solution for cross validation """
-    def __init__(self, n_functions, all_kwargs, all_kwargs_printable, order_list, order_sizes):
+    def __init__(self, n_functions, all_kwargs, all_kwargs_printable, order_list, order_sizes, all_coordinates):
         self.all_kwargs = all_kwargs
         self.all_kwargs_printable = all_kwargs_printable
         self.num_functions = n_functions
         self.num_params = len(all_kwargs)
         self.save_array = np.zeros((self.num_params, self.num_functions))
         self.save_complete = np.copy(self.save_array) - 1
+        self.all_coordinates = all_coordinates
+        array_shape = tuple(i for i in order_sizes)
+        self.comparison_array = np.zeros(array_shape) - 1
 
         self.send_indices = []
         for i in range(self.num_params):
@@ -384,11 +388,25 @@ class IterContainer(object):
     def reset_q(self):
         self.current_index = 0
 
-    def get_best(self):
+    def _compute_score(self):
         if np.any(self.save_complete < 0):
             print "Warning: Many parameters were not saved. See the save_complete attribute for which ones."
 
         total_scores = np.sum(self.save_array, axis=1)
+        return total_scores
+
+    def get_plottable_array(self):
+        total_scores = self._compute_score()
+        for coord,score in zip(self.all_coordinates, total_scores):
+            self.comparison_array[coord] = score
+
+        if np.any(self.comparison_array < 0):
+            print "Error: Some scores not properly set"
+
+        return self.comparison_array
+
+    def get_best(self):
+        total_scores = self._compute_score()
         pos = 0
         best_score = None
         for idx,value in enumerate(total_scores):
@@ -406,37 +424,31 @@ class IterContainer(object):
 
         return self.all_kwargs[pos], self.all_kwargs_printable[pos]
 
+def prepare_kwargs_dictionary(kwargs, epsilon_possible, bounds_function, gtol_possible, ftol_possible, current_epsilons, epsilon_function_type, verbose=False):
+    list_kwargs = {}
+    list_kwargs_printable = {}
+    if epsilon_possible is not None:
+        list_kwargs_printable["bounds"] = epsilon_possible
+        temporary_bounds_list = []
+        for eps_pos in epsilon_possible:
+            new_bounds = bounds_function(eps_pos, current_epsilons, epsilon_info=epsilon_function_type)
+            temporary_bounds_list.append(new_bounds)
+        list_kwargs["bounds"] = temporary_bounds_list
 
-def kfold_crossvalidation_max_likelihood(list_data, list_dtrajs, observables, model, list_obs_data=None, solver="bfgs", logq=False, derivative=None, x0=None, kwargs={}, list_kwargs={}, list_kwargs_printable={},  stationary_distributions=None, model_state=None, checkpoint_file=None, verbose=False, n_threads=1):
+    if gtol_possible is not None:
+        list_kwargs_printable["gtol"] = gtol_possible
+        list_kwargs["gtol"] = gtol_possible
 
-    derivative = ensure_derivative(derivative, solver)
+    if ftol_possible is not None:
+        list_kwargs_printable["ftol"] = ftol_possible
+        list_kwargs["ftol"] = ftol_possible
 
     for thing in list_kwargs:
         if thing not in list_kwargs_printable:
             list_kwargs_printable[thing] = list_kwargs[thing]
         else:
-            if not len(list_kwargs_printable[thing]) == len(list_kwrags[thing]):
-                raise IOError("Option: %s. Size of list_kwrags_printable (%d) must be equal to list_kwargs (%d)" % (thing, len(list_kwargs_printable[thing]), len(list_kwargs[thing])))
-
-    if n_threads == 1:
-        use_multi = False
-    else:
-        if not n_threads > 0:
-            raise IOError("n_threads must be between 1 - infinity")
-        use_multi = True
-
-    n_validations = len(list_data)
-    cwd = os.getcwd()
-    # Determine checkpoint file name and write/append to it
-    if checkpoint_file is None:
-        checkpoint_file = "%s/checkpoint_%d.txt" % (os.getcwd(), time.time()*1000)
-
-    if os.path.isfile(checkpoint_file):
-        f_check = open(checkpoint_file, "a")
-        f_check.write("\n\n\n### Continuing Cross Validation ###")
-    else:
-        f_check = open(checkpoint_file, "w")
-        f_check.write("### Starting Cross Validation ###")
+            if not len(list_kwargs_printable[thing]) == len(list_kwargs[thing]):
+                raise IOError("Option: %s. Size of list_kwargs_printable (%d) must be equal to list_kwargs (%d)" % (thing, len(list_kwargs_printable[thing]), len(list_kwargs[thing])))
 
     # determine the list of all keyword args
     all_entries = [entry for entry in list_kwargs]
@@ -449,10 +461,11 @@ def kfold_crossvalidation_max_likelihood(list_data, list_dtrajs, observables, mo
 
     all_kwargs = []
     all_kwargs_printable = []
+    all_coordinates = []
     if len(all_entries) == 0:
         all_kwargs.append(kwargs)
     else:
-        recursive_add_dic_entries(all_kwargs, kwargs, list_kwargs, all_entries, 0)
+        recursive_add_dic_entries(all_kwargs, kwargs, list_kwargs, all_entries, 0, all_coordinates=all_coordinates, current_coordinate=tuple() )
         recursive_add_dic_entries(all_kwargs_printable, {}, list_kwargs_printable, all_entries, 0)
     assert len(all_kwargs) == total_number_params
     assert len(all_kwargs_printable) == total_number_params
@@ -469,6 +482,38 @@ def kfold_crossvalidation_max_likelihood(list_data, list_dtrajs, observables, mo
                     this_str += str(dic[entry])
                 this_str += "   "
             print this_str
+
+    return list_kwargs, list_kwargs_printable, all_kwargs, all_kwargs_printable, all_entries, all_entry_sizes, all_coordinates
+
+def kfold_crossvalidation_max_likelihood(list_data, list_dtrajs, observables, model, list_obs_data=None, solver="bfgs", logq=False, derivative=None, x0=None, kwargs={}, epsilon_possible=None, bounds_function=util.bounds_simple, gtol_possible=None, ftol_possible=None,  stationary_distributions=None, model_state=None, checkpoint_dir=None, verbose=False, n_threads=1):
+
+    derivative = ensure_derivative(derivative, solver)
+
+    if n_threads == 1:
+        use_multi = False
+    else:
+        if not n_threads > 0:
+            raise IOError("n_threads must be between 1 - infinity")
+        use_multi = True
+
+    n_validations = len(list_data)
+    cwd = os.getcwd()
+    # Determine checkpoint file name and write/append to it
+    if checkpoint_dir is None:
+        checkpoint_dir = "%s/checkpoint_%d" % (cwd, time.time()*1000)
+
+    if not os.path.isdir(checkpoint_dir):
+        os.mkdir(checkpoint_dir)
+
+    checkpoint_file = "%s/checkpoint.txt" % checkpoint_dir
+
+    if os.path.isfile(checkpoint_file):
+        f_check = open(checkpoint_file, "a")
+        f_check.write("\n\n\n### Continuing Cross Validation ###")
+    else:
+        f_check = open(checkpoint_file, "w")
+        f_check.write("### Starting Cross Validation ###")
+
 
     # Make all the eo objects and qfunctions
     print_str = "Initializing Training and Validation Functions"
@@ -507,19 +552,31 @@ def kfold_crossvalidation_max_likelihood(list_data, list_dtrajs, observables, mo
     t2 = time.time()
     print "Finished Initializing %d-Fold cross-validation in %f minutes" % (n_validations, (t2-t1)/60.)
 
-    # go through and determine which hyper parameters need to be cycled
-    # then perform a grid search for the ideal hyper parameters
-    print "Beginning Grid Search of Hyper Parameters"
-
-    iter_container = IterContainer(n_validations, all_kwargs, all_kwargs_printable, all_entries, all_entry_sizes)
-
-    inputs_q, server_manager = iter_container.get_queue()
-    results_q = multiprocessing.Queue()
-
+    # set the epsilons
     if x0 is None:
         current_epsilons = complete_estimator.current_epsilons
     else:
         current_epsilons = x0
+        assert np.shape(x0)[0] == np.shape(complete_estimator.current_epsilons)[0]
+
+    epsilon_function_type = complete_estimator.current_epsilon_function_types
+
+    # go through and determine which hyper parameters need to be cycled
+    # then perform a grid search for the ideal hyper parameters
+    print "Beginning Grid Search of Hyper Parameters"
+    list_kwargs, list_kwargs_printable, all_kwargs, all_kwargs_printable, all_entries, all_entry_sizes, all_coordinates = prepare_kwargs_dictionary(kwargs, epsilon_possible, bounds_function, gtol_possible, ftol_possible, current_epsilons, epsilon_function_type, verbose=verbose)
+
+    iter_container = IterContainer(n_validations, all_kwargs, all_kwargs_printable, all_entries, all_entry_sizes, all_coordinates)
+
+    f_temp = open("%s/entry_order" % checkpoint_dir, "w")
+    for thing in all_entries:
+        f_temp.write("%s\n" % thing)
+    f_temp.close()
+    for thing in list_kwargs_printable:
+        np.savetxt("%s/kwarg_%s" % (checkpoint_dir, thing), list_kwargs_printable[thing] )
+
+    inputs_q, server_manager = iter_container.get_queue()
+    results_q = multiprocessing.Queue()
 
     if use_multi:
         all_threads = []
@@ -545,12 +602,14 @@ def kfold_crossvalidation_max_likelihood(list_data, list_dtrajs, observables, mo
     iter_container.save_queue(results_q)
     best_hyper_params, best_hyper_params_printable = iter_container.get_best()
 
-    iteration_save_dir = "%s/best_params" % cwd
-    if not os.path.isdir(iteration_save_dir):
-        os.mkdir(iteration_save_dir)
+    cross_validation_array = iter_container.get_plottable_array()
+    try:
+        np.savetxt("%s/cross_validation_array.dat" % checkpoint_dir, cross_validation_array)
+    except:
+        np.save("%s/cross_validation_array" % checkpoint_dir, cross_validation_array)
 
     try:
-        f_save_printable = open("%s/param_%s.dat" % (iteration_save_dir, entry), "w")
+        f_save_printable = open("%s/param_%s.dat" % (checkpoint_dir, entry), "w")
         for entry in best_hyper_params_printable:
             f_save_printable.write("%s\n" % entry)
             f_save_printable.write("%s\n\n" % str(best_hyper_params_printable[entry]))
@@ -563,8 +622,8 @@ def kfold_crossvalidation_max_likelihood(list_data, list_dtrajs, observables, mo
     new_epsilons_cv = func_solver(complete_qfunction, current_epsilons, **best_hyper_params)
 
     f_check.close()
-
-    return new_epsilons_cv
+    complete_estimator.save_solutions(new_epsilons_cv)
+    return complete_estimator, iter_container
 
 def check_going(all_objects):
     still_going = False
@@ -574,7 +633,7 @@ def check_going(all_objects):
 
     return still_going
 
-def recursive_add_dic_entries(all_dicts, current_dictionary, list_dictionary, ordered_entry_list, level):
+def recursive_add_dic_entries(all_dicts, current_dictionary, list_dictionary, ordered_entry_list, level, all_coordinates=None, current_coordinate=None):
     # list dictionary consists of entires and lists
     # will unwrap along the list axis
     this_entry = ordered_entry_list[level]
@@ -582,9 +641,17 @@ def recursive_add_dic_entries(all_dicts, current_dictionary, list_dictionary, or
         new_dictionary = current_dictionary.copy()
         new_dictionary[this_entry] = list_dictionary[this_entry][i]
 
+        if all_coordinates is not None:
+            new_coordinate = current_coordinate + tuple()
+            new_coordinate += (i,)
+        else:
+            new_coordinate = None
+
         if level == (len(ordered_entry_list) - 1):
             # terminate the recursion and add the current dictionary to the thing
             all_dicts.append(new_dictionary)
+            if new_coordinate is not None:
+                all_coordinates.append(new_coordinate)
         else:
             #continue recursion
-            recursive_add_dic_entries(all_dicts, new_dictionary, list_dictionary, ordered_entry_list, level+1)
+            recursive_add_dic_entries(all_dicts, new_dictionary, list_dictionary, ordered_entry_list, level+1, all_coordinates=all_coordinates, current_coordinate=new_coordinate)

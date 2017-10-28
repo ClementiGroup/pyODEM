@@ -96,6 +96,7 @@ class EstimatorsObject(object):
         self.num_models = len(model)
         self.model = model
         self.current_epsilons = model[0].get_epsilons() #assumes the first model is the one you want
+        self.current_epsilon_function_types = model[0].get_epsilons()
         self.number_params = np.shape(self.current_epsilons)[0]
 
         #check model inputs

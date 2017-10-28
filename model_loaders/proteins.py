@@ -87,6 +87,7 @@ class Protein(ProtoProtein):
             self.use_pairs.append([self.pairs[i][0].index, self.pairs[i][1].index])
 
         self.epsilons = np.array(self.model.fitted_epsilons)
+        self.function_types = self.model.fitted_function_types
 
     def get_potentials_epsilon(self, data):
         """ Return PotentialEnergy(epsilons)
