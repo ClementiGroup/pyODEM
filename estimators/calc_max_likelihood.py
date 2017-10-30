@@ -294,7 +294,7 @@ class ListDataConstructors(object):
         assert len(self.estimator_size) == n_size
 
 class EstimateMulti(multiprocessing.Process):
-    def __init__(self, solver, current_epsilons, iter_q, save_q, training_functions, validation_functions):
+    def __init__(self, solver, current_epsilons, iter_q, save_q, training_functions, validation_functions, total_computations):
         multiprocessing.Process.__init__(self)
         self.solver = get_solver(solver)
         self.current_epsilons = current_epsilons
@@ -302,7 +302,7 @@ class EstimateMulti(multiprocessing.Process):
         self.save_q = save_q
         self.training_functions = training_functions
         self.validation_functions = validation_functions
-
+        self.total_computations = total_computations
         self.still_going = False # True when the loop is running
 
     def run(self):
@@ -315,8 +315,11 @@ class EstimateMulti(multiprocessing.Process):
             validation_function = self.validation_functions[position[1]]
             new_epsilons = self.solver(training_function, self.current_epsilons, **kwargs)
             this_score = validation_function(new_epsilons)
-            print "Final Score: %f" % this_score
+            #print "Final Score: %f" % this_score
             self.save_q.put([this_score, position])
+            num_completed = self.save_q.qsize()
+            print "Completed %d/%d computations" % (num_completed, total_computations)
+
         self.still_going = False
 
         return
@@ -581,7 +584,7 @@ def kfold_crossvalidation_max_likelihood(list_data, list_dtrajs, observables, mo
     if use_multi:
         all_threads = []
         for i in range(n_threads):
-            all_threads.append(EstimateMulti(solver, current_epsilons, inputs_q, results_q, list_train_qfunctions, list_validation_qfunctions))
+            all_threads.append(EstimateMulti(solver, current_epsilons, inputs_q, results_q, list_train_qfunctions, list_validation_qfunctions, iter_container.total_send))
 
         all_check = [iter_container]
         for thrd in all_threads:
@@ -595,7 +598,7 @@ def kfold_crossvalidation_max_likelihood(list_data, list_dtrajs, observables, mo
         #    pass # wait until all objects register completion
 
     else:
-        new_estimator = EstimateMulti(solver, current_epsilons, inputs_q, results_q, list_train_qfunctions, list_validation_qfunctions)
+        new_estimator = EstimateMulti(solver, current_epsilons, inputs_q, results_q, list_train_qfunctions, list_validation_qfunctions, iter_container.total_send)
         new_estimator.run()
 
     server_manager.shutdown()
