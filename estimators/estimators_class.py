@@ -374,7 +374,7 @@ class EstimatorsObject(object):
         self.trace_log_Q_values.append(Q)
         self.count_Qcalls += 1
 
-        print "%f   %f" % (Q, np.abs(np.max(dQ_vector)))
+        #print "%f   %f" % (Q, np.abs(np.max(dQ_vector)))
 
         return Q, dQ_vector
 
