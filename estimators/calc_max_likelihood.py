@@ -318,7 +318,7 @@ class EstimateMulti(multiprocessing.Process):
             #print "Final Score: %f" % this_score
             self.save_q.put([this_score, position])
             num_completed = self.save_q.qsize()
-            print "Completed %d/%d computations" % (num_completed, total_computations)
+            print "Completed %d/%d computations" % (num_completed, self.total_computations)
 
         self.still_going = False
 
