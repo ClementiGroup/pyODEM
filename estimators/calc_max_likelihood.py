@@ -87,6 +87,12 @@ def max_likelihood_estimate(data, dtrajs, observables, model, obs_data=None, sol
     if type(data) is list:
         # need to vstack data, dtrajs and obs_data
         # do checks to verify everything is the right shape
+        nsets = len(data)
+        if not len(dtrajs) == nsets:
+            raise IOError("data and dtrajs must have same number of sets")
+        if obs_data is None:
+            if not len(obs_data) == nsets:
+                raise IOError("data and obs_data must have same number of sets")
         sizes = []
         for thing in data:
             sizes.append(np.shape(thing)[0])
@@ -140,6 +146,7 @@ def max_likelihood_estimate(data, dtrajs, observables, model, obs_data=None, sol
 
     derivative = ensure_derivative(derivative, solver)
     data_sets = util.get_state_indices(all_dtrajs)
+    print "number of inputted data sets: %d" % len(data_sets)
     eo = EstimatorsObject(all_data, data_sets, observables, model, obs_data=all_obs_data, stationary_distributions=stationary_distributions, model_state=model_state)
 
     Qfunction_epsilon = eo.get_function(derivative, logq)

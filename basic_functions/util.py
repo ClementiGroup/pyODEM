@@ -5,9 +5,22 @@ Utility functions for organizing and preparing data for optimization
 import numpy as np
 
 def get_state_indices(dtrajs):
+    """
+    Convert a discrete trajectory into frame index for each state.
+
+    Args:
+        dtrajs (numpy.ndarray): Discrete trajectory indexed from 0 to N-1 for N
+            discrete states.
+
+    Returns:
+        equilibrium_frames (list): A list with len = N, where each entry gives
+            a list of indices corresponding to that discrete state.
+
+    """
     equilibrium_frames = []
     indices = np.arange(np.shape(dtrajs)[0])
-    for i in range(np.max(dtrajs)+1):
+    n_states = np.max(dtrajs) + 1
+    for i in range(n_states:
         state_data = indices[dtrajs == i]
         if not state_data.size == 0:
             equilibrium_frames.append(state_data)
@@ -16,6 +29,8 @@ def get_state_indices(dtrajs):
     for set_of_frames in equilibrium_frames:
         total_check += len(set_of_frames)
     assert total_check == np.shape(dtrajs)[0]
+    if not len(equilibrium_frames) == n_states:
+        print "Warning: in util.get_state_indices(), number of expected equilibrium frames not matching number of equilibrium frames.\n Check inputted dtrajs and verify each discrete index is represented correctly"
 
     return equilibrium_frames
 
