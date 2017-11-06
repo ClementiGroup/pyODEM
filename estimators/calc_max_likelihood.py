@@ -109,7 +109,11 @@ def max_likelihood_estimate(data, dtrajs, observables, model, obs_data=None, sol
             else:
                 all_data = np.append(all_data, thing)
         nframes_total = np.shape(all_data)[0]
-        assert np.sum(sizes) == nframes_total #sanity check its correct shape
+        try:
+            assert np.sum(sizes) == nframes_total #sanity check its correct shape
+        except:
+            print sizes
+            print nframes_total
 
         if obs_data is not None:
             for thing in obs_data:
