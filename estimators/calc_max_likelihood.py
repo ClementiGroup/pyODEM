@@ -131,12 +131,13 @@ def max_likelihood_estimate(data, dtrajs, observables, model, obs_data=None, sol
                 all_dtrajs = np.copy(thing)
             else:
                 all_dtrajs = np.append(all_dtrajs, thing, axis=0)
-        assert np.shape(all_dtrajs) == nframes_total
+        assert np.shape(all_dtrajs)[0] == nframes_total
 
     else:
         all_data = data
         obs_data = obs_data
         all_dtrajs = dtrajs
+
     derivative = ensure_derivative(derivative, solver)
     data_sets = util.get_state_indices(all_dtrajs)
     eo = EstimatorsObject(all_data, data_sets, observables, model, obs_data=all_obs_data, stationary_distributions=stationary_distributions, model_state=model_state)
