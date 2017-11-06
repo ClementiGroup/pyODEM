@@ -92,7 +92,7 @@ def max_likelihood_estimate(data, dtrajs, observables, model, obs_data=None, sol
             sizes.append(np.shape(thing)[0])
         if obs_data is not None:
             for first in obs_data:
-                for i,second in enumerate(obs_data):
+                for i,second in enumerate(first):
                     if not np.shape(second)[0] == sizes[i]:
                         raise IOError("Shape of obs_data does not match shape of data")
         for i,thing in enumerate(dtrajs):
@@ -114,9 +114,9 @@ def max_likelihood_estimate(data, dtrajs, observables, model, obs_data=None, sol
         if obs_data is not None:
             for thing in obs_data:
                 if all_obs_data is None:
-                    all_obs_data = [obs_values for obs_value in thing]
+                    all_obs_data = [obs_value for obs_value in thing]
                 else:
-                    all_obs_data = [np.apend(all_obs_values, obs_value) for all_obs_values,obs_value in zip(all_obs_data,thing)]
+                    all_obs_data = [np.apend(all_obs_value, obs_value) for all_obs_values,obs_value in zip(all_obs_data,thing)]
 
             for thing in all_obs_data:
                 assert np.shape(thing)[0] == nframes_total # sanity check
