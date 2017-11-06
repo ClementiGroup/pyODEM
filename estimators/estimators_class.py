@@ -181,7 +181,7 @@ class EstimatorsObject(object):
                 print np.abs(diff/self.pi)
                 self.pi = stationary_distributions
             else:
-                print "Input Stationry Distribution Dimensions = %d" % np.shape(stationary_distributinos)[0]
+                print "Input Stationry Distribution Dimensions = %d" % np.shape(stationary_distributions)[0]
                 print "Number of Equilibrium States = %d" % len(self.ni)
                 raise IOError("Inputted stationary distributions does match not number of equilibrium states.")
 
