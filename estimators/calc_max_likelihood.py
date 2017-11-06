@@ -107,20 +107,21 @@ def max_likelihood_estimate(data, dtrajs, observables, model, obs_data=None, sol
             if all_data is None:
                 all_data = np.copy(thing)
             else:
-                all_data = np.append(all_data, thing)
+                all_data = np.append(all_data, thing, axis=0)
         nframes_total = np.shape(all_data)[0]
         try:
             assert np.sum(sizes) == nframes_total #sanity check its correct shape
         except:
             print sizes
             print nframes_total
+            raise
 
         if obs_data is not None:
             for thing in obs_data:
                 if all_obs_data is None:
                     all_obs_data = [obs_value for obs_value in thing]
                 else:
-                    all_obs_data = [np.apend(all_obs_value, obs_value) for all_obs_values,obs_value in zip(all_obs_data,thing)]
+                    all_obs_data = [np.append(all_obs_value, obs_value, axis=0) for all_obs_values,obs_value in zip(all_obs_data,thing)]
 
             for thing in all_obs_data:
                 assert np.shape(thing)[0] == nframes_total # sanity check
@@ -129,7 +130,7 @@ def max_likelihood_estimate(data, dtrajs, observables, model, obs_data=None, sol
             if all_dtrajs is None:
                 all_dtrajs = np.copy(thing)
             else:
-                all_dtrajs = np.append(all_dtrajs, thing)
+                all_dtrajs = np.append(all_dtrajs, thing, axis=0)
         assert np.shape(all_dtrajs) == nframes_total
 
     else:
