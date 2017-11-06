@@ -60,15 +60,15 @@ def get_solver(solver):
 
     return func_solver
 
-def max_likelihood_estimate(data, data_sets, observables, model, obs_data=None, solver="bfgs", logq=False, derivative=None, x0=None, kwargs={}, stationary_distributions=None, model_state=None):
+def max_likelihood_estimate(data, dtrajs, observables, model, obs_data=None, solver="bfgs", logq=False, derivative=None, x0=None, kwargs={}, stationary_distributions=None, model_state=None):
     """ Optimizes model's paramters using a max likelihood method
 
     Args:
         See pyfexd.estimators.estimators_class.EstimatorsObject for:
-            data (array), data_sets (list),
-            observables (ExperimentalObservables), model (ModelLoader),
-            obs_data(list) and stationary_distributions (list)
-
+            data (array), observables (ExperimentalObservables),
+            model (ModelLoader), obs_data(list) and
+            stationary_distributions (list)
+        dtrajs (array of int): Discrete trajectory index for each frame of data.
         solver (str): Optimization procedures. Defaults to Simplex. Available
             methods include: simplex, anneal, cg, custom.
         logq (bool): Use the logarithmic Q functions. Default: False.
@@ -84,10 +84,57 @@ def max_likelihood_estimate(data, data_sets, observables, model, obs_data=None, 
             computation and the results.
 
     """
+    if type(data) is list:
+        # need to vstack data, dtrajs and obs_data
+        # do checks to verify everything is the right shape
+        sizes = []
+        for thing in data:
+            sizes.append(np.shape(thing)[0])
+        if obs_data is not None:
+            for first in obs_data:
+                for i,second in enumerate(obs.data):
+                    if not np.shape(second)[0] == sizes[i]:
+                        raise IOError("Shape of obs_data does not match shape of data")
+        for i,thing in enumerate(dtrajs):
+            if not np.shape(thing)[0] == sizes[i]:
+                raise IOError("Shape of dtrajs does not match shape of data")
 
+        # at this point, all checks passed and data is formatted as expected
+        all_data = None
+        all_obs_data = None
+        all_dtrajs = None
+        for thing in data:
+            if all_data is None:
+                all_data = np.copy(thing)
+            else:
+                all_data = np.append(all_data, thing)
+        nframes_total = np.shape(all_data)[0]
+        assert np.sum(sizes) == nframes_total #sanity check its correct shape
+
+        if obs_data is not None:
+            for thing in obs_data:
+                if all_obs_data is None:
+                    all_obs_data = [obs_values for obs_value in thing]
+                else:
+                    all_obs_data = [np.apend(all_obs_values, obs_value) for all_obs_values,obs_value in zip(all_obs_data,thing)]
+
+            for thing in all_obs_data:
+                assert np.shape(thing)[0] == nframes_total # sanity check
+
+        for thing in dtrajs:
+            if all_dtrajs is None:
+                all_dtrajs = np.copy(thing)
+            else:
+                all_dtrajs = np.append(all_dtrajs, thing)
+        assert np.shape(all_dtrajs) == nframes_total
+
+    else:
+        all_data = data
+        obs_data = obs_data
+        all_dtrajs = dtrajs
     derivative = ensure_derivative(derivative, solver)
-
-    eo = EstimatorsObject(data, data_sets, observables, model, obs_data=obs_data, stationary_distributions=stationary_distributions, model_state=model_state)
+    data_sets = util.get_state_indices(all_dtrajs)
+    eo = EstimatorsObject(all_data, data_sets, observables, model, obs_data=all_obs_data, stationary_distributions=stationary_distributions, model_state=model_state)
 
     Qfunction_epsilon = eo.get_function(derivative, logq)
     func_solver = get_solver(solver)
