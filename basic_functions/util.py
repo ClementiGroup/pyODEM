@@ -22,10 +22,11 @@ def get_state_indices(dtrajs):
     n_states = np.max(dtrajs) + 1
     for i in range(n_states):
         state_data = indices[dtrajs == i]
+        equilibrium_frames.append(state_data)
         if not state_data.size == 0:
-            equilibrium_frames.append(state_data)
+            pass
         else:
-            print "Dropped discrete state %d with shape: %s" % (i, str(np.shape(state_data)))
+            print "Warning: Discrete state %d has shape: %s" % (i, str(np.shape(state_data)))
 
     total_check = 0
     for set_of_frames in equilibrium_frames:
