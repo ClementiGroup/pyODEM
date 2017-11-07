@@ -136,21 +136,13 @@ def max_likelihood_estimate(data, dtrajs, observables, model, obs_data=None, sol
             if all_dtrajs is None:
                 all_dtrajs = np.copy(thing)
             else:
-                all_dtrajs = np.append(all_dtrajs, thing, axis=0)
+                all_dtrajs = np.append(all_dtrajs, thing)
         assert np.shape(all_dtrajs)[0] == nframes_total
 
     else:
         all_data = data
         obs_data = obs_data
         all_dtrajs = dtrajs
-
-    ## debug ##
-    check = np.zeros(np.max(dtrajs) + 1)
-    for thing in dtrajs:
-        check[thing] = 1
-    if np.any(check == 0):
-        print "Warning, some dtrajs are bad in calc_max_likelihood()"
-    ## debug ##
 
     derivative = ensure_derivative(derivative, solver)
     data_sets = util.get_state_indices(all_dtrajs)
