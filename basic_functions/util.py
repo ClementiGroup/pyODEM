@@ -20,6 +20,13 @@ def get_state_indices(dtrajs):
     equilibrium_frames = []
     indices = np.arange(np.shape(dtrajs)[0])
     n_states = np.max(dtrajs) + 1
+    ## debug ##
+    check = np.zeros(n_states)
+    for thing in dtrajs:
+        check[thing] = 1
+    if np.any(check == 0):
+        print "Warning, some dtrajs are bad in get_state_indices()"
+    ## debug ##
     for i in range(n_states):
         state_data = indices[dtrajs == i]
         if not state_data.size == 0:

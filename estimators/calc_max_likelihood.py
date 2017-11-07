@@ -144,6 +144,14 @@ def max_likelihood_estimate(data, dtrajs, observables, model, obs_data=None, sol
         obs_data = obs_data
         all_dtrajs = dtrajs
 
+    ## debug ##
+    check = np.zeros(np.max(dtrajs) + 1)
+    for thing in dtrajs:
+        check[thing] = 1
+    if np.any(check == 0):
+        print "Warning, some dtrajs are bad in calc_max_likelihood()"
+    ## debug ##
+
     derivative = ensure_derivative(derivative, solver)
     data_sets = util.get_state_indices(all_dtrajs)
     print "number of inputted data sets: %d" % len(data_sets)
