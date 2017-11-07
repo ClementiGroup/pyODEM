@@ -20,7 +20,7 @@ def get_state_indices(dtrajs):
     equilibrium_frames = []
     indices = np.arange(np.shape(dtrajs)[0])
     n_states = np.max(dtrajs) + 1
-    for i in range(n_states:
+    for i in range(n_states):
         state_data = indices[dtrajs == i]
         if not state_data.size == 0:
             equilibrium_frames.append(state_data)
