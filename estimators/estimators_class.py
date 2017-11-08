@@ -475,7 +475,22 @@ class HamiltonianCalculator(object):
         self.size = size
         self.state = state
 
-    def epsilon_function(self,epsilons):
+        if self.num_functions == 0:
+            self.epsilon_function = self._epsilon_zero
+            self.derivatives_function = self._derivatives_zero
+        else:
+            self.epsilon_function = self._epsilon_function
+            self.derivatives_function = self._derivatives_function
+
+    def _epsilon_zero(self, epsilons):
+        neps = np.shape(epsilons)[0]
+        return np.zeros(neps).reshape((1,neps))
+
+    def _derivatives_zero(self, epsilons):
+        neps = np.shape(epsilons)[0]
+        return np.zeros(neps).reshape((1,neps))
+
+    def _epsilon_function(self,epsilons):
         except_count = 0
         for idx in range(self.num_functions):
             this_array = self.hamiltonian_list[idx](epsilons)
@@ -487,7 +502,7 @@ class HamiltonianCalculator(object):
             assert except_count == 1
         return total_array
 
-    def derivatives_function(self,epsilons):
+    def _derivatives_function(self,epsilons):
         count = 0
         except_count = 0
         for idx in range(self.num_functions):
