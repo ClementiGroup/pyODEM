@@ -56,7 +56,7 @@ def bounds_slow_negative_only_nonnative(deps, all_epsilons, epsilon_info=None, h
     for i, eps_value in enumerate(all_epsilons):
         if epsilon_info[i] == 1:
             if eps_value >= -0.09:
-                this_low = -0.09
+                this_low = -0.1
             else:
                 this_low = lowest
         else:
