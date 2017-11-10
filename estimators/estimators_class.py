@@ -109,18 +109,20 @@ class EstimatorsObject(object):
         #load data for each set, and compute energies and observations
         count = -1
         self.state_size = []
+        self.non_zero_states = []
         self.state_ham_functions = []#debugging
-        for state_indices in data_sets:
+        for state_count,state_indices in enumerate(data_sets):
             count += 1
             use_data = data[state_indices]
             num_in_set = np.shape(state_indices)[0]
             self.state_size.append(num_in_set)
+            if not num_in_set == 0:
+                self.non_zero_states.append(state_count)
             which_model = model_state[state_indices]
             ##assumes order does not matter, so long as relative order is preserved.
             ##since the epsilons_function and derivatives are summed up later
             this_epsilons_function = []
             this_derivatives_function = []
-            total_h0 = 0
             for idx in range(self.num_models):
                 if idx in which_model:
                     this_indices = np.where(which_model == idx)
@@ -131,11 +133,6 @@ class EstimatorsObject(object):
                         assert np.shape(test)[0] == size_array
                     this_epsilons_function.append(epsilons_function)
                     this_derivatives_function.append(derivatives_function)
-                    this_h0 = epsilons_function(model[idx].get_epsilons())
-                    try:
-                        total_h0 = np.append(total_h0, this_h0, axis=0)
-                    except:
-                        total_h0 = this_h0
                 assert len(this_epsilons_function) == len(this_derivatives_function)
             num_functions = len(this_epsilons_function)
 
@@ -144,7 +141,7 @@ class EstimatorsObject(object):
 
             self.epsilons_functions.append(ham_calc.epsilon_function)
             self.derivatives_functions.append(ham_calc.derivatives_function)
-            self.h0.append(total_h0)
+            self.h0.append(ham_calc.epsilon_function(self.current_epsilons))
             self.state_ham_functions.append(ham_calc)
             #process obs_data so that only the desired frames are passed
             use_obs_data = []
@@ -158,7 +155,7 @@ class EstimatorsObject(object):
             self.pi.append(num_in_set)
 
         ##check the assertion. make sure everything same size
-        for i in range(self.number_equilibrium_states):
+        for i in self.non_zero_states:
             #in future, should add debug flags to print out extra stuff
             #print "For state %d" % i
             #print np.shape(self.epsilons_functions[i](self.current_epsilons))[0]
@@ -227,7 +224,7 @@ class EstimatorsObject(object):
         #add up all re-weighted terms for normalizaiton
         total_weight = 0.0
         #calculate re-weighting for all terms
-        for i in range(self.number_equilibrium_states):
+        for i in self.non_zero_states:
             next_weight = np.sum(np.exp(self.epsilons_functions[i](epsilons) - self.h0[i])) / self.ni[i]
             next_observed += next_weight * self.state_prefactors[i]
             total_weight += next_weight * self.pi[i]
@@ -383,7 +380,7 @@ class EstimatorsObject(object):
     def get_derivative_pieces(self, epsilons, boltzman_weights):
         derivative_observed_first = np.zeros((self.number_params, self.num_observable))
         derivative_observed_second = np.zeros((self.number_params, self.num_observable))
-        for i in range(self.number_equilibrium_states):
+        for i in self.non_zero_states:
             deriv_function = self.derivatives_functions[i](epsilons)
             self.count_dhepsilon += 1
             next_weight_derivatives = np.sum(boltzman_weights[i] * deriv_function, axis=1) / self.ni[i]
@@ -404,7 +401,7 @@ class EstimatorsObject(object):
         #Calculate the reweighting for all terms
         boltzman_weights = self.get_boltzman_weights(epsilons)
 
-        for i in range(self.number_equilibrium_states):
+        for i in self.non_zero_states:
             next_weight = np.sum(boltzman_weights[i]) / self.ni[i]
             next_observed += next_weight * self.state_prefactors[i]
             total_weight += next_weight * self.pi[i]
@@ -418,29 +415,32 @@ class EstimatorsObject(object):
         #shift is simply -max_val+K_Shift
         K_shift = 600
         try:
-            boltzman_weights = []
-            for i in range(self.number_equilibrium_states):
+            boltzman_weights = [1 for i in range(self.number_equilibrium_states)]
+            for i in self.non_zero_states:
                 boltzman_wt = np.exp(self.epsilons_functions[i](epsilons) - self.h0[i])
                 self.count_hepsilon += 1
-                boltzman_weights.append(boltzman_wt)
+                boltzman_weights[i] = boltzman_wt
         except:
             print "Exponential Function Failed"
             exponents = []
             boltzman_weights = []
             max_val = 0
-            for i in range(self.number_equilibrium_states):
+            exponents = [0 for i in range(self.number_equilibrium_states)]
+            for i in self.non_zero_states:
                 exponent = self.epsilons_functions[i](epsilons) - self.h0[i]
                 self.count_hepsilon += 1
                 max_exponent = np.max(exponent)
                 if max_exponent > max_val:
                     max_val = max_exponent
-                exponents.append(exponent)
+                exponents[i] = exponent
+            boltzman_weights = [1 for i in range(self.number_equilibrium_states)]
             for i in range(self.number_equilibrium_states):
                 boltzman_wt = np.exp(exponents[i] - max_val + K_shift)
-                boltzman_weights.append(boltzman_wt)
+                boltzman_weights[i] = boltzman_wt
 
         assert len(boltzman_weights) == self.number_equilibrium_states
-        for idx,state in enumerate(boltzman_weights):
+        for idx in self.non_zero_states: # only check non-zero, rest okay
+            state = boltzman_weights[idx]
             assert np.shape(state)[0] == self.state_size[idx]
         return boltzman_weights
 
@@ -478,50 +478,46 @@ class HamiltonianCalculator(object):
         if self.num_functions == 0:
             self.epsilon_function = self._epsilon_zero
             self.derivatives_function = self._derivatives_zero
+            self.derivatives_zero_list = [np.zeros(1) for i in range(self.number_params)]
         else:
             self.epsilon_function = self._epsilon_function
             self.derivatives_function = self._derivatives_function
 
     def _epsilon_zero(self, epsilons):
-        neps = np.shape(epsilons)[0]
-        return np.zeros(neps).reshape((1,neps))
+        return np.zeros(self.number_params).reshape((1,self.number_params))
 
     def _derivatives_zero(self, epsilons):
-        neps = np.shape(epsilons)[0]
-        return np.zeros(neps).reshape((1,neps))
+        return self.derivatives_zero_list
 
     def _epsilon_function(self,epsilons):
         except_count = 0
-        for idx in range(self.num_functions):
+        total_array = np.copy(self.hamiltonian_list[0](epsilons))
+        for idx in range(1, self.num_functions):
             this_array = self.hamiltonian_list[idx](epsilons)
-            try:
-                total_array = np.append(total_array, this_array, axis=0)
-            except:
-                except_count += 1
-                total_array = this_array
-            assert except_count == 1
+            total_array = np.append(total_array, this_array, axis=0)
+
         return total_array
 
     def _derivatives_function(self,epsilons):
-        count = 0
-        except_count = 0
-        for idx in range(self.num_functions):
+        #count = 0
+        #except_count = 0
+            #must duplicate list
+            #if not duplicated, errors will result
+            #derivative_list functions might return a stored list
+            #List pass by reference, so python points to that list
+            #when it appends, it appends to the internal list as well
+            #this causes total_list to grow every function call
+            #this is not a problem, with arrays
+            #Arrays are pass by reference as well
+            #But np.append duplicates the array automatically
+
+        total_list = list(self.derivative_list[0](epsilons))
+        for idx in range(1, self.num_functions):
             this_list = self.derivative_list[idx](epsilons)
-            count += np.shape(this_list[0])[0]
-            try:
-                for j in range(self.number_params):
+            #count += np.shape(this_list[0])[0]
+            for j in range(self.number_params):
                     total_list[j] = np.append(total_list[j], this_list[j], axis=0)
-            except:
-                #must duplicate list
-                #if not duplicated, errors will result
-                #derivative_list functions might return a stored list
-                #List pass by reference, so python points to that list
-                #when it appends, it appends to the internal list as well
-                #this causes total_list to grow every function call
-                #this is not a problem, with arrays
-                #Arrays are pass by reference as well
-                #But np.append duplicates the array automatically
-                total_list = list(this_list)
+
 
         return total_list
 
