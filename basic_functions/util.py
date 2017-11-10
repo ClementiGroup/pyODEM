@@ -54,10 +54,13 @@ def bounds_simple(deps, all_epsilons, epsilon_info=None, highest=2., lowest=0.):
 def bounds_slow_negative_only_nonnative(deps, all_epsilons, epsilon_info=None, highest=2., lowest=-2):
     bounds = []
     for i, eps_value in enumerate(all_epsilons):
-        if epsilon_info[i] >= -0.09:
-            this_low = -0.09
+        if epsilon_info[i] == 1:
+            if eps_value >= -0.09:
+                this_low = -0.09
+            else:
+                this_low = lowest
         else:
-            this_low = lowest
+            this_low = 0
 
         low_val = eps_value - deps
         high_val = eps_value + deps

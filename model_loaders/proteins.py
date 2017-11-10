@@ -87,7 +87,14 @@ class Protein(ProtoProtein):
             self.use_pairs.append([self.pairs[i][0].index, self.pairs[i][1].index])
 
         self.epsilons = np.array(self.model.fitted_epsilons)
-        self.function_types = self.model.fitted_function_types
+        function_type_names = self.model.fitted_function_types
+        self.function_types = [] # 0 = always positive, 1 = can be negative
+        for thing in function_type_names:
+            if thing == "LJ12GAUSSIANTANH":
+                self.function_types.append(1)
+            else:
+                self.function_types.append(0)
+        assert len(self.function_types) == len(function_type_names)
 
     def get_potentials_epsilon(self, data):
         """ Return PotentialEnergy(epsilons)
