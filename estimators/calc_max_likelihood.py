@@ -403,7 +403,23 @@ class IterContainer(object):
                 self.send_indices.append([i,j])
 
         self.total_send = len(self.send_indices)
-        self.current_index = 0
+
+        all_scores = [] # bigger score means do first
+        for idx in range(self.total_send):
+            score = 0
+            all_params = self.all_kwargs_printable[self.send_indices[idx][0]]
+            if "gtol" in all_params:
+                # smaller gtol means convergence takes longer
+                score += (1. / all_params["gtol"])
+
+            if "bounds" in all_params:
+                score += all_params["bounds"]
+
+            all_scores.append(score)
+
+        stuff = -1. * np.array(all_scores)
+        self.sorted_indices = np.argsort(stuff)
+
         self.still_going = True
 
         if self.total_send < 10:
@@ -416,7 +432,7 @@ class IterContainer(object):
         new_sync_manager = mpmanagers.SyncManager()
         new_sync_manager.start()
         new_q = new_sync_manager.Queue()
-        for idx in range(self.total_send):
+        for idx in self.sorted_indices:
             send_indices = self.send_indices[idx]
             kwargs = self.all_kwargs[send_indices[0]]
             position = ()
@@ -447,9 +463,6 @@ class IterContainer(object):
     def save(self, score, position):
         self.save_array[position] = score
         self.save_complete[position] = 1
-
-    def reset_q(self):
-        self.current_index = 0
 
     def _compute_score(self):
         if np.any(self.save_complete < 0):
