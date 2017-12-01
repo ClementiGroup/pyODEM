@@ -141,9 +141,9 @@ def max_likelihood_estimate(data, dtrajs, observables, model, obs_data=None, sol
 
     else:
         all_data = data
-        obs_data = obs_data
+        all_obs_data = obs_data
         all_dtrajs = dtrajs
-
+        
     derivative = ensure_derivative(derivative, solver)
     data_sets = util.get_state_indices(all_dtrajs)
     print "number of inputted data sets: %d" % len(data_sets)

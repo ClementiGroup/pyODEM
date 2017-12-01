@@ -31,7 +31,14 @@ def get_state_indices(dtrajs):
     total_check = 0
     for set_of_frames in equilibrium_frames:
         total_check += len(set_of_frames)
-    assert total_check == np.shape(dtrajs)[0]
+
+    try:
+        assert total_check == np.shape(dtrajs)[0]
+    except:
+        print "Total Assigned States: %d" % total_check
+        print "Total starting states: %d" % np.shape(dtrajs)[0]
+        raise
+
     if not len(equilibrium_frames) == n_states:
         print "Warning: in util.get_state_indices(), number of expected equilibrium frames not matching number of equilibrium frames.\n Check inputted dtrajs and verify each discrete index is represented correctly"
 
