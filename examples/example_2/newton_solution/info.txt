@@ -1,3 +1,0 @@
-computed at temperature: 119
-Qold: 23.4689
-Qnew: 3.01266
