@@ -16,7 +16,7 @@ Specific Models Implemented:
     ProteinNonLinear: Uses model_builder to analyze protein trajectories using
         mdtraj. It assumes the Hamiltonian does not depend linearly on the
         epsilons.
-        
+
 """
 
 
@@ -29,5 +29,6 @@ from super_model import ModelLoader
 #load all subclasses below
 from langevin_1d import Langevin
 from proteins import Protein
+from proteins import ProteinMultiTemperature
 from proteins import ProteinNonLinear
 from proteins import ProteinAwsem

@@ -84,6 +84,14 @@ class ModelLoader(object):
         self.beta = besta
         self.temperature = 1.0 / (self.beta*self.GAS_CONSTANT_KJ_MOL)
 
+    def _convert_beta_to_temperature(self, beta):
+        temperature = 1.0 / (beta * self.GAS_CONSTANT_KJ_MOL)
+        return temperature
+
+    def _convert_temperature_to_beta(self, temperature):
+        beta = 1.0 / (temperature*self.GAS_CONSTANT_KJ_MOL)
+        return beta
+
     def get_potentials_epsilon(self, data):
         """ Return PotentialEnergy(epsilons)
 

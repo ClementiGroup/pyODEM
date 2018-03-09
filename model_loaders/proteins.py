@@ -141,7 +141,86 @@ class Protein(ProtoProtein):
         for idx,param in enumerate(self.use_params):
             self.model.Hamiltonian._pairs[param].set_epsilon(parameters[idx])
 
+class ProteinMultiTemperature(Protein):
+    def load_data(self, fname, temperature):
+        """ Load a data file and format for later use
 
+        For Proteins, it uses the self.pairs to load the pair-pair distances for
+        every frame. This is the data format that would be used for computing
+        the energy later.
+
+        Args:
+            fname (string): Name of a file to load.
+            temperature (float/np.ndarray): Temperature of this data set.
+
+        Return:
+            Array (floats): First index is frame, second index is the
+                temperature followed by every pair in the order of pairs.
+
+        *** BUG NOTE ***
+        The results from hepsilon and dhepsilon function from
+        get_potentials_epsilon will differ from the Protein method's results
+        EVEN IF you use the same traj file. This is because mdtraj default
+        output is numpy.float32, while the result of appending the temperature
+        to the pair-distance output results in a numpy.float64. Comparison of
+        the resultant data matrix would be exact suggesting there is no error.
+        But when computing the potential energy using the
+        model._pairs[i].dVdeps function will result in a different result, due
+        to their differing precision on input.
+
+        """
+
+        traj = md.load(fname, top=self.model.mapping.topology)
+        data = md.compute_distances(traj, self.use_pairs, periodic=False)
+        temperature = np.ones((np.shape(data)[0],1)) * temperature
+
+        all_data = np.append(temperature, data, axis=1)
+
+        return all_data
+
+    def get_potentials_epsilon(self, all_data):
+        """ Return PotentialEnergy(epsilons)
+
+        See superclass for full description of purpose. Override superclass.
+        Potential Energy is easily calculated since for this model, all epsilons
+        are linearly related to the potential energy.
+
+        """
+        these_temperatures = all_data[:,0]
+        data = all_data[:,1:]
+
+        all_betas = self._convert_temperature_to_beta(these_temperatures)
+
+        #check to see if data is the expected shape for this analysis:
+        if not np.shape(data)[1] == np.shape(self.use_params)[0]:
+            err_str = "dimensions of data incompatible with number of parameters\n"
+            err_str += "Second index must equal number of parameters \n"
+            err_str += "data is: %s, number of parameters is: %d" %(str(np.shape(data)), len(self.use_params))
+            raise IOError(err_str)
+
+        #list of constant pre factors to each model epsilons
+        constants_list = []
+        constants_list_derivatives = []
+        for i in self.use_params:
+            constants_list.append(self.model.Hamiltonian._pairs[i].dVdeps(data[:,i]) )
+            constants_list_derivatives.append(self.model.Hamiltonian._pairs[i].dVdeps(data[:,i])* -1. * all_betas)
+
+        constants_array = np.array(constants_list)
+        constants_array_derivatives = np.array(constants_list_derivatives)
+        #compute the function for the potential energy
+        def hepsilon(epsilons):
+            value = epsilons[:,np.newaxis] * constants_array
+            total = np.sum(value, axis=0) * -1. * all_betas
+
+            return total
+
+        #compute the function for the derivative of the potential energy
+        def dhepsilon(epsilons):
+            #first index is corresponding epsilon, second index is frame
+
+            return constants_list_derivatives
+
+        return hepsilon, dhepsilon
 
 
 class ProteinNonLinear(Protein):
