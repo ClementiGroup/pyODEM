@@ -2,9 +2,15 @@
 
 Requires package: https://github.com/ajkluber/model_builder
 
+For non-bonded calculations, require:
+    PySPH @ https://pysph.readthedocs.io/en/latest/#
+
 """
 import numpy as np
 import mdtraj as md
+
+# improt non-bonded methods for protein calculation
+from calc_nb_gromacs import check_if_dist_longer_cutoff, check_arr_sizes_are_equal, calc_nb_ene
 
 from pyODEM.model_loaders import ModelLoader
 try:
@@ -651,3 +657,15 @@ class ProteinAwsem(ProtoProtein):
             return constants_list_derivatives
 
         return hepsilon, dhepsilon
+
+
+class ProteinNonBonded(ModelLoader):
+    """ subclass of ProtoProtein, includes non-bonded option
+
+    Use this loader for computing the non-bonded potential energy as well as the
+    native potential energy.
+
+    """
+
+    def __init__(self):
+        self.GAS_CONSTANT_KJ_MOL = 0.0083144621 #kJ/mol*k
