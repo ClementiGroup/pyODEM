@@ -74,6 +74,7 @@ def compute_mixed_derivatives_table(params):
     for idx in range(n_params):
         for jdx in range(n_params):
             params_mat[idx,jdx] = 0.5*math.sqrt(params[jdx]/params[idx])
+    return params_mat
 
 def get_c6c12_matrix_noeps(sigmas, mix_rule):
     # compute the C6/eps and C12/eps parameters.
@@ -1064,7 +1065,7 @@ def compute_energy_slow(traj, all_nl_ps, all_nl_atmtyp_w_excl, all_parms1, all_p
 
         Enb = Enb_pair_sec + Enb_atmtyp_sec
 
-        print "Non bonded energy of frame %d is %30.25f (pairs and atmtyp contributions are %30.25f %30.25f):" % (frame, Enb, Enb_pair_sec, Enb_atmtyp_sec)
+        #print "Non bonded energy of frame %d is %30.25f (pairs and atmtyp contributions are %30.25f %30.25f):" % (frame, Enb, Enb_pair_sec, Enb_atmtyp_sec)
         all_Enb.append(Enb)
 
     return all_Enb
@@ -1180,8 +1181,6 @@ def compute_energy_fast(nonbonded_eps_matrix, pairwise_eps_list, all_nonbonded_e
 
     """
 
-    print pairwise_eps_list
-
     n_frames = len(all_nonbonded_eps_idxs)
     U = np.zeros(n_frames)
     for i_frame in range(n_frames):
@@ -1204,7 +1203,7 @@ def compute_energy_fast(nonbonded_eps_matrix, pairwise_eps_list, all_nonbonded_e
         pairwise_energy = np.sum(pairwise_eps * pairwise_factors)
         this_u = nonbonded_energy + pairwise_energy
 
-        print "Native E: %f   Nonbonded E: %f" % (pairwise_energy, nonbonded_energy)
+        #print "Native E: %f   Nonbonded E: %f" % (pairwise_energy, nonbonded_energy)
         U[i_frame] = this_u
 
     return U
@@ -1217,20 +1216,20 @@ def compute_derivative_fast(nonbonded_matrix_depsilons, all_nonbonded_eps_idxs, 
     """
     n_frames = len(all_nonbonded_eps_idxs)
     n_nonbonded_eps = np.shape(nonbonded_matrix_depsilons)[0]
-    all_derivatives = [[0 for i in range(n_nonbonded_eps)]]
+
+    all_derivatives = [[0 for i in range(n_frames)] for j in range(n_nonbonded_eps)]
     for i_frame in range(n_frames):
         nonbonded_idxs = all_nonbonded_eps_idxs[i_frame]
         nonbonded_factors = all_nonbonded_factors[i_frame]
 
         n_nonbonded = np.shape(nonbonded_idxs)[0]
-        n_pairwise = np.shape(pairwise_idxs)[0]
 
         for i_nb in range(n_nonbonded):
             both_indices = nonbonded_idxs[i_nb]
             idx_nb = both_indices[0]
             jdx_nb = both_indices[1]
-            all_derivatives[idx][i_frame] = nonbonded_matrix_depsilons[idx, jdx] * nonbonded_factors[i_nb]
-            all_derivatives[jdx][i_frame] = nonbonded_matrix_depsilons[jdx, idx] * nonbonded_factors[i_nb]
+            all_derivatives[idx_nb][i_frame] += nonbonded_matrix_depsilons[idx_nb, jdx_nb] * nonbonded_factors[i_nb]
+            all_derivatives[jdx_nb][i_frame] += nonbonded_matrix_depsilons[jdx_nb, idx_nb] * nonbonded_factors[i_nb]
 
     return all_derivatives
 

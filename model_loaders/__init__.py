@@ -32,3 +32,4 @@ from proteins import Protein
 from proteins import ProteinMultiTemperature
 from proteins import ProteinNonLinear
 from proteins import ProteinAwsem
+from proteins import ProteinNonBonded
