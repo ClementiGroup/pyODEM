@@ -38,6 +38,53 @@ def convert_sigma_eps_to_c6c12(sigma, eps):
 
     return c6, c12
 
+def order_epsilons_atm_types(dict_atm_types, n_types):
+    # get an ordered list of eps and sigmas from a dictionary of atom types
+    epsilons_atm_types = np.zeros(n_types)
+    sigmas_atm_types = np.zeros(n_types)
+    for k1, v1 in dict_atm_types.iteritems():
+        idx = v1[0]
+        c6 = v1[1]
+        c12 = v1[2]
+        sigma, eps = convert_c6c12_to_sigma_eps(c6, c12)
+        assert sigma > 0
+        assert eps > 0
+        epsilons_atm_types[idx] = eps
+        sigmas_atm_types[idx] = sigma
+
+    return epsilons_atm_types, sigmas_atm_types
+
+def compute_mixed_table(params, mix_rule):
+    # Compute a mixing of parameters via mix_rules
+    n_params = np.shape(params)[0]
+    params_mat = np.zeros((n_params, n_params))
+    for idx in range(n_params):
+        for jdx in range(idx, n_params):
+            if mix_rule[0] == 1:
+                params_mat[idx, jdx] = math.sqrt(params[idx] * params[jdx])
+                params_mat[jdx, idx] = params_mat[idx, jdx]
+            else:
+                print "Mixing rule not defined in compute_mixed_table()"
+
+    return params_mat
+
+def get_c6c12_matrix_noeps(sigmas, mix_rule):
+    # compute the C6/eps and C12/eps parameters.
+    # return param_mat, which is C6 and C12 for each pair type divided by eps_ij
+    n_params = np.shape(sigmas)[0]
+    mixed_table = compute_mixed_table(sigmas, mix_rule)
+    param_mat = [ [None for i in range(n_params)] for j in range(n_params) ]
+    for idx in range(n_params):
+        for jdx in range(n_params):
+            c6 = 6 * (mixed_table[idx,jdx]**10)
+            c12 = 5 * (mixed_table[idx,jdx]**12)
+            param_mat[idx][jdx] = [c6,c12]
+
+    return param_mat
+
+
+
+
 #################### METHODS FROM FABIO ########################################
 def split_pairwise_atmtype(nl_pairs, pairsidx_ps):
     # nl_pairs: list of pair of indices, those belonging to the neigh list. They are both pairs subject to pots in the [ pairs ] section and [ atomtypes ] section.
@@ -66,6 +113,89 @@ def split_pairwise_atmtype(nl_pairs, pairsidx_ps):
             nl_atmtyp.append(p)
 
     return nl_ps, nl_atmtyp
+
+def calc_nb_ene_fast(dist_array, pot_type, parms):
+    """ Compute the non-bonded energy for each component
+
+    Assuming you have N CA atom pairs that are close enough to have an
+    interaction, the non-bonded potential energy is then computed for those atom
+    pairs. The method currently supports gaussian and LJ12-10 type interactions.
+
+    Unlike calc_nb_ene(), does two things differently. First, instead of
+    returning the total energy, it returns an array of each pair energy. Second,
+    it computes the potential energy without epsilons.
+
+    args:
+        dist_array (array floats): An array of length N that contains the
+            distances computed for each pair.
+        pot_type (list of int): Each entry denotes the GROMACS index for the
+            potential type. Each entry i denotes the potential to use for i'th
+            potential. Example: 1=Lennard Jones and 6=Gaussian interaction.
+        parms (list of list of floats): List of len(N), where each entry i is a
+            list of floats to use in the i'th potential energy calculation.
+
+    returns:
+        U_list (array of float): An array of len N for each nonbonded energy
+
+    """
+    # This function calculates the energy, given a variety of potential functional forms
+    # given an array of distances, the pot_type and parms as inputs. printf is a flag
+    # If printf = True, prints on file the single interactions.
+
+    # FUNDAMENTAL ASSUMPTIONS:
+    # The i-th elements in each list are "correspondent", which implies that
+    # all lists have the same size
+    # they are ordered, i.e. the i-th parms is appropriate for the i-th distance and pot_type
+
+    # lowercase u means a single potential. Uppercase U means a sum.
+
+    strngdst = ""
+    strngpot = ""
+    U_list = np.zeros(np.shape(dist_array)[0])
+    for k, x in enumerate(dist_array):
+        u = 0.0
+        if(pot_type[k] == 6): #LJ12GAUSSIAN
+            #assumes no mistakes in params array
+            eps = parms[k][0]
+            x1 = parms[k][1]
+            s1 = parms[k][2]
+            x0_12 = parms[k][3]
+
+            #params combination
+            x_12 =  math.pow(x, 12)
+            s1_2 = math.pow(s1,2)
+            dx = x-x1
+            dx_2 = math.pow(dx, 2)
+
+            # potential evaluation (formula below has been validated by direct comparison with a traj of 100 frames of a 2-particle system)
+            rep = (1.0 + (1.0/eps)*(x0_12/x_12))
+            g = math.exp((-dx_2)/(2.0*s1_2))
+            u = -g
+
+        elif pot_type[k] == 1: #LJ (12-10 for cg models, I think)
+            p0 = parms[k][0]
+            p1 = parms[k][1]
+            #params combination
+            x_10 =  math.pow(x, 10)
+            #x_10 =  math.pow(x, 6)
+            x_12 =  math.pow(x, 12)
+
+            # potential evaluation (formula below has been validated by direct comparison with a traj of 100 frames of a 2-particle system)
+            u = - p0/x_10 + p1/x_12
+
+
+            #print k,x,pot_type[k],p0,p1,u, U
+
+        else:
+            print "********************************************"
+            print "Code unavailable for this type of potential:",pot_type[k]
+            print "********************************************"
+            exit()
+
+        U_list[k] = u
+
+
+    return U_list
 
 
 def calc_nb_ene(dist_array, pot_type, parms, printf):
@@ -122,7 +252,8 @@ def calc_nb_ene(dist_array, pot_type, parms, printf):
             rep = (1.0 + (1.0/eps)*(x0_12/x_12))
             g = math.exp((-dx_2)/(2.0*s1_2))
             w = 1.0 - g
-            u = eps*(rep*w - 1.0)
+            #u = eps*(rep*w - 1.0)
+            u = -g # for testing purposes
             U += u
 
 
@@ -617,7 +748,7 @@ def parse_and_return_relevant_parameters(topf, outdir=None):
     else:
         print "No force field parameters specified. Energy calculation impossible."
 
-    return numeric_atmtyp, pairsidx_ps, all_ps_pairs, pot_type1_, pot_type2_, parms_mt, parms2_, nrexcl
+    return dict_atm_types, numeric_atmtyp, pairsidx_ps, all_ps_pairs, pot_type1_, pot_type2_, parms_mt, parms2_, nrexcl
 
 ######### END PARSE TOP FILE ##################################################
 
@@ -867,8 +998,8 @@ def parse_traj_neighbors(traj, numeric_atmtyp, pairsidx_ps, all_ps_pairs, pot_ty
 
     return all_nl_ps, all_nl_atmtyp_w_excl, all_parms1, all_pot_type1, all_parms2, all_pot_type2, rcut2
 
-def compute_energy(traj, all_nl_ps, all_nl_atmtyp_w_excl, all_parms1, all_pot_type1, all_parms2, all_pot_type2, rcut2):
-    """ Compute non-bonded energies for a trajectory
+def compute_energy_slow(traj, all_nl_ps, all_nl_atmtyp_w_excl, all_parms1, all_pot_type1, all_parms2, all_pot_type2, rcut2):
+    """ Compute non-bonded energies for a trajectory given parameters
 
     Using the pre-computed table values of a structure, the non-bonded energy
     for a trajectory is computed. This includes both the gaussian native
@@ -931,12 +1062,158 @@ def compute_energy(traj, all_nl_ps, all_nl_atmtyp_w_excl, all_parms1, all_pot_ty
 
     return all_Enb
 
+def prep_compute_energy_fast(traj, all_nl_ps, all_nl_atmtyp_w_excl, numeric_atmtyp, pairsidx_ps, params_mt_noeps, parms2_, pot_type1_, pot_type2_, rcut2):
+    """ Prepare the necessary arrays to compute the potential energy quickly
 
+    """
+    all_nonbonded_eps_idxs = []
+    all_nonbonded_factors = []
+    all_pairwise_eps_idx = []
+    all_pairwise_factors = []
+
+    nfr = traj.n_frames
+    for frame in range(nfr):
+        struct = traj[frame]
+        nl_ps = all_nl_ps[frame]
+        nl_atmtyp_w_excl = all_nl_atmtyp_w_excl[frame]
+
+        pot_type1 = []
+        parms1 = []
+        Enb_pair_idxs = []
+        Enb_atmtyp_idxs = []
+        for p in nl_atmtyp_w_excl:
+            i = numeric_atmtyp[p[0]]
+            j = numeric_atmtyp[p[1]]
+            parms1.append(params_mt_noeps[i][j])
+            pot_type1.append(pot_type1_[0])
+            Enb_atmtyp_idxs.append([i,j])
+
+        #Construct the "well ordered" parms2 array from the one parsed from .top file.
+        # More about this in at the beginning of the section.
+        pot_type2 = []
+        parms2 = []
+        for pp in nl_ps:
+            p = [pp[0] + 1, pp[1] + 1]
+            idx = pairsidx_ps.index(p)  #pairsidx_ps is what I have in the .top file, i.e. the maximum number of pairs that nl_ps can be
+            parms2.append(parms2_[idx])
+            pot_type2.append(pot_type2_[idx])
+            Enb_pair_idxs.append(idx)
+
+        n_pairs_ps = len(nl_ps)
+        n_pairs_atmtyp_w_excl = len(nl_atmtyp_w_excl)
+
+
+        if n_pairs_ps > 0:
+            dist_nl_ps = md.compute_distances(struct, nl_ps)
+            dist_nl_ps = dist_nl_ps.ravel()
+            check_if_dist_longer_cutoff(dist_nl_ps, 'dist_nl_ps', rcut2)
+
+            check_arr_sizes_are_equal(len(dist_nl_ps),len(pot_type2),len(parms2))
+            Enb_pair_sec = calc_nb_ene_fast(dist_nl_ps, pot_type2, parms2)
+        else:
+            # append a single zeros
+            Enb_pair_sec = np.zeros(1)
+            Enb_pair_idxs = [[0,0]]
+
+
+        assert np.shape(Enb_pair_sec)[0] == len(Enb_pair_idxs)
+
+        if n_pairs_atmtyp_w_excl > 0:
+            dist_nl_atmtyp = md.compute_distances(struct, nl_atmtyp_w_excl)
+            dist_nl_atmtyp = dist_nl_atmtyp.ravel()
+            check_if_dist_longer_cutoff(dist_nl_atmtyp, 'dist_nl_atmtyp (w exclusions)', rcut2)
+
+            check_arr_sizes_are_equal(len(dist_nl_atmtyp), len(pot_type1),len(parms1))
+            Enb_atmtyp_sec = calc_nb_ene_fast(dist_nl_atmtyp, pot_type1, parms1)
+        else:
+            Enb_atmtyp_sec = np.zeros(1)
+            Enb_atmtyp_idxs = [[0,0]]
+
+        # check number of pairs match number of parameters
+        assert len(Enb_atmtyp_idxs) == len(Enb_atmtyp_sec)
+        assert len(Enb_pair_idxs) == len(Enb_pair_sec
+        )
+        all_nonbonded_factors.append(Enb_atmtyp_sec)
+        all_nonbonded_eps_idxs.append(Enb_atmtyp_idxs)
+        all_pairwise_factors.append(Enb_pair_sec)
+        all_pairwise_eps_idx.append(Enb_pair_idxs)
+    # cneck number of frames all match
+    try:
+        assert len(all_nonbonded_factors) == nfr
+        assert len(all_nonbonded_eps_idxs) == nfr
+        assert len(all_pairwise_factors) == nfr
+        assert len(all_pairwise_eps_idx) == nfr
+    except:
+        print len(all_nonbonded_factors)
+        print len(all_nonbonded_eps_idxs)
+        print len(all_pairwise_factors)
+        print len(all_pairwise_eps_idx)
+        raise
+    return all_nonbonded_eps_idxs, all_nonbonded_factors, all_pairwise_eps_idx, all_pairwise_factors
+
+def compute_energy_fast(nonbonded_eps_matrix, pairwise_eps_list, all_nonbonded_eps_idxs, all_nonbonded_factors, all_pairwise_eps_idx, all_pairwise_factors):
+    """ A much faster version of the energy calculation
+
+    Instead of using parmeter and pair index lists in order to compute the potential energy as in compute_energy_slow(), use just the new epsilons, and precompute the potential energies divided by the epsilons. Then it becomes a simple matter of multitplying the pre-computed no-epsilon potentials with the epsilons.
+
+    This has to be done in list form as the number of potential calculations for each frame varies. This avoids the necessity of loading every single distance coordinate and improves the memory scaling to N instead of N^2. This does however increase computation time required as we can no longer use built in numpy methods, but the tradeoff is worth it.
+
+    Assuming you have an array of M epsilons with N frames.
+
+    args:
+        epsilons (array of float): M length array  of the parameters used in the
+            optimization procedure.
+        all_frame_params (list of int): Length N where each entry is an index or
+            set of indices corresponding to the parameters to use.
+        all_frame_precomputed (list of float): Length N where each entry is the precomputed potential energy divided by the epsilon values.
+
+    returns:
+        U (array of floats): Length M where each entry is the potential energy
+            for each frame.
+
+    """
+
+    print pairwise_eps_list
+
+    n_frames = len(all_nonbonded_eps_idxs)
+    U = np.zeros(n_frames)
+    for i_frame in range(n_frames):
+        nonbonded_idxs = all_nonbonded_eps_idxs[i_frame]
+        nonbonded_factors = all_nonbonded_factors[i_frame]
+        pairwise_idxs = all_pairwise_eps_idx[i_frame]
+        pairwise_factors = all_pairwise_factors[i_frame]
+
+        n_nonbonded = np.shape(nonbonded_idxs)[0]
+        n_pairwise = np.shape(pairwise_idxs)[0]
+
+        nonbonded_eps = np.zeros(n_nonbonded)
+        pairwise_eps = np.zeros(n_pairwise)
+        for i_nb in range(n_nonbonded):
+            nonbonded_eps[i_nb] = nonbonded_eps_matrix[nonbonded_idxs[i_nb][0]][nonbonded_idxs[i_nb][1]]
+        for i_pw in range(n_pairwise):
+            pairwise_eps[i_pw] = pairwise_eps_list[pairwise_idxs[i_pw]]
+
+        nonbonded_energy = np.sum(nonbonded_eps * nonbonded_factors)
+        pairwise_energy = np.sum(pairwise_eps * pairwise_factors)
+        this_u = nonbonded_energy + pairwise_energy
+
+        print "Native E: %f   Nonbonded E: %f" % (pairwise_energy, nonbonded_energy)
+        U[i_frame] = this_u
+
+    return U
+
+def compute_derivative_fast(epsilons, all_frame_params, all_frame_precomputed):
+    """ Computes the gradient of the potential energy
+
+    For a M epsilons with N frames, expect to return a length M list where each entry is an N length array for the m'th component of the derivative at frame N.
+
+    """
+    pass
 if __name__ == "__main__":
 
-topf = "cg_model/topol.top"
-traj = md.load("cg_model/traj.xtc", top="cg_model/conf.gro")[::10]
+    topf = "cg_model/topol.top"
+    traj = md.load("cg_model/traj.xtc", top="cg_model/conf.gro")[::10]
 
-all_nl_ps, all_nl_atmtyp_w_excl, parms1, pot_type1, parms2, pot_type2, rcut2 = parse_traj_neighbors(traj, numeric_atmtyp, pairsidx_ps, all_ps_pairs, pot_type1_, pot_type2_, parms_mt, parms2_, nrexcl)
+    all_nl_ps, all_nl_atmtyp_w_excl, parms1, pot_type1, parms2, pot_type2, rcut2 = parse_traj_neighbors(traj, numeric_atmtyp, pairsidx_ps, all_ps_pairs, pot_type1_, pot_type2_, parms_mt, parms2_, nrexcl)
 
-all_Enb = compute_energy(traj, all_nl_ps, all_nl_atmtyp_w_excl, parms1, pot_type1, parms2, pot_type2, rcut2)
+    all_Enb = compute_energy_slow(traj, all_nl_ps, all_nl_atmtyp_w_excl, parms1, pot_type1, parms2, pot_type2, rcut2)
