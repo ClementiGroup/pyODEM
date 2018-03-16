@@ -68,6 +68,13 @@ def compute_mixed_table(params, mix_rule):
 
     return params_mat
 
+def compute_mixed_derivatives_table(params):
+    n_params = np.shape(params)[0]
+    params_mat = np.zeros((n_params, n_params))
+    for idx in range(n_params):
+        for jdx in range(n_params):
+            params_mat[idx,jdx] = 0.5*math.sqrt(params[jdx]/params[idx])
+
 def get_c6c12_matrix_noeps(sigmas, mix_rule):
     # compute the C6/eps and C12/eps parameters.
     # return param_mat, which is C6 and C12 for each pair type divided by eps_ij
@@ -1202,13 +1209,31 @@ def compute_energy_fast(nonbonded_eps_matrix, pairwise_eps_list, all_nonbonded_e
 
     return U
 
-def compute_derivative_fast(epsilons, all_frame_params, all_frame_precomputed):
+def compute_derivative_fast(nonbonded_matrix_depsilons, all_nonbonded_eps_idxs, all_nonbonded_factors):
     """ Computes the gradient of the potential energy
 
     For a M epsilons with N frames, expect to return a length M list where each entry is an N length array for the m'th component of the derivative at frame N.
 
     """
-    pass
+    n_frames = len(all_nonbonded_eps_idxs)
+    n_nonbonded_eps = np.shape(nonbonded_matrix_depsilons)[0]
+    all_derivatives = [[0 for i in range(n_nonbonded_eps)]]
+    for i_frame in range(n_frames):
+        nonbonded_idxs = all_nonbonded_eps_idxs[i_frame]
+        nonbonded_factors = all_nonbonded_factors[i_frame]
+
+        n_nonbonded = np.shape(nonbonded_idxs)[0]
+        n_pairwise = np.shape(pairwise_idxs)[0]
+
+        for i_nb in range(n_nonbonded):
+            both_indices = nonbonded_idxs[i_nb]
+            idx_nb = both_indices[0]
+            jdx_nb = both_indices[1]
+            all_derivatives[idx][i_frame] = nonbonded_matrix_depsilons[idx, jdx] * nonbonded_factors[i_nb]
+            all_derivatives[jdx][i_frame] = nonbonded_matrix_depsilons[jdx, idx] * nonbonded_factors[i_nb]
+
+    return all_derivatives
+
 if __name__ == "__main__":
 
     topf = "cg_model/topol.top"

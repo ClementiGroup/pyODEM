@@ -10,7 +10,11 @@ import numpy as np
 import mdtraj as md
 
 # improt non-bonded methods for protein calculation
-from calc_nb_gromacs import check_if_dist_longer_cutoff, check_arr_sizes_are_equal, calc_nb_ene
+#from calc_nb_gromacs import check_if_dist_longer_cutoff, check_arr_sizes_are_equal, calc_nb_ene
+
+from calc_nb_gromacs import parse_and_return_relevant_parameters, parse_traj_neighbors, prep_compute_energy_fast, compute_energy_fast, compute_derivative_fast, order_epsilons_atm_types, compute_mixed_table, get_c6c12_matrix_noeps
+
+from data_loaders import DataObjectList
 
 from pyODEM.model_loaders import ModelLoader
 try:
@@ -667,5 +671,70 @@ class ProteinNonBonded(ModelLoader):
 
     """
 
-    def __init__(self):
+    def __init__(self, topf):
         self.GAS_CONSTANT_KJ_MOL = 0.0083144621 #kJ/mol*k
+        self.dict_atm_types, self.numeric_atmtyp, self.pairsidx_ps, self.all_ps_pairs, self.pot_type1_, self.pot_type2_, self.parms_mt, self.parms2_, self.nrexcl = parse_and_return_relevant_parameters(topf)
+
+        # get nonbonded epsilons
+        self.n_atom_types = len(dict_atm_types)
+        self.epsilons_atm_types, self.sigmas_atm_types = order_epsilons_atm_types(self.dict_atm_types, len(self.dict_atm_types))
+        self.sigma_params_matrix = get_c6c12_matrix_noeps(self.sigmas_atm_types, [1])
+        # get pairwise epsilons
+        epsilons_pairs = []
+        for thing in parms2_:
+            epsilons_pairs.append(thing[0]*2)
+
+        self.epsilons = np.append(epsilons_atm_types, epsilons_pairs)
+
+    def load_data(self, traj):
+        all_nl_ps, all_nl_atmtyp_w_excl, parms1, pot_type1, parms2, pot_type2, rcut2 = parse_traj_neighbors(traj, self.numeric_atmtyp, self.pairsidx_ps, self.all_ps_pairs, self.pot_type1_, self.pot_type2_, self.parms_mt, self.parms2_, self.nrexcl, nstlist=1)
+
+        all_nonbonded_eps_idxs, all_nonbonded_factors, all_pairwise_eps_idx, all_pairwise_factors = prep_compute_energy_fast(traj, all_nl_ps, all_nl_atmtyp_w_excl, self.numeric_atmtyp, self.pairsidx_ps, self.sigma_params_matrix, self.parms2_, self.pot_type1_,self.pot_type2_, rcut2)
+
+        parsed_data = DataObjectList([all_nonbonded_eps_idxs, all_nonbonded_factors, all_pairwise_eps_idx, all_pairwise_factors])
+
+        return parsed_data
+
+    def _read_out_lists(data):
+        list_of_lists = data.list_of_lists
+        all_nonbonded_eps_idxs = list_of_lists[0]
+        all_nonbonded_factors = list_of_lists[1]
+        all_pairwise_eps_idx = list_of_lists[2]
+        all_pairwise_factors = list_of_lists[3]
+
+        return all_nonbonded_eps_idxs, all_nonbonded_factors, all_pairwise_eps_idx, all_pairwise_factors
+
+    def get_potentials_epsilon(self, data):
+        all_nonbonded_eps_idxs, all_nonbonded_factors, all_pairwise_eps_idx, all_pairwise_factors = self._read_out_lists(data)
+
+        # pre-compute derivatives (constants) for the pairwise interactions
+        # Update with the nonbonded derivatives with each function call
+
+        n_frames = len(all_nonbonded_eps_idxs)
+        n_nonbonded_eps = np.shape(nonbonded_matrix_depsilons)[0]
+        n_pairwise_eps = np.shape(pairwise_epsilons)[0]
+        total_eps = n_nonbonded_eps + n_pairwise_eps
+        all_pairwise_derivatives = [[0 for i in range(n_frames)] for j in range(n_pairwise_eps)]
+
+        for i_frame in range(n_pairwise_eps):
+            pairwise_idxs = all_pairwise_eps_idx[i_frame]
+            pairwise_factors = all_pairwise_factors[i_frame]
+            for i_pw in range(n_pairwise):
+                this_idx = pairwise_idxs[i_pw]
+                all_pairwise_derivatives[this_idx][i_frame] += pairwise_factors[i_pw]
+
+        def hepsilon(epsilons):
+            nonbonded_epsilons = epsilons[:self.n_atom_types]
+            pairwise_epsilons = epsilons[self.n_atom_types:]
+            nonbonded_matrix_epsilons = compute_mixed_table(nonbonded_epsilons, [1])
+            U_new = compute_energy_fast(nonbonded_matrix_epsilons, pairwise_epsilons, all_nonbonded_eps_idxs, all_nonbonded_factors, all_pairwise_eps_idx, all_pairwise_factors)
+            return U_new
+
+        def dhepsilon(epsilon):
+            nonbonded_epsilons = epsilons[:self.n_atom_types]
+            nonbonded_matrix_epsilons = compute_mixed_derivatives_table(nonbonded_epsilons)
+            dU_nonbonded = compute_derivative_fast(nonbonded_matrix_epsilons, all_nonbonded_eps_idxs, all_nonbonded_factors)
+
+            return nonbonded_matrix_epsilons + all_pairwise_derivatives
+
+        return hepsilon, dhepsilon
