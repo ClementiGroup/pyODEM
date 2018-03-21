@@ -73,7 +73,7 @@ class Protein(ProtoProtein):
     """
 
     def __init__(self, ini_file_name):
-        """ Initialize the Langevin model, override superclass
+        """ Initialize the Protein model, override superclass
 
         Args:
             ini_file_name (str): Name of a .ini file to load containing the
@@ -669,9 +669,37 @@ class ProteinNonBonded(ModelLoader):
     Use this loader for computing the non-bonded potential energy as well as the
     native potential energy.
 
+    Makes heavy use of the calc_nb_gromacs.py package.
+
     """
 
     def __init__(self, topf):
+        """ Initialize the ProteinNonBonded using a GROMACS .top file
+
+        Uses the parse_and_return_relevant_parameters() from calc_nb_gromacs.py in order to parse a GROMACS .top file. This method assumes the .top file parameterizes a Calpha model.
+
+        The Calpha types are read in the order of the .top file and assumes a
+        LJ10-12 format. The mixing rule is assumed to be of type 1, meaning the
+        C6, C12 are in the .top file, resulting in the C6 and C12 values being
+        converted to sigma and epsilons on initilization of this class. The
+        epsilon are what is being optimized while the sigmas are treated as
+        constants.
+
+        It is also assumed that the gaussian pairwise interactions are used. In
+        doing so only the first parameter is treated as the epsilon and that is
+        the parameter being optimzied while all other parameters are held
+        constant for pairwise interactions. These are treated as and often
+        referred to as "native contacts".
+
+        Args:
+            topf (str): Path to the a GROMACS .top file.
+
+        Attributes:
+            epsilons (array): A len(E) array where the first X entries refer to
+                the X unique Calpah types, and the remaining entries refer to
+                the G epsions from the gaussian native contacts.
+
+        """
         self.GAS_CONSTANT_KJ_MOL = 0.0083144621 #kJ/mol*k
         self.dict_atm_types, self.numeric_atmtyp, self.pairsidx_ps, self.all_ps_pairs, self.pot_type1_, self.pot_type2_, self.parms_mt, self.parms2_, self.nrexcl = parse_and_return_relevant_parameters(topf)
 
@@ -687,6 +715,31 @@ class ProteinNonBonded(ModelLoader):
         self.epsilons = np.append(self.epsilons_atm_types, epsilons_pairs)
 
     def load_data(self, traj):
+        """ Parse a traj object and return a DataObjectList
+
+        The trajectory of N frames is parsed, and four lists of length N are
+        produced. First, a list  of the nearest neighbors within a cutoff at
+        each step of the trajectory is produced. The nearest neighbor list is
+        length M, which can vary significantly from frame to frame. Second, a
+        U/eps list of length M is generated for each step of the trajectory,
+        where the values are the corresponding potential energy / epsilon for
+        each pair in the nearest neighbors for each trajectory step. This
+        process is done seperately for the pairwise interactions and nonbonded
+        atom-type interactions (two lists each, total of four).
+
+        In doing so, the size of the data passed to the get_potentials_epsilon()
+        function scales as O(R), where R is the number of residues in the
+        protein. Furthermore, the computation time is reduced significantly as
+        the distances and potentials do not need to be recomputed fully, and the
+        problem becomes a simple array multiplicatin problem.
+
+        Args:
+            traj (mdtraj.Trajectory): A mdtraj trajectory object.
+
+        Returns:
+            parsed_data (DataObjectList): An object that can be indexed like an
+                array and contains the neighbor list and U/eps list.
+        """
         all_nl_ps, all_nl_atmtyp_w_excl, parms1, pot_type1, parms2, pot_type2, rcut2 = parse_traj_neighbors(traj, self.numeric_atmtyp, self.pairsidx_ps, self.all_ps_pairs, self.pot_type1_, self.pot_type2_, self.parms_mt, self.parms2_, self.nrexcl, nstlist=1)
 
         all_nonbonded_eps_idxs, all_nonbonded_factors, all_pairwise_eps_idx, all_pairwise_factors = prep_compute_energy_fast(traj, all_nl_ps, all_nl_atmtyp_w_excl, self.numeric_atmtyp, self.pairsidx_ps, self.sigma_params_matrix, self.parms2_, self.pot_type1_,self.pot_type2_, rcut2)
@@ -696,6 +749,7 @@ class ProteinNonBonded(ModelLoader):
         return parsed_data
 
     def _read_out_lists(self, data):
+        """ Internal method for reading results from load_data() """
         list_of_lists = data.list_of_lists
         all_nonbonded_eps_idxs = list_of_lists[0]
         all_nonbonded_factors = list_of_lists[1]
@@ -705,6 +759,30 @@ class ProteinNonBonded(ModelLoader):
         return all_nonbonded_eps_idxs, all_nonbonded_factors, all_pairwise_eps_idx, all_pairwise_factors
 
     def get_potentials_epsilon(self, data):
+        """ Generate the hepsilon and dhepsilon functions.
+
+        The hepsilon(epsilons) and dhepsilon(epsilons) functions have to first
+        sort the epsilons and generate the appropriate matrix of nonbonded
+        epsilon combinations and list of native gaussian epsilons.
+
+        For the hepsilon() function, this entails generating the separate
+        epsilon lists and passing it to the compute_energy_fast() method. For
+        the dhepsilon() function, this entails pre-computing the native gaussian
+        derivatives (which do not change for varying epsilons) and using the
+        compute_derivative_fast() method for the Calpha nonbonded atom-type
+        functions.
+
+        Args:
+            data (DataObjectList):
+
+        Returns:
+            hepsilon (function): A length N array where each entry is the
+                potential energy for the n'th frame.
+            dhepsilon (function): A length E list of length N arrays. Compute
+                the derivative with respect to the e'th epsilons parameter for
+                the n'th frame.
+
+        """
         all_nonbonded_eps_idxs, all_nonbonded_factors, all_pairwise_eps_idx, all_pairwise_factors = self._read_out_lists(data)
 
         # pre-compute derivatives (constants) for the pairwise interactions

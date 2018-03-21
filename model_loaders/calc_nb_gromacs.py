@@ -1073,6 +1073,36 @@ def compute_energy_slow(traj, all_nl_ps, all_nl_atmtyp_w_excl, all_parms1, all_p
 def prep_compute_energy_fast(traj, all_nl_ps, all_nl_atmtyp_w_excl, numeric_atmtyp, pairsidx_ps, params_mt_noeps, parms2_, pot_type1_, pot_type2_, rcut2):
     """ Prepare the necessary arrays to compute the potential energy quickly
 
+    Use the neighbor list computed from parse_traj_neighbors() and the
+    parameters parsed from parse_and_return_relevant_parameters() in order to
+    compute the U/eps list. The U/eps list is a list of potential energies
+    divdied by its corresponding epsilon values. For the native interactions,
+    this means only the gaussian component is computed.
+
+    The indidces corresponding to that pair's pairwise interaction and
+    atom-type matrix interaction is also returned. Unless otherwise specified,
+    indices are 0-indexed.
+
+    Args:
+        traj (mdtraj.Trajectory): A trajectory of length N.
+        all_nl_ps (list): List of length N, each entry is a list of neighbors
+            within the specified cutoff for the [ pairs ] interactions.
+        all_nl_atmtyp_w_excl (list): List of length N, each entry is a list of
+            neighbors within the specified cutoff for the Calpha-type
+            interactions.
+
+    Returns:
+        all_nonbonded_eps_idxs (list): A length N list, where each entry is a
+            length M list of lists. The n'th frame's atom-type interaction is
+            specified by the index pair in the m'th list.
+        all_nonbonded_factors (list): A length N list, where each entry is a
+            length M list. Where the m'th U/eps value is given for the n'th
+            frame.
+        all_pairwise_eps_idx (list): A length N list, where each entry is a length M list. Where the m'th entry gives the pairwise index from the [ pairs ] section for the n'th frame.
+        all_pairwise_factors (list): A length N list, where each entry is a
+            length M list. Where the m'th entry gives the U/eps value for the
+            n'th frame.
+
     """
     all_nonbonded_eps_idxs = []
     all_nonbonded_factors = []
@@ -1162,21 +1192,31 @@ def prep_compute_energy_fast(traj, all_nl_ps, all_nl_atmtyp_w_excl, numeric_atmt
 def compute_energy_fast(nonbonded_eps_matrix, pairwise_eps_list, all_nonbonded_eps_idxs, all_nonbonded_factors, all_pairwise_eps_idx, all_pairwise_factors):
     """ A much faster version of the energy calculation
 
-    Instead of using parmeter and pair index lists in order to compute the potential energy as in compute_energy_slow(), use just the new epsilons, and precompute the potential energies divided by the epsilons. Then it becomes a simple matter of multitplying the pre-computed no-epsilon potentials with the epsilons.
+    Instead of using parmeter and pair index lists in order to compute the
+    potential energy as in compute_energy_slow(), use just the new epsilons,
+    and the precomputed U/eps values from prep_compute_energy_fast(). Then it
+    becomes a simple matter of multitplying the pre-computed no-epsilon
+    potentials with the epsilons. However, this means each frame needs its own
+    epsilon list, which is generated on-the-fly for each frame.
 
-    This has to be done in list form as the number of potential calculations for each frame varies. This avoids the necessity of loading every single distance coordinate and improves the memory scaling to N instead of N^2. This does however increase computation time required as we can no longer use built in numpy methods, but the tradeoff is worth it.
+    This has to be done in list form as the number of potential calculations
+    for each frame varies. This avoids the necessity of loading every single
+    distance coordinate and improves the memory scaling to N instead of N^2.
+    This does however increase computation time required as we can no longer
+    use built in numpy methods, but the tradeoff is worth it.
 
-    Assuming you have an array of M epsilons with N frames.
+    Assuming you have A atom-types, P pairwise interactions, and N frames.
 
-    args:
-        epsilons (array of float): M length array  of the parameters used in the
-            optimization procedure.
-        all_frame_params (list of int): Length N where each entry is an index or
-            set of indices corresponding to the parameters to use.
-        all_frame_precomputed (list of float): Length N where each entry is the precomputed potential energy divided by the epsilon values.
+    Args:
+        nonbonded_eps_matrix (array of float): An AxA array where each entry
+            (i,j) is the combined epsilons atom-type for the i'th and j'th atom
+            types.
+        pairwise_eps_list (array of float): A length P array where each entry
+            is the p'th epsilon from the [ pairs ] section.
+        See the prep_compute_energy_fast for all other arguments.
 
-    returns:
-        U (array of floats): Length M where each entry is the potential energy
+    Returns:
+        U (array of floats): Length N where each entry is the potential energy
             for each frame.
 
     """
@@ -1211,7 +1251,23 @@ def compute_energy_fast(nonbonded_eps_matrix, pairwise_eps_list, all_nonbonded_e
 def compute_derivative_fast(nonbonded_matrix_depsilons, all_nonbonded_eps_idxs, all_nonbonded_factors):
     """ Computes the gradient of the potential energy
 
-    For a M epsilons with N frames, expect to return a length M list where each entry is an N length array for the m'th component of the derivative at frame N.
+    This method computes the derivative for the non-bonded atom-type
+    interactions, as the pairwise gaussian interactions are constants. The
+    methodology is similar to the compute_energy_fast() method but instead of
+    taking a matrix of epsilons, it takes a matrix of derivatives of the
+    combined-epsilons. Assuming you have N frames in the trajectory and A
+    unique atom types.
+
+    Args:
+        nonbonded_matrix_depsilons (array): An AxA array of derivatives of the
+            combined epsilons. The (i,j) entry corresponds to the derivative of
+            the combined epsilons of type i and j with respect to the i'th type.
+        All other parameters see the prep_compute_energy_fast() method.
+
+    Returns:
+        all_derivatives (list): A length A list, where each entry is an
+            N-length array. The n'th frame's dU/deps_a (with respect to the
+            a'th type) is given in the a'th list entry and the n'th array entry.
 
     """
     n_frames = len(all_nonbonded_eps_idxs)
