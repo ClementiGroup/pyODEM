@@ -86,4 +86,7 @@ class DataObjectList(DataObjectBase):
     def __getitem__(self, args):
         list_stuff, array_stuff, traj_stuff = super(DataObjectGBase, self).__getitem__(args)
 
-        return list_stuff
+        new_object = DataObjectList(list_stuff, None, None)
+        # return a copy of itself
+
+        return new_object
