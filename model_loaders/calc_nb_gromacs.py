@@ -206,7 +206,7 @@ def calc_nb_ene_fast(dist_array, pot_type, parms):
     return U_list
 
 
-def calc_nb_ene(dist_array, pot_type, parms, printf):
+def calc_nb_ene(dist_array, pot_type, parms, printf, use_full=False):
     """ Compute the total non-bonded energy
 
     Assuming you have N CA atom pairs that are close enough to have an
@@ -221,6 +221,10 @@ def calc_nb_ene(dist_array, pot_type, parms, printf):
             potential. Example: 1=Lennard Jones and 6=Gaussian interaction.
         parms (list of list of floats): List of len(N), where each entry i is a
             list of floats to use in the i'th potential energy calculation.
+        printf (bool): If True, print out the energies to a file.
+        use_full (bool): If True, compute the total Gaussian pairwise energy.
+            If False, compute only the Gaussian component of the Gaussian
+            pairwise energy. Default is False.
 
     returns:
         U (float): The total non-bonded potential energy.
@@ -260,8 +264,10 @@ def calc_nb_ene(dist_array, pot_type, parms, printf):
             rep = (1.0 + (1.0/eps)*(x0_12/x_12))
             g = math.exp((-dx_2)/(2.0*s1_2))
             w = 1.0 - g
-            #u = eps*(rep*w - 1.0)
-            u = -g # for testing purposes
+            if use_full:
+                u = eps*(rep*w - 1.0)
+            else:
+                u = -g # for testing purposes
             U += u
 
 
