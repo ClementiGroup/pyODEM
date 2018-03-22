@@ -176,7 +176,7 @@ def calc_nb_ene_fast(dist_array, pot_type, parms):
             dx_2 = math.pow(dx, 2)
 
             # potential evaluation (formula below has been validated by direct comparison with a traj of 100 frames of a 2-particle system)
-            rep = (1.0 + (1.0/eps)*(x0_12/x_12))
+            #rep = (1.0 + (1.0/eps)*(x0_12/x_12))
             g = math.exp((-dx_2)/(2.0*s1_2))
             u = -g
 
@@ -267,7 +267,7 @@ def calc_nb_ene(dist_array, pot_type, parms, printf, use_full=False):
             if use_full:
                 u = eps*(rep*w - 1.0)
             else:
-                u = -g # for testing purposes
+                u = -eps*g # for testing purposes
             U += u
 
 
