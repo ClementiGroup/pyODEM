@@ -16,8 +16,10 @@ class DataObjectBase(object):
     def __init__(self, list_of_lists, list_of_arrays, list_of_trajs):
         # check all the lists have the same length:
         list_size = None
+        width = 0
         if list_of_lists is not None:
             list_size = len(list_of_lists[0])
+            width += 1
             for this_list in list_of_lists:
                 if len(this_list) == list_size:
                     pass
@@ -27,6 +29,7 @@ class DataObjectBase(object):
             if list_size is None:
                 list_size = np.shape(list_of_arrays)[0]
             for this_array in list_of_arrays:
+                width += 1
                 if np.shape(this_array)[0] == list_size:
                     pass
                 else:
@@ -36,6 +39,7 @@ class DataObjectBase(object):
             if list_size is None:
                 list_size = list_of_trajs[0].n_frames
             for this_traj in list_of_trajs:
+                width += 1
                 if this_traj.n_frames == list_size:
                     pass
                 else:
@@ -45,21 +49,40 @@ class DataObjectBase(object):
         self.list_of_lists = list_of_lists
         self.list_of_arrays = list_of_arrays
         self.list_of_trajs = list_of_trajs
+        if list_size is None:
+            self.list_size = 0
+        else:
+            self.list_size = list_size
+
+        self.width = width
+
+    @property
+    def shape(self):
+        return (self.list_size, self.width)
 
     def __getitem__(self, args):
         return_list_stuff = None
         return_array_stuff = None
         return_traj_stuff = None
-
+        #print args
         if self.list_of_lists is not None:
-            if isinstance(args, list):
+            return_list_stuff = []
+            if isinstance(args, list) or isinstance(args, np.ndarray):
                 # list of indices to use. Grab from each array and list of lists
-                return_list_stuff = []
                 for this_list in self.list_of_lists:
                     this_list_selected = []
                     for idx in args:
                         this_list_selected.append(this_list[idx])
                     return_list_stuff.append(this_list_selected)
+            elif isinstance(args, tuple):
+                if not len(args) == 1:
+                    "warning, something went wrong with parsing the __getitem__"
+                for this_list in self.list_of_lists:
+                    this_list_selected = []
+                    for idx in args[0]:
+                        this_list_selected.append(this_list[idx])
+                    return_list_stuff.append(this_list_selected)
+
             else:
                 # can use the args as a normal index (i.e. int, float or slice)
                 for this_list in self.list_of_lists:
@@ -84,9 +107,9 @@ class DataObjectList(DataObjectBase):
         super(DataObjectList, self).__init__(list_of_lists, None, None)
 
     def __getitem__(self, args):
-        list_stuff, array_stuff, traj_stuff = super(DataObjectGBase, self).__getitem__(args)
+        list_stuff, array_stuff, traj_stuff = super(DataObjectList, self).__getitem__(args)
 
-        new_object = DataObjectList(list_stuff, None, None)
+        new_object = DataObjectList(list_stuff)
         # return a copy of itself
 
         return new_object
