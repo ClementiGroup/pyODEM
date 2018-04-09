@@ -671,7 +671,7 @@ def print_atmtypes_info(dict_atm_types, parms_mt, size):
     print "Dictionary of atom types:"
     print(dict_atm_types)
     print ""
-    print "Matrix of nb interactions betwern type:"
+    print "Matrix of nb interactions between types:"
     for i in range(size):
         for j in range(size):
             print ('[%15.13f, %15.13f]') % (parms_mt[i][j][0], parms_mt[i][j][1]),
@@ -729,6 +729,13 @@ def parse_and_return_relevant_parameters(topf, outdir=None):
         check_atmtyp_sect(attyp, mass, chrg, chn, atprops, pot_type1_)
         dict_atm_types = dictionarize(attyp, atprops)
         parms_mt = nb_parms_from_atmtypes(dict_atm_types, mix_rule, n_types)
+        # added to have a full dict (dict_atm_types_extended) usable to write out .top file
+        allprops = []
+        for i in range(n_types):
+            val = [mass[i], chrg[i], chn[i]]
+            val.extend(atprops[i])
+            allprops.append(val)
+        dict_atm_types_extended = dictionarize(attyp, allprops) 
 
         print_atmtypes_info(dict_atm_types, parms_mt, n_types)
 
@@ -762,7 +769,7 @@ def parse_and_return_relevant_parameters(topf, outdir=None):
     else:
         print "No force field parameters specified. Energy calculation impossible."
 
-    return dict_atm_types, numeric_atmtyp, pairsidx_ps, all_ps_pairs, pot_type1_, pot_type2_, parms_mt, parms2_, nrexcl
+    return dict_atm_types_extended, dict_atm_types, numeric_atmtyp, pairsidx_ps, all_ps_pairs, pot_type1_, pot_type2_, parms_mt, parms2_, nrexcl
 
 ######### END PARSE TOP FILE ##################################################
 

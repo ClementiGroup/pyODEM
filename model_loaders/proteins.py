@@ -18,7 +18,8 @@ from data_loaders import DataObjectList
 
 from pyODEM.model_loaders import ModelLoader
 try:
-    import model_builder as mdb
+    #import model_builder as mdb
+    import model_builder_mod as mdb
 except:
     pass
 
@@ -691,6 +692,8 @@ class ProteinNonBonded(ModelLoader):
         constant for pairwise interactions. These are treated as and often
         referred to as "native contacts".
 
+        self.dict_atm_types_extended: example 'CAY': [18, 0.0052734375, 0.001098632812]
+        self.dict_atm_types: example 'CAY': [18, 1.0, 0.0, 'A', 0.0052734375, 0.001098632812]
         Args:
             topf (str): Path to the a GROMACS .top file.
 
@@ -701,18 +704,18 @@ class ProteinNonBonded(ModelLoader):
 
         """
         self.GAS_CONSTANT_KJ_MOL = 0.0083144621 #kJ/mol*k
-        self.dict_atm_types, self.numeric_atmtyp, self.pairsidx_ps, self.all_ps_pairs, self.pot_type1_, self.pot_type2_, self.parms_mt, self.parms2_, self.nrexcl = parse_and_return_relevant_parameters(topf)
+        self.dict_atm_types_extended, self.dict_atm_types, self.numeric_atmtyp, self.pairsidx_ps, self.all_ps_pairs, self.pot_type1_, self.pot_type2_, self.parms_mt, self.parms2_, self.nrexcl = parse_and_return_relevant_parameters(topf)
 
         # get nonbonded epsilons
         self.n_atom_types = len(self.dict_atm_types)
         self.epsilons_atm_types, self.sigmas_atm_types = order_epsilons_atm_types(self.dict_atm_types, len(self.dict_atm_types))
         self.sigma_params_matrix = get_c6c12_matrix_noeps(self.sigmas_atm_types, [1])
         # get pairwise epsilons
-        epsilons_pairs = []
+        self.epsilons_pairs = []
         for thing in self.parms2_:
-            epsilons_pairs.append(thing[0])
+            self.epsilons_pairs.append(thing[0])
 
-        self.epsilons = np.append(self.epsilons_atm_types, epsilons_pairs)
+        self.epsilons = np.append(self.epsilons_atm_types, self.epsilons_pairs)
 
     def load_data(self, traj):
         """ Parse a traj object and return a DataObjectList
@@ -825,15 +828,16 @@ class ProteinNonBonded(ModelLoader):
         nonbonded_epsilons = new_epsilons[:self.n_atom_types]
         pairwise_epsilons = new_epsilons[self.n_atom_types:]
 
-        new_atm_types = self.dict_atm_types.copy()
+        new_atm_types = self.dict_atm_types_extended.copy()
+        #new_atm_types = self.dict_atm_types.copy()
         #self.all_ps_pairs
 
         self.epsilons_atm_types, self.sigmas_atm_types
         for key,values in new_atm_types.iteritems():
             idx = values[0]
             new_c6, new_c12 = convert_sigma_eps_to_c6c12(self.sigmas_atm_types[idx], new_epsilons[idx])
-            values[1] = new_c6
-            values[2] = new_c12
+            values[4] = new_c6
+            values[5] = new_c12
 
         new_pairwise_parameters = [thing for thing in self.parms2_]
 
