@@ -27,8 +27,12 @@ dict_pot = {
 ####################### METHODS SPECIFICALLY FOR PyODEM ########################
 
 def convert_c6c12_to_sigma_eps(c6, c12):
-    sigma = (( 6. / 5.) * (c12/c6)) ** 0.5
-    eps = ((5. / c12) ** 5) * ((c6 / 6.) ** 6)
+    if c6 != 0.:
+        sigma = (( 6. / 5.) * (c12/c6)) ** 0.5
+        eps = ((5. / c12) ** 5) * ((c6 / 6.) ** 6)
+    else:
+        sigma = c12**(1./12.)
+        eps = 0.0001
 
     return sigma, eps
 
