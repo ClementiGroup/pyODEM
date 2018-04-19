@@ -113,3 +113,15 @@ class DataObjectList(DataObjectBase):
         # return a copy of itself
 
         return new_object
+
+class DataObjectArrays(DataObjectBase):
+    def __init__(self, list_of_lists):
+        super(DataObjectList, self).__init__(None, list_of_lists, None)
+
+    def __getitem__(self, args):
+        list_stuff, array_stuff, traj_stuff = super(DataObjectList, self).__getitem__(args)
+
+        new_object = DataObjectList(array_stuff)
+        # return a copy of itself
+
+        return new_object
