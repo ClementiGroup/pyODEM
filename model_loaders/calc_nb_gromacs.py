@@ -163,7 +163,7 @@ def calc_nb_ene_fast(dist_array, pot_type, parms):
 
     strngdst = ""
     strngpot = ""
-    U_list = np.zeros(np.shape(dist_array)[0])
+    U_list = np.zeros(np.shape(dist_array)[0], dtype=np.float32)
     for k, x in enumerate(dist_array):
         u = 0.0
         if(pot_type[k] == 6): #LJ12GAUSSIAN
@@ -739,7 +739,7 @@ def parse_and_return_relevant_parameters(topf, outdir=None):
             val = [mass[i], chrg[i], chn[i]]
             val.extend(atprops[i])
             allprops.append(val)
-        dict_atm_types_extended = dictionarize(attyp, allprops) 
+        dict_atm_types_extended = dictionarize(attyp, allprops)
 
         print_atmtypes_info(dict_atm_types, parms_mt, n_types)
 
@@ -1142,6 +1142,7 @@ def prep_compute_energy_fast(traj, all_nl_ps, all_nl_atmtyp_w_excl, numeric_atmt
             parms1.append(params_mt_noeps[i][j])
             pot_type1.append(pot_type1_[0])
             Enb_atmtyp_idxs.append([i,j])
+        Enb_atmtyp_idxs = np.array(Enb_atmtyp_idxs, dtype=np.uint8)
 
         #Construct the "well ordered" parms2 array from the one parsed from .top file.
         # More about this in at the beginning of the section.
@@ -1153,7 +1154,7 @@ def prep_compute_energy_fast(traj, all_nl_ps, all_nl_atmtyp_w_excl, numeric_atmt
             parms2.append(parms2_[idx])
             pot_type2.append(pot_type2_[idx])
             Enb_pair_idxs.append(idx)
-
+        Enb_pair_idxs = np.array(Enb_pair_idxs, dtype=np.uint16)
         n_pairs_ps = len(nl_ps)
         n_pairs_atmtyp_w_excl = len(nl_atmtyp_w_excl)
 
@@ -1182,7 +1183,7 @@ def prep_compute_energy_fast(traj, all_nl_ps, all_nl_atmtyp_w_excl, numeric_atmt
             Enb_atmtyp_sec = calc_nb_ene_fast(dist_nl_atmtyp, pot_type1, parms1)
         else:
             Enb_atmtyp_sec = np.zeros(1)
-            Enb_atmtyp_idxs = [[0,0]]
+            Enb_atmtyp_idxs = np.array([[0,0]])
 
         # check number of pairs match number of parameters
         assert len(Enb_atmtyp_idxs) == len(Enb_atmtyp_sec)
