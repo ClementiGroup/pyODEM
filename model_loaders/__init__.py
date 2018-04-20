@@ -33,3 +33,6 @@ from proteins import ProteinMultiTemperature
 from proteins import ProteinNonLinear
 from proteins import ProteinAwsem
 from proteins import ProteinNonBonded
+
+#load all the helper functions
+from helper_functions import load_protein_nb
