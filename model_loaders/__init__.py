@@ -36,3 +36,4 @@ from proteins import ProteinNonBonded
 
 #load all the helper functions
 from helper_functions import load_protein_nb
+from helper_functions import load_distance_traces
