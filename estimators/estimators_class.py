@@ -4,6 +4,7 @@ import numpy as np
 import time
 import mdtraj as md
 import os
+from mpi4py import MPI
 
 np.seterr(over="raise")
 
@@ -20,7 +21,7 @@ class EstimatorsObject(object):
         newQ (float): Optimized Q value.
 
     """
-    def __init__(self, data, data_sets, observables, model, obs_data=None, stationary_distributions=None, model_state=None):
+    def __init__(self, data_indices, data, expectation_observables, observables, model, stationary_distributions=None, model_state=None):
         """ Initialize object and process all the inputted data
 
         Args:
@@ -49,18 +50,26 @@ class EstimatorsObject(object):
         """
         print "Initializing EstimatorsObject"
         t1 = time.time()
+        # set MPI stuff:
+        self.comm = MPI.COMM_WORLD
+
+        self.size = comm.Get_size()
+        self.rank = comm.Get_rank()
         #observables get useful stuff like value of beta
-        self.number_equilibrium_states = len(data_sets)
+        self.number_equilibrium_states = len(data_indices)
+        # check everything is the right size:
+        if not len(data) == self.number_equilibrium_states:
+            raise IOError("data and data_indices must have the same length")
+        if not len(expectation_observables) == self.number_equilibrium_states:
+            raise IOError("expecatation_observables and data_indices must have same length")
+
         self.observables = observables
-
-
         self.observables.prep()
 
         self.Q_function, self.dQ_function = observables.get_q_functions()
         self.log_Q_function, self.dlog_Q_function = observables.get_log_q_functions()
 
         #calculate average value of all observables and associated functions
-        self.expectation_observables = []
         self.epsilons_functions = []
         self.derivatives_functions = []
 
@@ -77,13 +86,6 @@ class EstimatorsObject(object):
             total_data_frames = np.shape(data)[0]
 
         ####Format Inputs####
-
-        ##Check obs_data
-        if obs_data is None: #use sim data for calculating observables
-            obs_data = [data for i in range(len(self.observables.observables))]
-        else:
-            pass
-
         ##check if model is a list or not
         if isinstance(model, list):
             if model_state is None:
@@ -143,13 +145,6 @@ class EstimatorsObject(object):
             self.derivatives_functions.append(ham_calc.derivatives_function)
             self.h0.append(ham_calc.epsilon_function(self.current_epsilons))
             self.state_ham_functions.append(ham_calc)
-            #process obs_data so that only the desired frames are passed
-            use_obs_data = []
-            for obs_dat in obs_data:
-                use_obs_data.append(obs_dat[state_indices])
-            observed, obs_std = observables.compute_observations(use_obs_data)
-
-            self.expectation_observables.append(observed)
 
             self.ni.append(num_in_set)
             self.pi.append(num_in_set)

@@ -96,7 +96,7 @@ def max_likelihood_estimate_mpi(formatted_data, observables, model, solver="bfgs
     derivative = ensure_derivative(derivative, solver)
     data_sets = util.get_state_indices(all_dtrajs)
     print "number of inputted data sets: %d" % len(data_sets)
-    eo = EstimatorsObject(all_data, data_sets, observables, model, obs_data=all_obs_data, stationary_distributions=stationary_distributions, model_state=model_state)
+    eo = EstimatorsObject(formatted_data, observables, model, obs_data=all_obs_data, stationary_distributions=stationary_distributions, model_state=model_state)
 
     Qfunction_epsilon = eo.get_function(derivative, logq)
 
