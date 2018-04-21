@@ -21,7 +21,7 @@ class EstimatorsObject(object):
         newQ (float): Optimized Q value.
 
     """
-    def __init__(self, data_indices, data, expectation_observables, observables, model, stationary_distributions=None, model_state=None):
+    def __init__(self, data_indices, data, expectation_observables, observables, model, stationary_distributions=None):
         """ Initialize object and process all the inputted data
 
         Args:
@@ -53,8 +53,8 @@ class EstimatorsObject(object):
         # set MPI stuff:
         self.comm = MPI.COMM_WORLD
 
-        self.size = comm.Get_size()
-        self.rank = comm.Get_rank()
+        self.size = self.comm.Get_size()
+        self.rank = self.comm.Get_rank()
         #observables get useful stuff like value of beta
         self.number_equilibrium_states = len(data_indices)
         # check everything is the right size:
@@ -62,7 +62,7 @@ class EstimatorsObject(object):
             raise IOError("data and data_indices must have the same length")
         if not len(expectation_observables) == self.number_equilibrium_states:
             raise IOError("expecatation_observables and data_indices must have same length")
-
+        self.expectation_observables = expectation_observables
         self.observables = observables
         self.observables.prep()
 
@@ -76,78 +76,36 @@ class EstimatorsObject(object):
 
         self.h0 = []
 
-        self.pi = []
-        self.ni = []
-
-        ##calculate the number of frames data has
-        if type(data) is md.core.trajectory.Trajectory:
-            total_data_frames = data.n_frames
-        else: #its an array
-            total_data_frames = np.shape(data)[0]
+        self.pi = np.zeros(self.number_equilibrium_states).astype(float)
+        self.ni = np.zeros(self.number_equilibrium_states).astype(int)
 
         ####Format Inputs####
-        ##check if model is a list or not
-        if isinstance(model, list):
-            if model_state is None:
-                raise IOError("model_state must be specified if model is a list")
-
-        else: #convert model to be a list, construct model_state
-            model = [model]
-            if model_state is None:
-                model_state = np.array([0 for i in range(total_data_frames)])
-        self.num_models = len(model)
         self.model = model
-        self.current_epsilons = model[0].get_epsilons() #assumes the first model is the one you want
-        self.current_epsilon_function_types = model[0].get_epsilons()
+        self.current_epsilons = model.get_epsilons() #assumes the first model is the one you want
         self.number_params = np.shape(self.current_epsilons)[0]
-
-        #check model inputs
-        if not np.max(model_state) < len(model):
-            raise IOError("model_state formatted incorrectly. Values should be 0-X, where length of model is X+1")
-
-        if not total_data_frames == np.shape(model_state)[0]:
-            raise IOError("shape of model_state and data do not match")
 
         #load data for each set, and compute energies and observations
         count = -1
-        self.state_size = []
         self.non_zero_states = []
         self.state_ham_functions = []#debugging
-        for state_count,state_indices in enumerate(data_sets):
+        for state_count in range(self.number_equilibrium_states):
+            # first determine size of states, get the hepsilon functions
             count += 1
-            use_data = data[state_indices]
-            num_in_set = np.shape(state_indices)[0]
-            self.state_size.append(num_in_set)
+            use_data = data[state_count]
+            num_in_set = np.shape(use_data)[0]
             if not num_in_set == 0:
                 self.non_zero_states.append(state_count)
-            which_model = model_state[state_indices]
-            ##assumes order does not matter, so long as relative order is preserved.
-            ##since the epsilons_function and derivatives are summed up later
-            this_epsilons_function = []
-            this_derivatives_function = []
-            for idx in range(self.num_models):
-                if idx in which_model:
-                    this_indices = np.where(which_model == idx)
-                    this_data = use_data[this_indices]
-                    epsilons_function, derivatives_function = model[idx].get_potentials_epsilon(this_data)
-                    size_array = np.shape(epsilons_function(self.current_epsilons))[0]
-                    for test in derivatives_function(self.current_epsilons):
-                        assert np.shape(test)[0] == size_array
-                    this_epsilons_function.append(epsilons_function)
-                    this_derivatives_function.append(derivatives_function)
-                assert len(this_epsilons_function) == len(this_derivatives_function)
-            num_functions = len(this_epsilons_function)
+            epsilons_function, derivatives_function = self.model.get_potentials_epsilon(use_data)
+            size_array = np.shape(epsilons_function(self.current_epsilons))[0]
+            for test in derivatives_function(self.current_epsilons):
+                assert np.shape(test)[0] == size_array
 
-            ##define new wrapper functions to wrap up the computation of several hamiltonians from different models
-            ham_calc = HamiltonianCalculator(this_epsilons_function, this_derivatives_function, self.number_params, num_in_set, count)
+            # All thigns saved for later should go below here
+            self.epsilons_functions.append(epsilons_function)
+            self.derivatives_functions.append(derivatives_function)
+            self.h0.append(epsilons_function(self.current_epsilons))
 
-            self.epsilons_functions.append(ham_calc.epsilon_function)
-            self.derivatives_functions.append(ham_calc.derivatives_function)
-            self.h0.append(ham_calc.epsilon_function(self.current_epsilons))
-            self.state_ham_functions.append(ham_calc)
-
-            self.ni.append(num_in_set)
-            self.pi.append(num_in_set)
+            self.ni[state_count] = num_in_set
 
         ##check the assertion. make sure everything same size
         for i in self.non_zero_states:
@@ -161,7 +119,7 @@ class EstimatorsObject(object):
                 assert np.shape(arrr)[0] == size
 
         ##number of observables
-        self.num_observable = np.shape(observed)[0]
+        self.num_observable = np.shape(self.expectation_observables[0])[0]
         self.pi =  np.array(self.pi).astype(float)
         self.pi /= np.sum(self.pi)
 
@@ -436,7 +394,7 @@ class EstimatorsObject(object):
         assert len(boltzman_weights) == self.number_equilibrium_states
         for idx in self.non_zero_states: # only check non-zero, rest okay
             state = boltzman_weights[idx]
-            assert np.shape(state)[0] == self.state_size[idx]
+            assert np.shape(state)[0] == self.ni[idx]
         return boltzman_weights
 
     def save_debug_files(self):

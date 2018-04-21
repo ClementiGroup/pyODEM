@@ -61,7 +61,7 @@ def get_solver(solver):
 
     return func_solver
 
-def max_likelihood_estimate_mpi(formatted_data, observables, model, solver="bfgs", logq=False, derivative=None, x0=None, kwargs={}, stationary_distributions=None, model_state=None):
+def max_likelihood_estimate_mpi(formatted_data, observables, model, solver="bfgs", logq=False, derivative=None, x0=None, kwargs={}, stationary_distributions=None):
     """ Optimizes model's paramters using a max likelihood method
 
     Args:
@@ -90,16 +90,21 @@ def max_likelihood_estimate_mpi(formatted_data, observables, model, solver="bfgs
     size = comm.Get_size()
     rank = comm.Get_rank()
 
-    all_data = formatted_data["data"]
-    all_obs_data = formatted_data["obs_result"]
+    all_indices = []
+    all_data = []
+    all_obs_data = []
+
+    for stuff in formatted_data:
+        all_indices.append(stuff["index"])
+        all_data.append(stuff["data"])
+        all_obs_data.append(stuff["obs_result"])
 
     derivative = ensure_derivative(derivative, solver)
-    data_sets = util.get_state_indices(all_dtrajs)
-    print "number of inputted data sets: %d" % len(data_sets)
-    eo = EstimatorsObject(formatted_data, observables, model, obs_data=all_obs_data, stationary_distributions=stationary_distributions, model_state=model_state)
+    print "number of inputted data sets: %d" % len(all_data)
+    eo = EstimatorsObject(all_indices, all_data, all_obs_data, observables, model, stationary_distributions=stationary_distributions)
 
     Qfunction_epsilon = eo.get_function(derivative, logq)
-
+    comm.Barrier()
     # now parallelize
     if rank == 0:
         func_solver = get_solver(solver)
