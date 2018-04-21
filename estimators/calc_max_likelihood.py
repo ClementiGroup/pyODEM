@@ -13,6 +13,7 @@ import scipy.optimize as optimize
 import multiprocessing # only for the cross-validation function
 import multiprocessing.managers as mpmanagers
 import os
+from mpi4py import MPI
 #import copy_reg
 #import types
 
@@ -59,6 +60,94 @@ def get_solver(solver):
         func_solver = solver #assume a valid method was passed to it
 
     return func_solver
+
+def max_likelihood_estimate_mpi(formatted_data, observables, model, solver="bfgs", logq=False, derivative=None, x0=None, kwargs={}, stationary_distributions=None, model_state=None):
+    """ Optimizes model's paramters using a max likelihood method
+
+    Args:
+        See pyfexd.estimators.estimators_class.EstimatorsObject for:
+            data (array), observables (ExperimentalObservables),
+            model (ModelLoader), obs_data(list) and
+            stationary_distributions (list)
+        dtrajs (array of int): Discrete trajectory index for each frame of data.
+        solver (str): Optimization procedures. Defaults to Simplex. Available
+            methods include: simplex, anneal, cg, custom.
+        logq (bool): Use the logarithmic Q functions. Default: False.
+        derivative (bool): True if Q function returns a derivative. False if it
+            does not. Default is None, automatically selected based upon the
+            requested solver.
+        x0 (array): Specify starting epsilons for optimization methods. Defaults
+            to current epsilons from the model.
+        kwargs (dictionary): Key word arguments passed to the solver.
+
+    Returns:
+        eo (EstimatorsObject): Object that contains the data used for the
+            computation and the results.
+
+    """
+    comm = MPI.COMM_WORLD
+
+    size = comm.Get_size()
+    rank = comm.Get_rank()
+
+    all_data = formatted_data["data"]
+    all_obs_data = formatted_data["obs_result"]
+
+    derivative = ensure_derivative(derivative, solver)
+    data_sets = util.get_state_indices(all_dtrajs)
+    print "number of inputted data sets: %d" % len(data_sets)
+    eo = EstimatorsObject(all_data, data_sets, observables, model, obs_data=all_obs_data, stationary_distributions=stationary_distributions, model_state=model_state)
+
+    Qfunction_epsilon = eo.get_function(derivative, logq)
+
+    # now parallelize
+    if rank == 0:
+        func_solver = get_solver(solver)
+
+        if x0 is None:
+            current_epsilons = eo.current_epsilons
+        else:
+            current_epsilons = x0
+
+        print "Starting Optimization"
+        t1 = time.time()
+        #Then run the solver
+
+        ##add keyword args thatn need to be passed
+        #kwargs["logq"] = logq
+        eo.start_processes() # give a good pill
+        try:
+            new_epsilons = func_solver(Qfunction_epsilon, current_epsilons, **kwargs)
+        except:
+            debug_dir = "debug_0"
+            for count in range(100):
+                debug_dir = "debug_%d" % count
+                if not os.path.isdir(debug_dir):
+                    break
+            os.mkdir(debug_dir)
+            cwd = os.getcwd()
+            os.chdir(debug_dir)
+            eo.save_debug_files()
+            os.chdir(cwd)
+            raise
+
+        t2 = time.time()
+        total_time = (t2-t1) / 60.0
+
+        print "Optimization Complete: %f minutes" % total_time
+        eo.kill_processes() #activate the poison pill
+        final = Qfunction_epsilons(new_epsilons)
+    else:
+        go = True # the poison pill
+        while(go):
+            # for rank != 0, return a boolean instead.
+            go = Qfunction_epsilon(new_epsilons)
+
+
+    #then return a new set of epsilons inside the EstimatorsObject
+    eo.save_solutions(new_epsilons)
+    return eo
+
 
 def max_likelihood_estimate(data, dtrajs, observables, model, obs_data=None, solver="bfgs", logq=False, derivative=None, x0=None, kwargs={}, stationary_distributions=None, model_state=None):
     """ Optimizes model's paramters using a max likelihood method
@@ -143,7 +232,7 @@ def max_likelihood_estimate(data, dtrajs, observables, model, obs_data=None, sol
         all_data = data
         all_obs_data = obs_data
         all_dtrajs = dtrajs
-        
+
     derivative = ensure_derivative(derivative, solver)
     data_sets = util.get_state_indices(all_dtrajs)
     print "number of inputted data sets: %d" % len(data_sets)
