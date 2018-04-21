@@ -123,18 +123,41 @@ class EstimatorsObject(object):
         self.pi =  np.array(self.pi).astype(float)
         self.pi /= np.sum(self.pi)
 
-        if not stationary_distributions is None:
+        if stationary_distributions is None:
+            print "Determining Stationary Distribution Based on State Counts"
+            # need to send eachother the total number of states
+            if self.rank == 0:
+                # receive from each thread:
+                total = np.sum(self.ni)
+                for i in range(1, self.size):
+                    this_sum = self.comm.recv(source=i, tag=3)
+                    total += this_sum
+
+                # now send back the total
+                for i in range(1, self.size):
+                    self.comm.send(total, dest=i, tag=5)
+            else:
+                # send this threads total
+                self.comm.send(np.sum(self.ni), dest=0, tag=3)
+                # now get back the true total
+                total = self.comm.recv(source=0, tag=5)
+
+            # now compute the pi for each state
+            self.pi = self.ni.astype(float) / float(total)
+        else:
             print "Using Inputted Stationary Distribution"
             if np.shape(stationary_distributions)[0] == len(self.ni):
                 print "Percent Difference of Selected Stationary Distribution from expected"
-                diff = self.pi - stationary_distributions
-                print np.abs(diff/self.pi)
+                total_approximate = self.ni.astype(float) / np.sum(self.ni.astype(float))
+                diff = stationary_distributions - total_approximate
+                print np.abs(diff/stationary_distributions)
                 self.pi = stationary_distributions
             else:
                 print "Input Stationry Distribution Dimensions = %d" % np.shape(stationary_distributions)[0]
                 print "Number of Equilibrium States = %d" % len(self.ni)
                 raise IOError("Inputted stationary distributions does match not number of equilibrium states.")
 
+        print "THREAD %d PI: %s" % (self.rank, str(self.pi))
         ##Compute factors that don't depend on the re-weighting
         self.state_prefactors = []
         for i in range(self.number_equilibrium_states):

@@ -94,14 +94,18 @@ def max_likelihood_estimate_mpi(formatted_data, observables, model, solver="bfgs
     all_data = []
     all_obs_data = []
 
+    this_stationary_distribution = []
     for stuff in formatted_data:
         all_indices.append(stuff["index"])
         all_data.append(stuff["data"])
         all_obs_data.append(stuff["obs_result"])
+        this_stationary_distribution.append(stationary_distributions[stuff["index"]])
+
+    this_stationary_distribution = np.array(this_stationary_distribution)
 
     derivative = ensure_derivative(derivative, solver)
     print "number of inputted data sets: %d" % len(all_data)
-    eo = EstimatorsObject(all_indices, all_data, all_obs_data, observables, model, stationary_distributions=stationary_distributions)
+    eo = EstimatorsObject(all_indices, all_data, all_obs_data, observables, model, stationary_distributions=this_stationary_distribution)
 
     Qfunction_epsilon = eo.get_function(derivative, logq)
     comm.Barrier()
