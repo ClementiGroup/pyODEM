@@ -296,6 +296,10 @@ class EstimatorsObject(object):
         self.count_Qcalls += 1
         self.trace_Q_values.append(Q)
 
+        # broadcast the pill:
+        this_pill = self.comm.bcast(self.get_pill(), root=0)
+        self.set_pill(this_pill)
+
         return Q
 
     def log_Qfunction_epsilon(self, epsilons):
@@ -335,6 +339,10 @@ class EstimatorsObject(object):
         ##debug
         self.count_Qcalls += 1
         self.trace_log_Q_values.append(Q)
+
+        # broadcast the pill:
+        this_pill = self.comm.bcast(self.get_pill(), root=0)
+        self.set_pill(this_pill)
 
         return Q
 
@@ -395,11 +403,15 @@ class EstimatorsObject(object):
 
         dQ_vector = self.comm.bcast(dQ_vector, root=0)
 
-        dQ_vector = -1. * np.array(dQ_vector)
+        dQ_vector = -1. * dQ_vector
         Q *= -1.
 
         self.trace_Q_values.append(Q)
         self.count_Qcalls += 1
+
+        # broadcast the pill:
+        this_pill = self.comm.bcast(self.get_pill(), root=0)
+        self.set_pill(this_pill)
 
         return Q, dQ_vector
 
