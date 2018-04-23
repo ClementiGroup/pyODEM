@@ -94,14 +94,19 @@ def max_likelihood_estimate_mpi(formatted_data, observables, model, solver="bfgs
     all_data = []
     all_obs_data = []
 
-    this_stationary_distribution = []
+    if stationary_distributions is None:
+        this_stationary_distribution = None
+    else:
+        this_stationary_distribution = []
+
     for stuff in formatted_data:
         all_indices.append(stuff["index"])
         all_data.append(stuff["data"])
         all_obs_data.append(stuff["obs_result"])
-        this_stationary_distribution.append(stationary_distributions[stuff["index"]])
-
-    this_stationary_distribution = np.array(this_stationary_distribution)
+        if this_stationary_distribution is not None:
+            this_stationary_distribution.append(stationary_distributions[stuff["index"]])
+    if this_stationary_distribution is not None:
+        this_stationary_distribution = np.array(this_stationary_distribution)
 
     derivative = ensure_derivative(derivative, solver)
     print "number of inputted data sets: %d" % len(all_data)
@@ -109,14 +114,16 @@ def max_likelihood_estimate_mpi(formatted_data, observables, model, solver="bfgs
 
     Qfunction_epsilon = eo.get_function(derivative, logq)
     comm.Barrier()
+
+    eo.set_good_pill()
+    if x0 is None:
+        current_epsilons = eo.current_epsilons
+    else:
+        current_epsilons = x0
+
     # now parallelize
     if rank == 0:
         func_solver = get_solver(solver)
-
-        if x0 is None:
-            current_epsilons = eo.current_epsilons
-        else:
-            current_epsilons = x0
 
         print "Starting Optimization"
         t1 = time.time()
@@ -124,7 +131,6 @@ def max_likelihood_estimate_mpi(formatted_data, observables, model, solver="bfgs
 
         ##add keyword args thatn need to be passed
         #kwargs["logq"] = logq
-        eo.start_processes() # give a good pill
         try:
             new_epsilons = func_solver(Qfunction_epsilon, current_epsilons, **kwargs)
         except:
@@ -144,15 +150,17 @@ def max_likelihood_estimate_mpi(formatted_data, observables, model, solver="bfgs
         total_time = (t2-t1) / 60.0
 
         print "Optimization Complete: %f minutes" % total_time
-        eo.kill_processes() #activate the poison pill
-        final = Qfunction_epsilons(new_epsilons)
+        eo.set_poison_pill() #activate the poison pill
+        final = Qfunction_epsilon(new_epsilons)
     else:
-        go = True # the poison pill
-        while(go):
+        while(eo.get_pill()):
             # for rank != 0, return a boolean instead.
-            go = Qfunction_epsilon(new_epsilons)
+            Qfunction_epsilon(current_epsilons)
+        new_epsilons = None
 
+    new_epsilons = comm.bcast(new_epsilons, root=0)
 
+    eo.set_poison_pill()
     #then return a new set of epsilons inside the EstimatorsObject
     eo.save_solutions(new_epsilons)
     return eo

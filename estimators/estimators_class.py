@@ -175,6 +175,20 @@ class EstimatorsObject(object):
         self.trace_Q_values= []
         self.trace_log_Q_values = []
 
+        self.set_poison_pill() # default should be to not continue indefinitely
+
+    def set_good_pill(self):
+        self.pill = True
+
+    def set_poison_pill(self):
+        self.pill = False
+
+    def set_pill(self, value):
+        self.pill = value
+
+    def get_pill(self):
+        return self.pill
+
     def get_reweighted_observable_function(self):
         return self.calculate_observables_reweighted
 
@@ -255,12 +269,28 @@ class EstimatorsObject(object):
             float: Q value.
 
         """
+        # send the values of the epsilons from rank=0 to all other processes
+        epsilons = self.comm.bcast(epsilons, root=0)
+
         #initiate value for observables:
+        next_observed, total_weight, boltzman_weights = self.get_reweights_norescale(epsilons)
 
-        next_observed, total_weight, boltzman_weights = self.get_reweights(epsilons)
-
+        if self.rank == 0:
+            total_observed = next_observed
+            total_all_weights = total_weight
+            for i in range(1, self.size):
+                that_observed = self.comm.recv(source=i, tag=7)
+                that_weight = self.comm.recv(source=i, tag=11)
+                total_observed += that_observed
+                total_all_weights += total_weight
+            total_observed /= total_all_weights
+            Q = -1.0 * self.Q_function(total_observed)
+        else:
+            self.comm.send(next_observed, dest=0, tag=7)
+            self.comm.send(total_weight, dest=0, tag=11)
+            Q = None
         #Minimization, so make maximal value a minimal value with a negative sign.
-        Q = -1.0 * self.Q_function(next_observed)
+        Q = self.comm.bcast(Q, root=0)
 
         ##debug
         self.count_Qcalls += 1
@@ -278,11 +308,28 @@ class EstimatorsObject(object):
             float: -log(Q) value.
 
         """
+        epsilons = self.comm.bcast(epsilons, root=0)
 
-        next_observed, total_weight, boltzman_weights = self.get_reweights(epsilons)
+        next_observed, total_weight, boltzman_weights = self.get_reweights_norescale(epsilons)
+
+        if self.rank == 0:
+            total_observed = next_observed
+            total_all_weights = total_weight
+            for i in range(1, self.size):
+                that_observed = self.comm.recv(source=i, tag=7)
+                that_weight = self.comm.recv(source=i, tag=11)
+                total_observed += that_observed
+                total_all_weights += total_weight
+            total_observed /= total_all_weights
+            Q = self.log_Q_function(next_observed)
+        else:
+            self.comm.send(next_observed, dest=0, tag=7)
+            self.comm.send(total_weight, dest=0, tag=11)
+            Q = None
+        #Minimization, so make maximal value a minimal value with a negative sign.
+        Q = self.comm.bcast(Q, root=0)
 
         #Minimization, so make maximal value a minimal value with a negative sign.
-        Q = self.log_Q_function(next_observed)
         #print epsilons
 
         ##debug
@@ -302,16 +349,51 @@ class EstimatorsObject(object):
             array of float: dQ/dEpsilon
 
         """
-        next_observed, total_weight, boltzman_weights = self.get_reweights(epsilons)
+        epsilons = self.comm.bcast(epsilons, root=0)
 
-        Q = self.Q_function(next_observed)
+        next_observed, total_weight, boltzman_weights = self.get_reweights_norescale(epsilons)
+        if self.rank == 0:
+            total_observed = next_observed
+            total_all_weights = total_weight
+            for i in range(1, self.size):
+                that_observed = self.comm.recv(source=i, tag=7)
+                that_weight = self.comm.recv(source=i, tag=11)
+                total_observed += that_observed
+                total_all_weights += total_weight
+            total_observed /= total_all_weights
+            Q = self.Q_function(total_observed)
+        else:
+            self.comm.send(next_observed, dest=0, tag=7)
+            self.comm.send(total_weight, dest=0, tag=11)
+            Q = None
+            total_all_weights = None
+
+        Q = self.comm.bcast(Q, root=0)
+        total_all_weights = self.comm.bcast(total_all_weights, root=0)
+
         derivative_observed_first, derivative_observed_second = self.get_derivative_pieces(epsilons, boltzman_weights)
 
-        dQ_vector = []
-        for j in range(self.number_params):
-            derivative_observed = (derivative_observed_first[j]  - (next_observed * derivative_observed_second[j])) / total_weight
-            dQ = self.dQ_function(next_observed, derivative_observed) * Q
-            dQ_vector.append(dQ)
+        if self.rank == 0:
+            for i in range(1, self.size):
+                that_first = self.comm.recv(source=i, tag=13)
+                that_second = self.comm.recv(source=i, tag=17)
+                derivative_observed_first += that_first
+                derivative_observed_second += that_second
+            dQ_vector = []
+            for j in range(self.number_params):
+                derivative_observed = (derivative_observed_first[j]  - (total_observed * derivative_observed_second[j])) / total_all_weights
+                dQ = self.dQ_function(next_observed, derivative_observed) * Q
+                dQ_vector.append(dQ)
+
+            dQ_vector = np.array(dQ_vector)
+
+        else:
+            self.comm.send(derivative_observed_first, dest=0, tag=13)
+            self.comm.send(derivative_observed_second, dest=0, tag=17)
+
+            dQ_vector = None
+
+        dQ_vector = self.comm.bcast(dQ_vector, root=0)
 
         dQ_vector = -1. * np.array(dQ_vector)
         Q *= -1.
@@ -332,23 +414,61 @@ class EstimatorsObject(object):
             array of float: dQ/dEpsilon
 
         """
+        epsilons = self.comm.bcast(epsilons, root=0)
 
-        next_observed, total_weight, boltzman_weights = self.get_reweights(epsilons)
+        next_observed, total_weight, boltzman_weights = self.get_reweights_norescale(epsilons)
 
-        Q = self.log_Q_function(next_observed)
+        if self.rank == 0:
+            total_observed = next_observed
+            total_all_weights = total_weight
+            for i in range(1, self.size):
+                that_observed = self.comm.recv(source=i, tag=7)
+                that_weight = self.comm.recv(source=i, tag=11)
+                total_observed += that_observed
+                total_all_weights += total_weight
+            total_observed /= total_all_weights
+            Q = self.log_Q_function(total_observed)
+        else:
+            self.comm.send(next_observed, dest=0, tag=7)
+            self.comm.send(total_weight, dest=0, tag=11)
+            Q = None
+            total_all_weights = None
+        #Minimization, so make maximal value a minimal value with a negative sign.
+
+        # broadcast the Q-value and total_all_weights to all threads
+        Q = self.comm.bcast(Q, root=0)
+        total_all_weights = self.comm.bcast(total_all_weights, root=0)
+
+        # compute each individual piece
         derivative_observed_first, derivative_observed_second = self.get_derivative_pieces(epsilons, boltzman_weights)
+        # then sum up the derivative pieces form each thread
+        if self.rank == 0:
+            for i in range(1, self.size):
+                that_first = self.comm.recv(source=i, tag=13)
+                that_second = self.comm.recv(source=i, tag=17)
+                derivative_observed_first += that_first
+                derivative_observed_second += that_second
+            dQ_vector = []
+            for j in range(self.number_params):
+                derivative_observed = (derivative_observed_first[j]  - (total_observed * derivative_observed_second[j])) / total_all_weights
+                dQ = self.dlog_Q_function(total_observed, derivative_observed)
+                dQ_vector.append(dQ)
 
-        dQ_vector = []
-        for j in range(self.number_params):
-            derivative_observed = (derivative_observed_first[j]  - (next_observed * derivative_observed_second[j])) / total_weight
-            dQ = self.dlog_Q_function(next_observed, derivative_observed)
-            dQ_vector.append(dQ)
+            dQ_vector = np.array(dQ_vector)
+        else:
+            self.comm.send(derivative_observed_first, dest=0, tag=13)
+            self.comm.send(derivative_observed_second, dest=0, tag=17)
 
-        dQ_vector = np.array(dQ_vector)
+            dQ_vector = None
+
+        dQ_vector = self.comm.bcast(dQ_vector, root=0)
 
         self.trace_log_Q_values.append(Q)
         self.count_Qcalls += 1
 
+        # broadcast the pill:
+        this_pill = self.comm.bcast(self.get_pill(), root=0)
+        self.set_pill(this_pill)
         #print "%f   %f" % (Q, np.abs(np.max(dQ_vector)))
 
         return Q, dQ_vector
@@ -367,7 +487,7 @@ class EstimatorsObject(object):
 
         return derivative_observed_first, derivative_observed_second
 
-    def get_reweights(self, epsilons):
+    def get_reweights_norescale(self, epsilons):
         #initialize final matrices
         next_observed = np.zeros(self.num_observable)
 
@@ -381,6 +501,11 @@ class EstimatorsObject(object):
             next_weight = np.sum(boltzman_weights[i]) / self.ni[i]
             next_observed += next_weight * self.state_prefactors[i]
             total_weight += next_weight * self.pi[i]
+        return next_observed, total_weight, boltzman_weights
+
+    def get_reweights(self, epsilons):
+        next_observed, total_weight, boltzman_weights = self.get_reweights_norescale(epsilons)
+
         next_observed /= total_weight
 
         return next_observed, total_weight, boltzman_weights
