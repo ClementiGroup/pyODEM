@@ -326,8 +326,6 @@ class EstimatorsObject(object):
                 total_all_weights += that_weight
             total_observed /= total_all_weights
             Q = self.log_Q_function(total_observed)
-            print total_observed
-            print Q
         else:
             self.comm.send(next_observed, dest=0, tag=7)
             self.comm.send(total_weight, dest=0, tag=11)
