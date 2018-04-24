@@ -21,10 +21,10 @@ def load_protein_nb(topf, dtrajs, traj_files, top_file, observable_object=None, 
         pass
     else:
         # more states than cores
-        print "GOOD"
+        #print "GOOD"
         use_states = np.arange(rank, n_states, size)
 
-    print "size: %d, rank: %d" % (size, rank)
+    #print "size: %d, rank: %d" % (size, rank)
 
     traj = md.load(traj_files, top=top_file)
     pmodel = ProteinNonBonded(topf)

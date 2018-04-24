@@ -703,6 +703,8 @@ class ProteinNonBonded(ModelLoader):
                 the G epsions from the gaussian native contacts.
 
         """
+        print "Initializing a Protein non-bonded interactions model"
+
         self.GAS_CONSTANT_KJ_MOL = 0.0083144621 #kJ/mol*k
         self.dict_atm_types_extended, self.dict_atm_types, self.numeric_atmtyp, self.pairsidx_ps, self.all_ps_pairs, self.pot_type1_, self.pot_type2_, self.parms_mt, self.parms2_, self.nrexcl = parse_and_return_relevant_parameters(topf)
 

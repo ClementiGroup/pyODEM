@@ -599,10 +599,11 @@ def check_pairs_arr(pairsidx_ps, pairs_sect):
         print "Error: array pairsidx_ps and pairs_sect do not have the same size",len(pairsidx_ps), len(pairs_sect)
         exit()
     else:
-        print "Section [ pairs ] has %d entries" % len(pairs_sect)
-        print"pairsidx_ps:"
-        print(pairsidx_ps)
-        print ""
+        pass
+        #print "Section [ pairs ] has %d entries" % len(pairs_sect)
+        #print"pairsidx_ps:"
+        #print(pairsidx_ps)
+        #print ""
     return
 
 def check_nl_arr(nl_ps, nl_atmtyp, nl_pairs):
@@ -741,7 +742,7 @@ def parse_and_return_relevant_parameters(topf, outdir=None):
             allprops.append(val)
         dict_atm_types_extended = dictionarize(attyp, allprops)
 
-        print_atmtypes_info(dict_atm_types, parms_mt, n_types)
+        #print_atmtypes_info(dict_atm_types, parms_mt, n_types)
 
         # 3. parse [ atoms ] section
         # I need to know which type each atom belongs to, for the nb potentials later.
@@ -754,9 +755,9 @@ def parse_and_return_relevant_parameters(topf, outdir=None):
         for nam in typ:
             numeric_atmtyp.append(dict_atm_types[nam][0])
 
-        print "numeric_atmtyp array:"
-        print numeric_atmtyp
-        print ""
+        #print "numeric_atmtyp array:"
+        #print numeric_atmtyp
+        #print ""
 
         # 4. parse [ pairs ] section
         # pairsidx_ps is a list [at1, at2] with exactly the same order as in section [ pairs ] of file .top
@@ -857,14 +858,14 @@ def parse_traj_neighbors(traj, numeric_atmtyp, pairsidx_ps, all_ps_pairs, pot_ty
     frame_at_upd = []
     init_frame = 0  #min 0 max nfr-1
 
-    print "#################################################################"
-    print "rcut used in nl search is:",rcut2," nm"
-    if not cons_frq_upd:
-        print "nl updates starting at frame %d every nstlist, if large displacements do not occur: %d" % (init_frame, nstlist)
-    else:
-        print "nl updates every nstlist %d is enforced:" % (nstlist)
-    print "#################################################################"
-    print ""
+    #print "#################################################################"
+    #print "rcut used in nl search is:",rcut2," nm"
+    #if not cons_frq_upd:
+    #    print "nl updates starting at frame %d every nstlist, if large displacements do not occur: %d" % (init_frame, nstlist)
+    #else:
+    #    print "nl updates every nstlist %d is enforced:" % (nstlist)
+    #print "#################################################################"
+    #print ""
 
     update_dyn = False
     update_nstlist = False
@@ -909,7 +910,7 @@ def parse_traj_neighbors(traj, numeric_atmtyp, pairsidx_ps, all_ps_pairs, pot_ty
 
         if update:
 
-            print "Neighbor search",nl_updates
+            #print "Neighbor search",nl_updates
 
             pa = get_particle_array(name='prot', x=rx, y=ry, z=rz, h=1.0) #h=1.0 must not be changed as it affects radius_scale in nnps.LinkedListNNPS
 

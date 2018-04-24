@@ -64,7 +64,7 @@ class EstimatorsObject(object):
             raise IOError("expecatation_observables and data_indices must have same length")
         self.expectation_observables = expectation_observables
         self.observables = observables
-        self.observables.prep()
+        #self.observables.prep()
 
         self.Q_function, self.dQ_function = observables.get_q_functions()
         self.log_Q_function, self.dlog_Q_function = observables.get_log_q_functions()
@@ -77,7 +77,7 @@ class EstimatorsObject(object):
         self.h0 = []
 
         self.pi = np.zeros(self.number_equilibrium_states).astype(float)
-        self.ni = np.zeros(self.number_equilibrium_states).astype(int)
+        self.ni = np.zeros(self.number_equilibrium_states).astype(float)
 
         ####Format Inputs####
         self.model = model
@@ -143,12 +143,12 @@ class EstimatorsObject(object):
                 total = self.comm.recv(source=0, tag=5)
 
             # now compute the pi for each state
-            self.pi = self.ni.astype(float) / float(total)
+            self.pi = self.ni / float(total)
         else:
             print "Using Inputted Stationary Distribution"
             if np.shape(stationary_distributions)[0] == len(self.ni):
                 print "Percent Difference of Selected Stationary Distribution from expected"
-                total_approximate = self.ni.astype(float) / np.sum(self.ni.astype(float))
+                total_approximate = self.ni / np.sum(self.ni)
                 diff = stationary_distributions - total_approximate
                 print np.abs(diff/stationary_distributions)
                 self.pi = stationary_distributions
@@ -282,7 +282,7 @@ class EstimatorsObject(object):
                 that_observed = self.comm.recv(source=i, tag=7)
                 that_weight = self.comm.recv(source=i, tag=11)
                 total_observed += that_observed
-                total_all_weights += total_weight
+                total_all_weights += that_weight
             total_observed /= total_all_weights
             Q = -1.0 * self.Q_function(total_observed)
         else:
@@ -323,9 +323,11 @@ class EstimatorsObject(object):
                 that_observed = self.comm.recv(source=i, tag=7)
                 that_weight = self.comm.recv(source=i, tag=11)
                 total_observed += that_observed
-                total_all_weights += total_weight
+                total_all_weights += that_weight
             total_observed /= total_all_weights
-            Q = self.log_Q_function(next_observed)
+            Q = self.log_Q_function(total_observed)
+            print total_observed
+            print Q
         else:
             self.comm.send(next_observed, dest=0, tag=7)
             self.comm.send(total_weight, dest=0, tag=11)
@@ -367,7 +369,7 @@ class EstimatorsObject(object):
                 that_observed = self.comm.recv(source=i, tag=7)
                 that_weight = self.comm.recv(source=i, tag=11)
                 total_observed += that_observed
-                total_all_weights += total_weight
+                total_all_weights += that_weight
             total_observed /= total_all_weights
             Q = self.Q_function(total_observed)
         else:
@@ -437,7 +439,7 @@ class EstimatorsObject(object):
                 that_observed = self.comm.recv(source=i, tag=7)
                 that_weight = self.comm.recv(source=i, tag=11)
                 total_observed += that_observed
-                total_all_weights += total_weight
+                total_all_weights += that_weight
             total_observed /= total_all_weights
             Q = self.log_Q_function(total_observed)
         else:
