@@ -50,7 +50,9 @@ def load_protein_nb(topf, dtrajs, traj_files, top_file, observable_object=None, 
         collected_data.append(stuff)
 
     comm.Barrier()
-
+    if observable_object is not None:
+        observable_object.synchronize_obs_seen()
+    comm.Barrier()
     return pmodel, collected_data
 
 def load_distance_traces(traj_file, top_file, fit_pairs):

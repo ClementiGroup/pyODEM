@@ -11,6 +11,8 @@ observables refers to the actual observations each object makes.
 
 
 import numpy as np
+from mpi4py import MPI
+
 
 from pyODEM.observables.hist_analysis_pkg import HistogramO
 import pyODEM.basic_functions as bf
@@ -120,6 +122,27 @@ class ExperimentalObservables(object):
         """ Sets obs_seen to True for all observables. """
 
         self.obs_seen = [True for i in range(self.num_q_functions)]
+
+    def synchronize_obs_seen(self):
+        comm = MPI.COMM_WORLD
+        rank = comm.Get_rank()
+        size = comm.Get_size()
+
+        this_seen = [False for i in range(self.num_q_functions)]
+        if rank == 0:
+            for i in range(self.num_q_functions):
+                if self.obs_seen[i]:
+                    this_seen[i] = True
+            for i_thread in range(1, size):
+                that_seen = comm.recv(source=i_thread, tag=3)
+                for i in range(self.num_q_functions):
+                    if that_seen[i]:
+                        this_seen[i] = True
+        else:
+            comm.send(self.obs_seen, dest=0, tag=3)
+            this_seen = None
+        this_seen = comm.bcast(this_seen, root=0)
+        self.obs_seen = this_seen
 
     def compute_observations(self, data, weights=None, all=False):
         """ Compute the observables from a data set.
