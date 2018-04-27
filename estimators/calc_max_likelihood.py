@@ -61,7 +61,7 @@ def get_solver(solver):
 
     return func_solver
 
-def max_likelihood_estimate_mpi(formatted_data, observables, model, solver="bfgs", logq=False, derivative=None, x0=None, kwargs={}, stationary_distributions=None):
+def max_likelihood_estimate(formatted_data, observables, model, solver="bfgs", logq=False, derivative=None, x0=None, kwargs={}, stationary_distributions=None):
     """ Optimizes model's paramters using a max likelihood method
 
     Args:
@@ -166,7 +166,7 @@ def max_likelihood_estimate_mpi(formatted_data, observables, model, solver="bfgs
     return eo
 
 
-def max_likelihood_estimate(data, dtrajs, observables, model, obs_data=None, solver="bfgs", logq=False, derivative=None, x0=None, kwargs={}, stationary_distributions=None, model_state=None):
+def max_likelihood_estimate_serial(data, dtrajs, observables, model, obs_data=None, solver="bfgs", logq=False, derivative=None, x0=None, kwargs={}, stationary_distributions=None, model_state=None):
     """ Optimizes model's paramters using a max likelihood method
 
     Args:
