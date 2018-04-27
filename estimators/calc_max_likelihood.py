@@ -158,6 +158,8 @@ def max_likelihood_estimate(formatted_data, observables, model, solver="bfgs", l
             Qfunction_epsilon(current_epsilons)
         new_epsilons = None
 
+    comm.Barrier()
+
     new_epsilons = comm.bcast(new_epsilons, root=0)
 
     eo.set_poison_pill()
