@@ -76,7 +76,7 @@ class EstimatorsObject(object):
 
         self.h0 = []
 
-        self.pi = np.zeros(self.number_equilibrium_states).astype(float)
+        #self.pi = np.zeros(self.number_equilibrium_states).astype(float)
         self.ni = np.zeros(self.number_equilibrium_states).astype(float)
 
         ####Format Inputs####
@@ -120,8 +120,8 @@ class EstimatorsObject(object):
 
         ##number of observables
         self.num_observable = np.shape(self.expectation_observables[0])[0]
-        self.pi =  np.array(self.pi).astype(float)
-        self.pi /= np.sum(self.pi)
+        #self.pi =  np.array(self.pi).astype(float)
+        #self.pi /= np.sum(self.pi)
 
         if stationary_distributions is None:
             print "Determining Stationary Distribution Based on State Counts"
