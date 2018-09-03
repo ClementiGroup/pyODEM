@@ -104,7 +104,7 @@ def max_likelihood_estimate(formatted_data, observables, model, solver="bfgs", l
         all_data.append(stuff["data"])
         all_obs_data.append(stuff["obs_result"])
         if this_stationary_distribution is not None:
-            this_stationary_distribution.append(stationary_distributions[stuff["index"]])
+            np.append(this_stationary_distribution,stationary_distributions[stuff["index"]])
     if this_stationary_distribution is not None:
         this_stationary_distribution = np.array(this_stationary_distribution)
 
