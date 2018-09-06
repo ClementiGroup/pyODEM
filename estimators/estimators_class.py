@@ -20,33 +20,37 @@ class EstimatorsObject(object):
         oldQ (float): Starting Q value.
         newQ (float): Optimized Q value.
 
+    This object is generic, and designed to be used either in serial or with
+    parallelization. Conceptually, a protein trajectory is broken into sets of
+    discrete states, with a corresponding state index and state data and state
+    observables. To work in parallel, this object would contain only a subset
+    of discrete states. These are referred to as object state or object index.
+
+    There are D total discrete states, and about d = D/n_cores states in each
+    object.
+
     """
     def __init__(self, data_indices, data, expectation_observables, observables, model, stationary_distributions=None):
         """ Initialize object and process all the inputted data
 
         Args:
-            data (array): First index is the frame, the other indices are the
-                data for the frame. Should be the data loaded from
-                model.load_data().
-            data_sets (list of array): Each entry is an array with the frames
-                corresponding to that equilibrium state.
+            data_indices (list of int): List of length d where each entry
+                corresponds to the state index of each object state in data.
+            data (list of array): List of length d where each entry
+                are the data for the each frame of the object state.
+                Refer to model.load_data().
+            expectation_observables (list of arrays): List of length d where
+                each entry contains the expectation observable values for each
+                object state.
             observables (ExperimentalObservables): See object in
-                pyfexd.observables.exp_observables.ExperimentalObservables
+                pyODEM.observables.exp_observables.ExperimentalObservables
             model (ModelLoader/list): See object in the module
-                 pyfexd.model_loaders.X for the particular model.
-            obs_data (list): Use if data set for computing observables is
-                different from data for computing the energy. List contains
-                arrays where each array-entry corresponds to the observable in
-                the ExperimentalObservables object. Arrays are specified with
-                first index corresponding to the frame and second index to the
-                data. Default: Use the array specified in data for all
-                observables.
-            stationary_distributions (list of float): List of values for pi for
-                each stationary distribution. Must be same size as data_sets.
-                Default will compute the distribution based upon the weighting
-                of each data_sets.
-            model_state (list): List which model object to use when model is a
-                list. Default None.
+                 pyODEM.model_loaders.X for the particular model.
+            stationary_distributions (list of float): List of length d where
+                each entry corresponds to the probability of each object state.
+                Default is None, which defaults to fraction of frames in this
+                object state.
+
         """
         print "Initializing EstimatorsObject"
         t1 = time.time()

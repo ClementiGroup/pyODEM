@@ -65,11 +65,13 @@ def max_likelihood_estimate(formatted_data, observables, model, solver="bfgs", l
     """ Optimizes model's paramters using a max likelihood method
 
     Args:
-        See pyfexd.estimators.estimators_class.EstimatorsObject for:
-            data (array), observables (ExperimentalObservables),
-            model (ModelLoader), obs_data(list) and
-            stationary_distributions (list)
-        dtrajs (array of int): Discrete trajectory index for each frame of data.
+        formatted_data (list of dict): Each entry corresponds to a metastable
+            state. The dictionary contains the "index" of the state, as well as
+            the "data" for potential energy and "obs_result".
+        observables (ExperimentalObservables): See object in
+            pyODEM.observables.exp_observables.ExperimentalObservables
+        model (ModelLoader/list): See object in the module
+             pyODEM.model_loaders.X for the particular model.
         solver (str): Optimization procedures. Defaults to Simplex. Available
             methods include: simplex, anneal, cg, custom.
         logq (bool): Use the logarithmic Q functions. Default: False.
@@ -79,6 +81,9 @@ def max_likelihood_estimate(formatted_data, observables, model, solver="bfgs", l
         x0 (array): Specify starting epsilons for optimization methods. Defaults
             to current epsilons from the model.
         kwargs (dictionary): Key word arguments passed to the solver.
+        stationary_distributions (array): The probability of each state. The
+            stationary_distributions[idx] corresponds to the idx, "index" in
+            the formatted_data.
 
     Returns:
         eo (EstimatorsObject): Object that contains the data used for the

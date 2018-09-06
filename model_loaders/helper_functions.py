@@ -6,6 +6,12 @@ from proteins import ProteinNonBonded
 import pyODEM.basic_functions.util as util
 
 def load_protein_nb(topf, dtrajs, traj_files, top_file, observable_object=None, obs_data=None):
+    """ Function for setting up objects for re-weighting a non-bonded CG model
+
+    Args:
+        obs_data (list): Use if data set for computing observables is different from data for computing the energy. List contains arrays where each array-entry corresponds to the observable in the ExperimentalObservables object. Arrays are specified with first index corresponding to the frame and second index to the data. Default: Use the array specified in data for all observables.
+
+    """
     comm = MPI.COMM_WORLD
 
     size = comm.Get_size()
