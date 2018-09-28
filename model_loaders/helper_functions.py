@@ -3,6 +3,8 @@ from mpi4py import MPI
 import mdtraj as md
 
 from proteins import ProteinNonBonded
+from proteins import Protein
+
 import pyODEM.basic_functions.util as util
 
 def load_protein_nb(topf, dtrajs, traj_files, top_file, observable_object=None, obs_data=None):
@@ -40,6 +42,61 @@ def load_protein_nb(topf, dtrajs, traj_files, top_file, observable_object=None, 
         stuff = {}
         stuff["index"] = state_idx
         data = pmodel.load_data(traj[all_indices[state_idx]])
+        stuff["data"] = data
+        if observable_object is not None:
+            if obs_data is None:
+                use_obs_data = [data for i in range(len(observable_object.observables))]
+            else:
+                use_obs_data = []
+                for obs_dat in obs_data:
+                    use_obs_data.append(obs_dat[all_indices[state_idx]])
+
+            observed, obs_std = observable_object.compute_observations(use_obs_data)
+            stuff["obs_result"] = observed
+            stuff["obs_std"] = obs_std
+
+        collected_data.append(stuff)
+
+    comm.Barrier()
+    if observable_object is not None:
+        observable_object.synchronize_obs_seen()
+    comm.Barrier()
+    return pmodel, collected_data
+
+def load_protein(dtrajs, traj_files, model_name, observable_object=None, obs_data=None):
+    """ Function for setting up objects for re-weighting a non-bonded CG model
+
+    Args:
+        obs_data (list): Use if data set for computing observables is different from data for computing the energy. List contains arrays where each array-entry corresponds to the observable in the ExperimentalObservables object. Arrays are specified with first index corresponding to the frame and second index to the data. Default: Use the array specified in data for all observables.
+
+    """
+    comm = MPI.COMM_WORLD
+
+    size = comm.Get_size()
+    rank = comm.Get_rank()
+
+    all_indices = util.get_state_indices(dtrajs)
+
+    n_states = len(all_indices)
+
+    if n_states < size:
+        # fewer states than cores
+        print "TOO FEW STATES"
+        pass
+    else:
+        # more states than cores
+        #print "GOOD"
+        use_states = np.arange(rank, n_states, size)
+
+    #print "size: %d, rank: %d" % (size, rank)
+    pmodel = Protein(model_name)
+    traj = md.load(traj_files, top=pmodel.model.mapping.topology)
+
+    collected_data = []
+    for state_idx in use_states:
+        stuff = {}
+        stuff["index"] = state_idx
+        data = pmodel.load_data_from_traj(traj[all_indices[state_idx]])
         stuff["data"] = data
         if observable_object is not None:
             if obs_data is None:

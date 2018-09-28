@@ -18,8 +18,8 @@ from data_loaders import DataObjectList
 
 from pyODEM.model_loaders import ModelLoader
 try:
-    #import model_builder as mdb
-    import model_builder_mod as mdb
+    import model_builder as mdb
+    #import model_builder_mod as mdb
 except:
     pass
 
@@ -61,6 +61,26 @@ class ProtoProtein(ModelLoader):
         """
 
         traj = md.load(fname, top=self.model.mapping.topology)
+        data = md.compute_distances(traj, self.use_pairs, periodic=False)
+
+        return data
+
+    def load_data_from_traj(self, traj):
+        """ Load a data file and format for later use
+
+        For Proteins, it uses the self.pairs to load the pair-pair distances for
+        every frame. This is the data format that would be used for computing
+        the energy later.
+
+        Args:
+            traj (mdtraj.Trajectory): Traj file to read and parse.
+
+        Return:
+            Array (floats): First index is frame, second index is every
+                pair in the order of pairs.
+
+        """
+
         data = md.compute_distances(traj, self.use_pairs, periodic=False)
 
         return data
