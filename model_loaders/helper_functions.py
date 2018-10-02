@@ -7,11 +7,16 @@ from proteins import Protein
 
 import pyODEM.basic_functions.util as util
 
-def load_protein_nb(topf, dtrajs, traj_files, top_file, observable_object=None, obs_data=None):
+def load_protein_nb(topf, dtrajs, traj_files, top_file, observable_object=None, obs_data=None, weights=None):
     """ Function for setting up objects for re-weighting a non-bonded CG model
 
+    Assumes there are N frames that need to be re-weighted, with D discrete states.
+
     Args:
+        topf (str): String to the top_file for computing the non-bonded interactions.
+        dtrajs (np.ndarray): Length N integers of values 0...D-1 denoting the discrete state it is in.
         obs_data (list): Use if data set for computing observables is different from data for computing the energy. List contains arrays where each array-entry corresponds to the observable in the ExperimentalObservables object. Arrays are specified with first index corresponding to the frame and second index to the data. Default: Use the array specified in data for all observables.
+        weights (np.ndarray): Length N float denoting weights for each frame when computing the observable.
 
     """
     comm = MPI.COMM_WORLD
@@ -43,6 +48,10 @@ def load_protein_nb(topf, dtrajs, traj_files, top_file, observable_object=None, 
         stuff["index"] = state_idx
         data = pmodel.load_data(traj[all_indices[state_idx]])
         stuff["data"] = data
+        if weights is not None:
+            this_wt = weights[all_indices[state_idx]]
+        else:
+            this_wt = None
         if observable_object is not None:
             if obs_data is None:
                 use_obs_data = [data for i in range(len(observable_object.observables))]
@@ -51,7 +60,7 @@ def load_protein_nb(topf, dtrajs, traj_files, top_file, observable_object=None, 
                 for obs_dat in obs_data:
                     use_obs_data.append(obs_dat[all_indices[state_idx]])
 
-            observed, obs_std = observable_object.compute_observations(use_obs_data)
+            observed, obs_std = observable_object.compute_observations(use_obs_data, weights=this_wt)
             stuff["obs_result"] = observed
             stuff["obs_std"] = obs_std
 
@@ -63,7 +72,7 @@ def load_protein_nb(topf, dtrajs, traj_files, top_file, observable_object=None, 
     comm.Barrier()
     return pmodel, collected_data
 
-def load_protein(dtrajs, traj_files, model_name, observable_object=None, obs_data=None):
+def load_protein(dtrajs, traj_files, model_name, observable_object=None, obs_data=None, weights=None):
     """ Function for setting up objects for re-weighting a non-bonded CG model
 
     Args:
@@ -98,6 +107,10 @@ def load_protein(dtrajs, traj_files, model_name, observable_object=None, obs_dat
         stuff["index"] = state_idx
         data = pmodel.load_data_from_traj(traj[all_indices[state_idx]])
         stuff["data"] = data
+        if weights is not None:
+            this_wt = weights[all_indices[state_idx]]
+        else:
+            this_wt = None
         if observable_object is not None:
             if obs_data is None:
                 use_obs_data = [data for i in range(len(observable_object.observables))]
@@ -106,7 +119,7 @@ def load_protein(dtrajs, traj_files, model_name, observable_object=None, obs_dat
                 for obs_dat in obs_data:
                     use_obs_data.append(obs_dat[all_indices[state_idx]])
 
-            observed, obs_std = observable_object.compute_observations(use_obs_data)
+            observed, obs_std = observable_object.compute_observations(use_obs_data, weights=this_wt)
             stuff["obs_result"] = observed
             stuff["obs_std"] = obs_std
 
