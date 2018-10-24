@@ -522,12 +522,34 @@ class EstimatorsObject(object):
             total_weight += next_weight * self.pi[i]
         return next_observed, total_weight, boltzman_weights
 
-    def get_reweights(self, epsilons):
+    def _get_reweights(self, epsilons):
+        """ Currently not used anymore.
+        TODO: Standardize all calls to get_reweights_norescale() in all functions with this function"""
         next_observed, total_weight, boltzman_weights = self.get_reweights_norescale(epsilons)
 
-        next_observed /= total_weight
+        return next_observed, total_all_weights, boltzman_weights
 
-        return next_observed, total_weight, boltzman_weights
+    def get_reweighted_observables(self, epsilons):
+        """ """
+        next_observed, total_weight, boltzman_weights = self.get_reweights_norescale(epsilons)
+
+        if self.rank == 0:
+            total_observed = next_observed
+            total_all_weights = total_weight
+            for i in range(1, self.size):
+                that_observed = self.comm.recv(source=i, tag=7)
+                that_weight = self.comm.recv(source=i, tag=11)
+                total_observed += that_observed
+                total_all_weights += that_weight
+            total_observed /= total_all_weights
+        else:
+            self.comm.send(next_observed, dest=0, tag=7)
+            self.comm.send(total_weight, dest=0, tag=11)
+            total_observed = None
+
+        total_observed = self.comm.bcast(total_all_weights, root=0)
+
+        return total_observed
 
     def get_boltzman_weights(self, epsilons):
         #calculate the boltzman weights.
