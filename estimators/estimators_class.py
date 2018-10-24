@@ -530,7 +530,7 @@ class EstimatorsObject(object):
         return next_observed, total_all_weights, boltzman_weights
 
     def get_reweighted_observables(self, epsilons):
-        """ """
+        """ Return the total observable over all cores"""
         next_observed, total_weight, boltzman_weights = self.get_reweights_norescale(epsilons)
 
         if self.rank == 0:
