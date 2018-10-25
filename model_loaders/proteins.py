@@ -738,7 +738,7 @@ class ProteinNonBonded(ModelLoader):
             self.epsilons_pairs.append(thing[0])
 
         self._epsilons = np.append(self.epsilons_atm_types, self.epsilons_pairs)
-        self.n_original_epsilons = self._epsilons
+        self.n_original_epsilons = np.shape(self._epsilons)[0]
 
         self.group_indices = None
         self.parameter_indices = None
@@ -776,23 +776,23 @@ class ProteinNonBonded(ModelLoader):
 
         """
 
-        if np.shape(group_indices)[0] != np.shape(self._epsilons):
-            raise IOError("group_indexes must be same length as self._epsilons")
+        if np.shape(group_indices)[0] != np.shape(self._epsilons)[0]:
+            raise IOError("group_indexes must be same length as self._epsilons, got %d and %d respectively" % (np.shape(group_indices)[0], np.shape(self._epsilons)[0]))
 
         n_groups = int(np.max(group_indices) + 1)
 
         self.group_indices = np.array(group_indices).astype(int)
-        self.parameter_indices = [np.zeros(0).astype(int) for i in range(len(self.group_indices))]
         self.n_groups = n_groups
+        self.parameter_indices = [np.zeros(0).astype(int) for i in range(self.n_groups)]
 
-        for idx,group in enumerate(group_indices):
-            self.parameter_indices[group] = np.append(parameters_indices[group], [idx])
+        for idx,group in enumerate(self.group_indices):
+            self.parameter_indices[group] = np.append(self.parameter_indices[group], [idx])
 
-        for idx,group in enumerate(parameter_indices):
+        for idx,group in enumerate(self.parameter_indices):
             if np.shape(group)[0] == 0:
                 raise IOError("Group index %d is missing" % idx)
 
-        for idx,group in enumerate(paramter_indices):
+        for idx,group in enumerate(self.parameter_indices):
             starting_value = self._epsilons[group[0]]
             for eps_idx in group:
                 if self._epsilons[eps_idx] != starting_value:
@@ -925,8 +925,13 @@ class ProteinNonBonded(ModelLoader):
 
         """
 
-        nonbonded_epsilons = new_epsilons[:self.n_atom_types]
-        pairwise_epsilons = new_epsilons[self.n_atom_types:]
+        if self.group_indices is None:
+            nonbonded_epsilons = new_epsilons[:self.n_atom_types]
+            pairwise_epsilons = new_epsilons[self.n_atom_types:]
+        else:
+            true_new_epsilons = self.reconstruct_epsilons(new_epsilons)
+            nonbonded_epsilons = true_new_epsilons[:self.n_atom_types]
+            pairwise_epsilons = true_new_epsilons[self.n_atom_types:]
 
         new_atm_types = self.dict_atm_types_extended.copy()
         #new_atm_types = self.dict_atm_types.copy()
@@ -935,7 +940,7 @@ class ProteinNonBonded(ModelLoader):
         self.epsilons_atm_types, self.sigmas_atm_types
         for key,values in new_atm_types.iteritems():
             idx = values[0]
-            new_c6, new_c12 = convert_sigma_eps_to_c6c12(self.sigmas_atm_types[idx], new_epsilons[idx])
+            new_c6, new_c12 = convert_sigma_eps_to_c6c12(self.sigmas_atm_types[idx], nonbonded_epsilons[idx])
             values[4] = new_c6
             values[5] = new_c12
 
