@@ -737,7 +737,68 @@ class ProteinNonBonded(ModelLoader):
         for thing in self.parms2_:
             self.epsilons_pairs.append(thing[0])
 
-        self.epsilons = np.append(self.epsilons_atm_types, self.epsilons_pairs)
+        self._epsilons = np.append(self.epsilons_atm_types, self.epsilons_pairs)
+        self.n_original_epsilons = np.shape(self._epsilons)[0]
+
+        self.group_indices = None
+        self.parameter_indices = None
+
+    @property
+    def epsilons(self):
+        return self.get_epsilons()
+
+    def get_epsilons(self):
+        if self.group_indices is None:
+            return self._epsilons
+        else:
+            # there are group_indices
+            epsilons = np.zeros(self.n_groups)
+            for idx in range(self.n_groups):
+                epsilons[idx] = self._epsilons[self.parameter_indices[idx][0]]
+            return epsilons
+
+    def reconstruct_epsilons(self, epsilons):
+        eps = np.zeros(self.n_original_epsilons)
+        assert np.shape(epsilons)[0] == self.n_groups
+        for grp_idx, group in enumerate(self.parameter_indices):
+            for param_idx in group:
+                eps[param_idx] = epsilons[grp_idx]
+
+        return eps
+
+    def group_epsilons(self, group_indices):
+        """ Assign each epsilon to a group that varies the values together
+
+        Args:
+            group_indices (list or np.ndarray): Length E for E self._epsilon
+                values. Integers denote group index and must vary from 0 to N-1
+                for N epsilon groups
+
+        """
+
+        if np.shape(group_indices)[0] != np.shape(self._epsilons)[0]:
+            raise IOError("group_indexes must be same length as self._epsilons, got %d and %d respectively" % (np.shape(group_indices)[0], np.shape(self._epsilons)[0]))
+
+        n_groups = int(np.max(group_indices) + 1)
+
+        self.group_indices = np.array(group_indices).astype(int)
+        self.n_groups = n_groups
+        self.parameter_indices = [np.zeros(0).astype(int) for i in range(self.n_groups)]
+
+        for idx,group in enumerate(self.group_indices):
+            self.parameter_indices[group] = np.append(self.parameter_indices[group], [idx])
+
+        for idx,group in enumerate(self.parameter_indices):
+            if np.shape(group)[0] == 0:
+                raise IOError("Group index %d is missing" % idx)
+
+        for idx,group in enumerate(self.parameter_indices):
+            starting_value = self._epsilons[group[0]]
+            for eps_idx in group:
+                if self._epsilons[eps_idx] != starting_value:
+                    raise IOError("For group %d, Epsilon index %d differs from the group value of %f" % (idx, eps_idx, starting_value))
+
+        # getting to this point means everything is in order
 
     def load_data(self, traj):
         """ Parse a traj object and return a DataObjectList
@@ -814,7 +875,7 @@ class ProteinNonBonded(ModelLoader):
         # Update with the nonbonded derivatives with each function call
 
         n_frames = len(all_nonbonded_eps_idxs)
-        pairwise_epsilons = self.epsilons[self.n_atom_types:]
+        pairwise_epsilons = self._epsilons[self.n_atom_types:]
         n_pairwise_eps = np.shape(pairwise_epsilons)[0]
         all_pairwise_derivatives = [[0 for i in range(n_frames)] for j in range(n_pairwise_eps)]
 
@@ -826,19 +887,36 @@ class ProteinNonBonded(ModelLoader):
                 this_idx = pairwise_idxs[i_pw]
                 all_pairwise_derivatives[this_idx][i_frame] += pairwise_factors[i_pw]
 
-        def hepsilon(epsilons):
-            nonbonded_epsilons = epsilons[:self.n_atom_types]
-            pairwise_epsilons = epsilons[self.n_atom_types:]
-            nonbonded_matrix_epsilons = compute_mixed_table(nonbonded_epsilons, [1])
-            U_new = compute_energy_fast(nonbonded_matrix_epsilons, pairwise_epsilons, all_nonbonded_eps_idxs, all_nonbonded_factors, all_pairwise_eps_idx, all_pairwise_factors)
-            return U_new
+        if self.group_indices is None:
+            def hepsilon(epsilons):
+                nonbonded_epsilons = epsilons[:self.n_atom_types]
+                pairwise_epsilons = epsilons[self.n_atom_types:]
+                nonbonded_matrix_epsilons = compute_mixed_table(nonbonded_epsilons, [1])
+                U_new = compute_energy_fast(nonbonded_matrix_epsilons, pairwise_epsilons, all_nonbonded_eps_idxs, all_nonbonded_factors, all_pairwise_eps_idx, all_pairwise_factors)
+                return U_new
 
-        def dhepsilon(epsilons):
-            nonbonded_epsilons = epsilons[:self.n_atom_types]
-            nonbonded_matrix_d_epsilons = compute_mixed_derivatives_table(nonbonded_epsilons)
-            dU_nonbonded = compute_derivative_fast(nonbonded_matrix_d_epsilons, all_nonbonded_eps_idxs, all_nonbonded_factors)
+            def dhepsilon(epsilons):
+                nonbonded_epsilons = epsilons[:self.n_atom_types]
+                nonbonded_matrix_d_epsilons = compute_mixed_derivatives_table(nonbonded_epsilons)
+                dU_nonbonded = compute_derivative_fast(nonbonded_matrix_d_epsilons, all_nonbonded_eps_idxs, all_nonbonded_factors)
 
-            return dU_nonbonded + all_pairwise_derivatives
+                return dU_nonbonded + all_pairwise_derivatives
+        else:
+            def hepsilon(epsilons):
+                true_epsilons = self.reconstruct_epsilons(epsilons)
+                nonbonded_epsilons = true_epsilons[:self.n_atom_types]
+                pairwise_epsilons = true_epsilons[self.n_atom_types:]
+                nonbonded_matrix_epsilons = compute_mixed_table(nonbonded_epsilons, [1])
+                U_new = compute_energy_fast(nonbonded_matrix_epsilons, pairwise_epsilons, all_nonbonded_eps_idxs, all_nonbonded_factors, all_pairwise_eps_idx, all_pairwise_factors)
+                return U_new
+
+            def dhepsilon(epsilons):
+                true_epsilons = self.reconstruct_epsilons(epsilons)
+                nonbonded_epsilons = true_epsilons[:self.n_atom_types]
+                nonbonded_matrix_d_epsilons = compute_mixed_derivatives_table(nonbonded_epsilons)
+                dU_nonbonded = compute_derivative_fast(nonbonded_matrix_d_epsilons, all_nonbonded_eps_idxs, all_nonbonded_factors)
+
+                return dU_nonbonded + all_pairwise_derivatives
 
         return hepsilon, dhepsilon
 
@@ -847,8 +925,13 @@ class ProteinNonBonded(ModelLoader):
 
         """
 
-        nonbonded_epsilons = new_epsilons[:self.n_atom_types]
-        pairwise_epsilons = new_epsilons[self.n_atom_types:]
+        if self.group_indices is None:
+            nonbonded_epsilons = new_epsilons[:self.n_atom_types]
+            pairwise_epsilons = new_epsilons[self.n_atom_types:]
+        else:
+            true_new_epsilons = self.reconstruct_epsilons(new_epsilons)
+            nonbonded_epsilons = true_new_epsilons[:self.n_atom_types]
+            pairwise_epsilons = true_new_epsilons[self.n_atom_types:]
 
         new_atm_types = self.dict_atm_types_extended.copy()
         #new_atm_types = self.dict_atm_types.copy()
@@ -857,7 +940,7 @@ class ProteinNonBonded(ModelLoader):
         self.epsilons_atm_types, self.sigmas_atm_types
         for key,values in new_atm_types.iteritems():
             idx = values[0]
-            new_c6, new_c12 = convert_sigma_eps_to_c6c12(self.sigmas_atm_types[idx], new_epsilons[idx])
+            new_c6, new_c12 = convert_sigma_eps_to_c6c12(self.sigmas_atm_types[idx], nonbonded_epsilons[idx])
             values[4] = new_c6
             values[5] = new_c12
 
