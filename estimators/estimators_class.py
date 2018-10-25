@@ -546,6 +546,7 @@ class EstimatorsObject(object):
             self.comm.send(next_observed, dest=0, tag=7)
             self.comm.send(total_weight, dest=0, tag=11)
             total_observed = None
+            total_all_weights = None
 
         total_weights = self.comm.bcast(total_all_weights, root=0)
         total_observed = self.comm.bcast(total_observed, root=0)
