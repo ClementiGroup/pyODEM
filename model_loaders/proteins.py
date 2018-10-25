@@ -877,7 +877,7 @@ class ProteinNonBonded(ModelLoader):
         n_frames = len(all_nonbonded_eps_idxs)
         pairwise_epsilons = self._epsilons[self.n_atom_types:]
         n_pairwise_eps = np.shape(pairwise_epsilons)[0]
-        all_pairwise_derivatives = [[0 for i in range(n_frames)] for j in range(n_pairwise_eps)]
+        all_pairwise_derivatives = [np.zeros(n_frames) for j in range(n_pairwise_eps)]
 
         for i_frame in range(n_frames):
             pairwise_idxs = all_pairwise_eps_idx[i_frame]
@@ -910,13 +910,27 @@ class ProteinNonBonded(ModelLoader):
                 U_new = compute_energy_fast(nonbonded_matrix_epsilons, pairwise_epsilons, all_nonbonded_eps_idxs, all_nonbonded_factors, all_pairwise_eps_idx, all_pairwise_factors)
                 return U_new
 
+            # pre-allocate the true derivatives numpy array in memory
+            true_derivatives = [np.zeros(n_frames) for j in range(self.n_groups)]
+
+            # define everything here as arrays for easy of reconstructing the
+            # final derivatives list
+            all_derivatives_array = np.zeros((self.n_atom_types+n_pairwise_eps, n_frames))
+            for idx,thing in enumerate(all_pairwise_derivatives):
+                all_derivatives_array[idx+self.n_atom_types,:] = thing
+
             def dhepsilon(epsilons):
                 true_epsilons = self.reconstruct_epsilons(epsilons)
                 nonbonded_epsilons = true_epsilons[:self.n_atom_types]
                 nonbonded_matrix_d_epsilons = compute_mixed_derivatives_table(nonbonded_epsilons)
                 dU_nonbonded = compute_derivative_fast(nonbonded_matrix_d_epsilons, all_nonbonded_eps_idxs, all_nonbonded_factors)
 
-                return dU_nonbonded + all_pairwise_derivatives
+                all_derivatives_array[:self.n_atom_types,:] = dU_nonbonded
+
+                for grp_idx, group in enumerate(self.parameter_indices):
+                    true_derivatives[grp_idx][:] = np.sum(all_derivatives_array[group], axis=0)
+
+                return true_derivatives
 
         return hepsilon, dhepsilon
 
