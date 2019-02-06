@@ -52,6 +52,48 @@ class ExperimentalObservables(object):
         self.dlog_functions = []
         self.num_q_functions = 0
 
+    def add_average(self, obs_value, obs_std, errortype="gaussian", scale=1.0):
+        
+        """ Adds a single_value observable. 
+
+        Method will add appropriate objects to the list and generate the
+        necessary functions for an observable, with is represented by a single value for the 
+        entire trajectory (like a spin-coupling constant for a particular pair of atoms)
+
+        Args:
+            obs_value (1d numpy array): Values of the observable.
+            
+            obs_std (1d numpy array): Corresponding standard deviation
+            
+            errortype (str): Type of error to use for the observables.
+
+            scale (float): Scale the error values by this factor. Important for
+                numerical efficiency. Defaults to 1.0 (no scaling).
+        """
+        observable = AverageO()
+        self.observables.append(observable)
+
+        #add the necessary Q functions.
+        for i in range(np.shape(obs_value)[0]):
+	        self.num_q_functions += 1
+	        mean = obs_value[i]
+	        std = obs_std[i]*scale
+	        if std == 0:
+	            std = 1.0 #std of zero could lead to divide by zero exception. Set to 1 if it's zero (due to no sampling)
+	        self.q_functions.append(bf.statistical.wrapped_gaussian(mean,std))
+	        self.dq_functions.append(bf.statistical.wrapped_derivative_gaussian(mean,std))
+	        self.log_functions.append(bf.log_statistical.wrapped_harmonic(mean,std))
+	        self.dlog_functions.append(bf.log_statistical.wrapped_derivative_harmonic(mean,std))
+
+        #Default: all observables are by default seen.
+        self.prep_True()
+        assert len(self.obs_seen) == self.num_q_functions
+        assert len(self.q_functions) == self.num_q_functions
+        assert len(self.dq_functions) == self.num_q_functions
+        assert len(self.log_functions) == self.num_q_functions
+        assert len(self.dlog_functions) == self.num_q_functions
+
+        
     def add_histogram(self, exp_file, compute=False, nbins=None, histrange=None, spacing=None, edges=None, errortype="gaussian", scale=1.0):
         """ Adds a Histogram observable from HistogramO
 
