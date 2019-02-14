@@ -3,9 +3,9 @@ from pyODEM.observables import Observable
 
 class AverageO(Observable):
 
-""" The class is used for observables, which are calculated as 
+    """ The class is used for observables, which are calculated as 
     an average over the trajectory.
-"""
+    """
     
     def __init__(self):
         pass
