@@ -13,6 +13,7 @@ import scipy.optimize as optimize
 import multiprocessing # only for the cross-validation function
 import multiprocessing.managers as mpmanagers
 import os
+from mpi4py import MPI
 #import copy_reg
 #import types
 
@@ -60,7 +61,120 @@ def get_solver(solver):
 
     return func_solver
 
-def max_likelihood_estimate(data, dtrajs, observables, model, obs_data=None, solver="bfgs", logq=False, derivative=None, x0=None, kwargs={}, stationary_distributions=None, model_state=None):
+def max_likelihood_estimate(formatted_data, observables, model, solver="bfgs", logq=False, derivative=None, x0=None, kwargs={}, stationary_distributions=None):
+    """ Optimizes model's paramters using a max likelihood method
+
+    Args:
+        formatted_data (list of dict): Each entry corresponds to a metastable
+            state. The dictionary contains the "index" of the state, as well as
+            the "data" for potential energy and "obs_result".
+        observables (ExperimentalObservables): See object in
+            pyODEM.observables.exp_observables.ExperimentalObservables
+        model (ModelLoader/list): See object in the module
+             pyODEM.model_loaders.X for the particular model.
+        solver (str): Optimization procedures. Defaults to Simplex. Available
+            methods include: simplex, anneal, cg, custom.
+        logq (bool): Use the logarithmic Q functions. Default: False.
+        derivative (bool): True if Q function returns a derivative. False if it
+            does not. Default is None, automatically selected based upon the
+            requested solver.
+        x0 (array): Specify starting epsilons for optimization methods. Defaults
+            to current epsilons from the model.
+        kwargs (dictionary): Key word arguments passed to the solver.
+        stationary_distributions (array): The probability of each state. The
+            stationary_distributions[idx] corresponds to the idx, "index" in
+            the formatted_data.
+
+    Returns:
+        eo (EstimatorsObject): Object that contains the data used for the
+            computation and the results.
+
+    """
+    comm = MPI.COMM_WORLD
+
+    size = comm.Get_size()
+    rank = comm.Get_rank()
+
+    all_indices = []
+    all_data = []
+    all_obs_data = []
+
+    if stationary_distributions is None:
+        this_stationary_distribution = None
+    else:
+        this_stationary_distribution = []
+
+    for stuff in formatted_data:
+        all_indices.append(stuff["index"])
+        all_data.append(stuff["data"])
+        all_obs_data.append(stuff["obs_result"])
+        if this_stationary_distribution is not None:
+            this_stationary_distribution.append(stationary_distributions[stuff["index"]])
+            #np.append(this_stationary_distribution,stationary_distributions[stuff["index"]])
+    if this_stationary_distribution is not None:
+        this_stationary_distribution = np.array(this_stationary_distribution)
+
+    derivative = ensure_derivative(derivative, solver)
+    print "number of inputted data sets: %d" % len(all_data)
+    eo = EstimatorsObject(all_indices, all_data, all_obs_data, observables, model, stationary_distributions=this_stationary_distribution)
+
+    Qfunction_epsilon = eo.get_function(derivative, logq)
+    comm.Barrier()
+
+    eo.set_good_pill()
+    if x0 is None:
+        current_epsilons = eo.current_epsilons
+    else:
+        current_epsilons = x0
+
+    # now parallelize
+    if rank == 0:
+        func_solver = get_solver(solver)
+
+        print "Starting Optimization"
+        t1 = time.time()
+        #Then run the solver
+
+        ##add keyword args thatn need to be passed
+        #kwargs["logq"] = logq
+        try:
+            new_epsilons = func_solver(Qfunction_epsilon, current_epsilons, **kwargs)
+        except:
+            debug_dir = "debug_0"
+            for count in range(100):
+                debug_dir = "debug_%d" % count
+                if not os.path.isdir(debug_dir):
+                    break
+            os.mkdir(debug_dir)
+            cwd = os.getcwd()
+            os.chdir(debug_dir)
+            eo.save_debug_files()
+            os.chdir(cwd)
+            raise
+
+        t2 = time.time()
+        total_time = (t2-t1) / 60.0
+
+        print "Optimization Complete: %f minutes" % total_time
+        eo.set_poison_pill() #activate the poison pill
+        final = Qfunction_epsilon(new_epsilons)
+    else:
+        while(eo.get_pill()):
+            # for rank != 0, return a boolean instead.
+            Qfunction_epsilon(current_epsilons)
+        new_epsilons = None
+
+    comm.Barrier()
+
+    new_epsilons = comm.bcast(new_epsilons, root=0)
+
+    eo.set_poison_pill()
+    #then return a new set of epsilons inside the EstimatorsObject
+    eo.save_solutions(new_epsilons)
+    return eo
+
+
+def max_likelihood_estimate_serial(data, dtrajs, observables, model, obs_data=None, solver="bfgs", logq=False, derivative=None, x0=None, kwargs={}, stationary_distributions=None, model_state=None):
     """ Optimizes model's paramters using a max likelihood method
 
     Args:
@@ -143,7 +257,7 @@ def max_likelihood_estimate(data, dtrajs, observables, model, obs_data=None, sol
         all_data = data
         all_obs_data = obs_data
         all_dtrajs = dtrajs
-        
+
     derivative = ensure_derivative(derivative, solver)
     data_sets = util.get_state_indices(all_dtrajs)
     print "number of inputted data sets: %d" % len(data_sets)

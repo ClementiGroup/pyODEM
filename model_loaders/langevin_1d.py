@@ -46,6 +46,19 @@ class Langevin(ModelLoader):
         self.epsilons = self.model.params[self.use_params]
         self.beta = 1.0 #set temperature
 
+    def load_data(self,fname):
+        """ Load a data file and format for later use
+
+        Args:
+            fname (string): Name of a file to load.
+
+        Return:
+            Array of floats: Values to be interpreted by the
+                get_potentials_epsilon() methoc.
+
+        """
+        return np.load(fname)
+
     def get_potentials_epsilon(self, data):
         """ Return PotentialEnergy(epsilons)
 

@@ -2,13 +2,24 @@
 
 Requires package: https://github.com/ajkluber/model_builder
 
+For non-bonded calculations, require:
+    PySPH @ https://pysph.readthedocs.io/en/latest/#
+
 """
 import numpy as np
 import mdtraj as md
 
+# improt non-bonded methods for protein calculation
+#from calc_nb_gromacs import check_if_dist_longer_cutoff, check_arr_sizes_are_equal, calc_nb_ene
+
+from calc_nb_gromacs import parse_and_return_relevant_parameters, parse_traj_neighbors, prep_compute_energy_fast, compute_energy_fast, compute_derivative_fast, order_epsilons_atm_types, compute_mixed_table, compute_mixed_derivatives_table, get_c6c12_matrix_noeps, convert_sigma_eps_to_c6c12
+
+from data_loaders import DataObjectList
+
 from pyODEM.model_loaders import ModelLoader
 try:
     import model_builder as mdb
+    #import model_builder_mod as mdb
 except:
     pass
 
@@ -54,6 +65,26 @@ class ProtoProtein(ModelLoader):
 
         return data
 
+    def load_data_from_traj(self, traj):
+        """ Load a data file and format for later use
+
+        For Proteins, it uses the self.pairs to load the pair-pair distances for
+        every frame. This is the data format that would be used for computing
+        the energy later.
+
+        Args:
+            traj (mdtraj.Trajectory): Traj file to read and parse.
+
+        Return:
+            Array (floats): First index is frame, second index is every
+                pair in the order of pairs.
+
+        """
+
+        data = md.compute_distances(traj, self.use_pairs, periodic=False)
+
+        return data
+
 class Protein(ProtoProtein):
     """ Subclass for making a ModelLoader for a Protein Model
 
@@ -63,7 +94,7 @@ class Protein(ProtoProtein):
     """
 
     def __init__(self, ini_file_name):
-        """ Initialize the Langevin model, override superclass
+        """ Initialize the Protein model, override superclass
 
         Args:
             ini_file_name (str): Name of a .ini file to load containing the
@@ -651,3 +682,285 @@ class ProteinAwsem(ProtoProtein):
             return constants_list_derivatives
 
         return hepsilon, dhepsilon
+
+
+class ProteinNonBonded(ModelLoader):
+    """ subclass of ProtoProtein, includes non-bonded option
+
+    Use this loader for computing the non-bonded potential energy as well as the
+    native potential energy.
+
+    Makes heavy use of the calc_nb_gromacs.py package.
+
+    """
+
+    def __init__(self, topf):
+        """ Initialize the ProteinNonBonded using a GROMACS .top file
+
+        Uses the parse_and_return_relevant_parameters() from calc_nb_gromacs.py in order to parse a GROMACS .top file. This method assumes the .top file parameterizes a Calpha model.
+
+        The Calpha types are read in the order of the .top file and assumes a
+        LJ10-12 format. The mixing rule is assumed to be of type 1, meaning the
+        C6, C12 are in the .top file, resulting in the C6 and C12 values being
+        converted to sigma and epsilons on initilization of this class. The
+        epsilon are what is being optimized while the sigmas are treated as
+        constants.
+
+        It is also assumed that the gaussian pairwise interactions are used. In
+        doing so only the first parameter is treated as the epsilon and that is
+        the parameter being optimzied while all other parameters are held
+        constant for pairwise interactions. These are treated as and often
+        referred to as "native contacts".
+
+        self.dict_atm_types_extended: example 'CAY': [18, 0.0052734375, 0.001098632812]
+        self.dict_atm_types: example 'CAY': [18, 1.0, 0.0, 'A', 0.0052734375, 0.001098632812]
+        Args:
+            topf (str): Path to the a GROMACS .top file.
+
+        Attributes:
+            epsilons (array): A len(E) array where the first X entries refer to
+                the X unique Calpah types, and the remaining entries refer to
+                the G epsions from the gaussian native contacts.
+
+        """
+        print "Initializing a Protein non-bonded interactions model"
+
+        self.GAS_CONSTANT_KJ_MOL = 0.0083144621 #kJ/mol*k
+        self.dict_atm_types_extended, self.dict_atm_types, self.numeric_atmtyp, self.pairsidx_ps, self.all_ps_pairs, self.pot_type1_, self.pot_type2_, self.parms_mt, self.parms2_, self.nrexcl = parse_and_return_relevant_parameters(topf)
+
+        # get nonbonded epsilons
+        self.n_atom_types = len(self.dict_atm_types)
+        self.epsilons_atm_types, self.sigmas_atm_types = order_epsilons_atm_types(self.dict_atm_types, len(self.dict_atm_types))
+        self.sigma_params_matrix = get_c6c12_matrix_noeps(self.sigmas_atm_types, [1])
+        # get pairwise epsilons
+        self.epsilons_pairs = []
+        for thing in self.parms2_:
+            self.epsilons_pairs.append(thing[0])
+
+        self._epsilons = np.append(self.epsilons_atm_types, self.epsilons_pairs)
+        self.n_original_epsilons = np.shape(self._epsilons)[0]
+
+        self.group_indices = None
+        self.parameter_indices = None
+
+    @property
+    def epsilons(self):
+        return self.get_epsilons()
+
+    def get_epsilons(self):
+        if self.group_indices is None:
+            return self._epsilons
+        else:
+            # there are group_indices
+            epsilons = np.zeros(self.n_groups)
+            for idx in range(self.n_groups):
+                epsilons[idx] = self._epsilons[self.parameter_indices[idx][0]]
+            return epsilons
+
+    def reconstruct_epsilons(self, epsilons):
+        eps = np.zeros(self.n_original_epsilons)
+        assert np.shape(epsilons)[0] == self.n_groups
+        for grp_idx, group in enumerate(self.parameter_indices):
+            for param_idx in group:
+                eps[param_idx] = epsilons[grp_idx]
+
+        return eps
+
+    def group_epsilons(self, group_indices):
+        """ Assign each epsilon to a group that varies the values together
+
+        Args:
+            group_indices (list or np.ndarray): Length E for E self._epsilon
+                values. Integers denote group index and must vary from 0 to N-1
+                for N epsilon groups
+
+        """
+
+        if np.shape(group_indices)[0] != np.shape(self._epsilons)[0]:
+            raise IOError("group_indexes must be same length as self._epsilons, got %d and %d respectively" % (np.shape(group_indices)[0], np.shape(self._epsilons)[0]))
+
+        n_groups = int(np.max(group_indices) + 1)
+
+        self.group_indices = np.array(group_indices).astype(int)
+        self.n_groups = n_groups
+        self.parameter_indices = [np.zeros(0).astype(int) for i in range(self.n_groups)]
+
+        for idx,group in enumerate(self.group_indices):
+            self.parameter_indices[group] = np.append(self.parameter_indices[group], [idx])
+
+        for idx,group in enumerate(self.parameter_indices):
+            if np.shape(group)[0] == 0:
+                raise IOError("Group index %d is missing" % idx)
+
+        for idx,group in enumerate(self.parameter_indices):
+            starting_value = self._epsilons[group[0]]
+            for eps_idx in group:
+                if self._epsilons[eps_idx] != starting_value:
+                    raise IOError("For group %d, Epsilon index %d differs from the group value of %f" % (idx, eps_idx, starting_value))
+
+        # getting to this point means everything is in order
+
+    def load_data(self, traj):
+        """ Parse a traj object and return a DataObjectList
+
+        The trajectory of N frames is parsed, and four lists of length N are
+        produced. First, a list  of the nearest neighbors within a cutoff at
+        each step of the trajectory is produced. The nearest neighbor list is
+        length M, which can vary significantly from frame to frame. Second, a
+        U/eps list of length M is generated for each step of the trajectory,
+        where the values are the corresponding potential energy / epsilon for
+        each pair in the nearest neighbors for each trajectory step. This
+        process is done seperately for the pairwise interactions and nonbonded
+        atom-type interactions (two lists each, total of four).
+
+        In doing so, the size of the data passed to the get_potentials_epsilon()
+        function scales as O(R), where R is the number of residues in the
+        protein. Furthermore, the computation time is reduced significantly as
+        the distances and potentials do not need to be recomputed fully, and the
+        problem becomes a simple array multiplicatin problem.
+
+        Args:
+            traj (mdtraj.Trajectory): A mdtraj trajectory object.
+
+        Returns:
+            parsed_data (DataObjectList): An object that can be indexed like an
+                array and contains the neighbor list and U/eps list.
+        """
+        all_nl_ps, all_nl_atmtyp_w_excl, parms1, pot_type1, parms2, pot_type2, rcut2 = parse_traj_neighbors(traj, self.numeric_atmtyp, self.pairsidx_ps, self.all_ps_pairs, self.pot_type1_, self.pot_type2_, self.parms_mt, self.parms2_, self.nrexcl, nstlist=1)
+
+        all_nonbonded_eps_idxs, all_nonbonded_factors, all_pairwise_eps_idx, all_pairwise_factors = prep_compute_energy_fast(traj, all_nl_ps, all_nl_atmtyp_w_excl, self.numeric_atmtyp, self.pairsidx_ps, self.sigma_params_matrix, self.parms2_, self.pot_type1_,self.pot_type2_, rcut2)
+
+        parsed_data = DataObjectList([all_nonbonded_eps_idxs, all_nonbonded_factors, all_pairwise_eps_idx, all_pairwise_factors])
+
+        return parsed_data
+
+    def _read_out_lists(self, data):
+        """ Internal method for reading results from load_data() """
+        list_of_lists = data.list_of_lists
+        all_nonbonded_eps_idxs = list_of_lists[0]
+        all_nonbonded_factors = list_of_lists[1]
+        all_pairwise_eps_idx = list_of_lists[2]
+        all_pairwise_factors = list_of_lists[3]
+
+        return all_nonbonded_eps_idxs, all_nonbonded_factors, all_pairwise_eps_idx, all_pairwise_factors
+
+    def get_potentials_epsilon(self, data):
+        """ Generate the hepsilon and dhepsilon functions.
+
+        The hepsilon(epsilons) and dhepsilon(epsilons) functions have to first
+        sort the epsilons and generate the appropriate matrix of nonbonded
+        epsilon combinations and list of native gaussian epsilons.
+
+        For the hepsilon() function, this entails generating the separate
+        epsilon lists and passing it to the compute_energy_fast() method. For
+        the dhepsilon() function, this entails pre-computing the native gaussian
+        derivatives (which do not change for varying epsilons) and using the
+        compute_derivative_fast() method for the Calpha nonbonded atom-type
+        functions.
+
+        Args:
+            data (DataObjectList):
+
+        Returns:
+            hepsilon (function): A length N array where each entry is the
+                potential energy for the n'th frame.
+            dhepsilon (function): A length E list of length N arrays. Compute
+                the derivative with respect to the e'th epsilons parameter for
+                the n'th frame.
+
+        """
+        all_nonbonded_eps_idxs, all_nonbonded_factors, all_pairwise_eps_idx, all_pairwise_factors = self._read_out_lists(data)
+
+        # pre-compute derivatives (constants) for the pairwise interactions
+        # Update with the nonbonded derivatives with each function call
+
+        n_frames = len(all_nonbonded_eps_idxs)
+        pairwise_epsilons = self._epsilons[self.n_atom_types:]
+        n_pairwise_eps = np.shape(pairwise_epsilons)[0]
+        all_pairwise_derivatives = [np.zeros(n_frames) for j in range(n_pairwise_eps)]
+
+        for i_frame in range(n_frames):
+            pairwise_idxs = all_pairwise_eps_idx[i_frame]
+            pairwise_factors = all_pairwise_factors[i_frame]
+            n_pairwise = np.shape(pairwise_factors)[0]
+            for i_pw in range(n_pairwise):
+                this_idx = pairwise_idxs[i_pw]
+                all_pairwise_derivatives[this_idx][i_frame] += pairwise_factors[i_pw]
+
+        if self.group_indices is None:
+            def hepsilon(epsilons):
+                nonbonded_epsilons = epsilons[:self.n_atom_types]
+                pairwise_epsilons = epsilons[self.n_atom_types:]
+                nonbonded_matrix_epsilons = compute_mixed_table(nonbonded_epsilons, [1])
+                U_new = compute_energy_fast(nonbonded_matrix_epsilons, pairwise_epsilons, all_nonbonded_eps_idxs, all_nonbonded_factors, all_pairwise_eps_idx, all_pairwise_factors)
+                return U_new
+
+            def dhepsilon(epsilons):
+                nonbonded_epsilons = epsilons[:self.n_atom_types]
+                nonbonded_matrix_d_epsilons = compute_mixed_derivatives_table(nonbonded_epsilons)
+                dU_nonbonded = compute_derivative_fast(nonbonded_matrix_d_epsilons, all_nonbonded_eps_idxs, all_nonbonded_factors)
+
+                return dU_nonbonded + all_pairwise_derivatives
+        else:
+            def hepsilon(epsilons):
+                true_epsilons = self.reconstruct_epsilons(epsilons)
+                nonbonded_epsilons = true_epsilons[:self.n_atom_types]
+                pairwise_epsilons = true_epsilons[self.n_atom_types:]
+                nonbonded_matrix_epsilons = compute_mixed_table(nonbonded_epsilons, [1])
+                U_new = compute_energy_fast(nonbonded_matrix_epsilons, pairwise_epsilons, all_nonbonded_eps_idxs, all_nonbonded_factors, all_pairwise_eps_idx, all_pairwise_factors)
+                return U_new
+
+            # pre-allocate the true derivatives numpy array in memory
+            true_derivatives = [np.zeros(n_frames) for j in range(self.n_groups)]
+
+            # define everything here as arrays for easy of reconstructing the
+            # final derivatives list
+            all_derivatives_array = np.zeros((self.n_atom_types+n_pairwise_eps, n_frames))
+            for idx,thing in enumerate(all_pairwise_derivatives):
+                all_derivatives_array[idx+self.n_atom_types,:] = thing
+
+            def dhepsilon(epsilons):
+                true_epsilons = self.reconstruct_epsilons(epsilons)
+                nonbonded_epsilons = true_epsilons[:self.n_atom_types]
+                nonbonded_matrix_d_epsilons = compute_mixed_derivatives_table(nonbonded_epsilons)
+                dU_nonbonded = compute_derivative_fast(nonbonded_matrix_d_epsilons, all_nonbonded_eps_idxs, all_nonbonded_factors)
+
+                all_derivatives_array[:self.n_atom_types,:] = dU_nonbonded
+
+                for grp_idx, group in enumerate(self.parameter_indices):
+                    true_derivatives[grp_idx][:] = np.sum(all_derivatives_array[group], axis=0)
+
+                return true_derivatives
+
+        return hepsilon, dhepsilon
+
+    def save_model_parameters(self, new_epsilons):
+        """
+
+        """
+
+        if self.group_indices is None:
+            nonbonded_epsilons = new_epsilons[:self.n_atom_types]
+            pairwise_epsilons = new_epsilons[self.n_atom_types:]
+        else:
+            true_new_epsilons = self.reconstruct_epsilons(new_epsilons)
+            nonbonded_epsilons = true_new_epsilons[:self.n_atom_types]
+            pairwise_epsilons = true_new_epsilons[self.n_atom_types:]
+
+        new_atm_types = self.dict_atm_types_extended.copy()
+        #new_atm_types = self.dict_atm_types.copy()
+        #self.all_ps_pairs
+
+        self.epsilons_atm_types, self.sigmas_atm_types
+        for key,values in new_atm_types.iteritems():
+            idx = values[0]
+            new_c6, new_c12 = convert_sigma_eps_to_c6c12(self.sigmas_atm_types[idx], nonbonded_epsilons[idx])
+            values[4] = new_c6
+            values[5] = new_c12
+
+        new_pairwise_parameters = [thing for thing in self.parms2_]
+
+        for i_count,thing in enumerate(new_pairwise_parameters):
+            thing[0] = pairwise_epsilons[i_count]
+
+        return new_atm_types, self.pairsidx_ps, new_pairwise_parameters

@@ -4,6 +4,7 @@ import numpy as np
 import time
 import mdtraj as md
 import os
+from mpi4py import MPI
 
 np.seterr(over="raise")
 
@@ -19,140 +20,96 @@ class EstimatorsObject(object):
         oldQ (float): Starting Q value.
         newQ (float): Optimized Q value.
 
+    This object is generic, and designed to be used either in serial or with
+    parallelization. Conceptually, a protein trajectory is broken into sets of
+    discrete states, with a corresponding state index and state data and state
+    observables. To work in parallel, this object would contain only a subset
+    of discrete states. These are referred to as object state or object index.
+
+    There are D total discrete states, and about d = D/n_cores states in each
+    object.
+
     """
-    def __init__(self, data, data_sets, observables, model, obs_data=None, stationary_distributions=None, model_state=None):
+    def __init__(self, data_indices, data, expectation_observables, observables, model, stationary_distributions=None):
         """ Initialize object and process all the inputted data
 
         Args:
-            data (array): First index is the frame, the other indices are the
-                data for the frame. Should be the data loaded from
-                model.load_data().
-            data_sets (list of array): Each entry is an array with the frames
-                corresponding to that equilibrium state.
+            data_indices (list of int): List of length d where each entry
+                corresponds to the state index of each object state in data.
+            data (list of array): List of length d where each entry
+                are the data for the each frame of the object state.
+                Refer to model.load_data().
+            expectation_observables (list of arrays): List of length d where
+                each entry contains the expectation observable values for each
+                object state.
             observables (ExperimentalObservables): See object in
-                pyfexd.observables.exp_observables.ExperimentalObservables
+                pyODEM.observables.exp_observables.ExperimentalObservables
             model (ModelLoader/list): See object in the module
-                 pyfexd.model_loaders.X for the particular model.
-            obs_data (list): Use if data set for computing observables is
-                different from data for computing the energy. List contains
-                arrays where each array-entry corresponds to the observable in
-                the ExperimentalObservables object. Arrays are specified with
-                first index corresponding to the frame and second index to the
-                data. Default: Use the array specified in data for all
-                observables.
-            stationary_distributions (list of float): List of values for pi for
-                each stationary distribution. Must be same size as data_sets.
-                Default will compute the distribution based upon the weighting
-                of each data_sets.
-            model_state (list): List which model object to use when model is a
-                list. Default None.
+                 pyODEM.model_loaders.X for the particular model.
+            stationary_distributions (list of float): List of length d where
+                each entry corresponds to the probability of each object state.
+                Default is None, which defaults to fraction of frames in this
+                object state.
+
         """
         print "Initializing EstimatorsObject"
         t1 = time.time()
+        # set MPI stuff:
+        self.comm = MPI.COMM_WORLD
+
+        self.size = self.comm.Get_size()
+        self.rank = self.comm.Get_rank()
         #observables get useful stuff like value of beta
-        self.number_equilibrium_states = len(data_sets)
+        self.number_equilibrium_states = len(data_indices)
+        # check everything is the right size:
+        if not len(data) == self.number_equilibrium_states:
+            raise IOError("data and data_indices must have the same length")
+        if not len(expectation_observables) == self.number_equilibrium_states:
+            raise IOError("expecatation_observables and data_indices must have same length")
+        self.expectation_observables = expectation_observables
         self.observables = observables
-
-
-        self.observables.prep()
+        #self.observables.prep()
 
         self.Q_function, self.dQ_function = observables.get_q_functions()
         self.log_Q_function, self.dlog_Q_function = observables.get_log_q_functions()
 
         #calculate average value of all observables and associated functions
-        self.expectation_observables = []
         self.epsilons_functions = []
         self.derivatives_functions = []
 
 
         self.h0 = []
 
-        self.pi = []
-        self.ni = []
-
-        ##calculate the number of frames data has
-        if type(data) is md.core.trajectory.Trajectory:
-            total_data_frames = data.n_frames
-        else: #its an array
-            total_data_frames = np.shape(data)[0]
+        #self.pi = np.zeros(self.number_equilibrium_states).astype(float)
+        self.ni = np.zeros(self.number_equilibrium_states).astype(float)
 
         ####Format Inputs####
-
-        ##Check obs_data
-        if obs_data is None: #use sim data for calculating observables
-            obs_data = [data for i in range(len(self.observables.observables))]
-        else:
-            pass
-
-        ##check if model is a list or not
-        if isinstance(model, list):
-            if model_state is None:
-                raise IOError("model_state must be specified if model is a list")
-
-        else: #convert model to be a list, construct model_state
-            model = [model]
-            if model_state is None:
-                model_state = np.array([0 for i in range(total_data_frames)])
-        self.num_models = len(model)
         self.model = model
-        self.current_epsilons = model[0].get_epsilons() #assumes the first model is the one you want
-        self.current_epsilon_function_types = model[0].get_epsilons()
+        self.current_epsilons = model.get_epsilons() #assumes the first model is the one you want
         self.number_params = np.shape(self.current_epsilons)[0]
-
-        #check model inputs
-        if not np.max(model_state) < len(model):
-            raise IOError("model_state formatted incorrectly. Values should be 0-X, where length of model is X+1")
-
-        if not total_data_frames == np.shape(model_state)[0]:
-            raise IOError("shape of model_state and data do not match")
 
         #load data for each set, and compute energies and observations
         count = -1
-        self.state_size = []
         self.non_zero_states = []
         self.state_ham_functions = []#debugging
-        for state_count,state_indices in enumerate(data_sets):
+        for state_count in range(self.number_equilibrium_states):
+            # first determine size of states, get the hepsilon functions
             count += 1
-            use_data = data[state_indices]
-            num_in_set = np.shape(state_indices)[0]
-            self.state_size.append(num_in_set)
+            use_data = data[state_count]
+            num_in_set = np.shape(use_data)[0]
             if not num_in_set == 0:
                 self.non_zero_states.append(state_count)
-            which_model = model_state[state_indices]
-            ##assumes order does not matter, so long as relative order is preserved.
-            ##since the epsilons_function and derivatives are summed up later
-            this_epsilons_function = []
-            this_derivatives_function = []
-            for idx in range(self.num_models):
-                if idx in which_model:
-                    this_indices = np.where(which_model == idx)
-                    this_data = use_data[this_indices]
-                    epsilons_function, derivatives_function = model[idx].get_potentials_epsilon(this_data)
-                    size_array = np.shape(epsilons_function(self.current_epsilons))[0]
-                    for test in derivatives_function(self.current_epsilons):
-                        assert np.shape(test)[0] == size_array
-                    this_epsilons_function.append(epsilons_function)
-                    this_derivatives_function.append(derivatives_function)
-                assert len(this_epsilons_function) == len(this_derivatives_function)
-            num_functions = len(this_epsilons_function)
+            epsilons_function, derivatives_function = self.model.get_potentials_epsilon(use_data)
+            size_array = np.shape(epsilons_function(self.current_epsilons))[0]
+            for test in derivatives_function(self.current_epsilons):
+                assert np.shape(test)[0] == size_array
 
-            ##define new wrapper functions to wrap up the computation of several hamiltonians from different models
-            ham_calc = HamiltonianCalculator(this_epsilons_function, this_derivatives_function, self.number_params, num_in_set, count)
+            # All thigns saved for later should go below here
+            self.epsilons_functions.append(epsilons_function)
+            self.derivatives_functions.append(derivatives_function)
+            self.h0.append(epsilons_function(self.current_epsilons))
 
-            self.epsilons_functions.append(ham_calc.epsilon_function)
-            self.derivatives_functions.append(ham_calc.derivatives_function)
-            self.h0.append(ham_calc.epsilon_function(self.current_epsilons))
-            self.state_ham_functions.append(ham_calc)
-            #process obs_data so that only the desired frames are passed
-            use_obs_data = []
-            for obs_dat in obs_data:
-                use_obs_data.append(obs_dat[state_indices])
-            observed, obs_std = observables.compute_observations(use_obs_data)
-
-            self.expectation_observables.append(observed)
-
-            self.ni.append(num_in_set)
-            self.pi.append(num_in_set)
+            self.ni[state_count] = num_in_set
 
         ##check the assertion. make sure everything same size
         for i in self.non_zero_states:
@@ -166,22 +123,48 @@ class EstimatorsObject(object):
                 assert np.shape(arrr)[0] == size
 
         ##number of observables
-        self.num_observable = np.shape(observed)[0]
-        self.pi =  np.array(self.pi).astype(float)
-        self.pi /= np.sum(self.pi)
+        self.num_observable = np.shape(self.expectation_observables[0])[0]
+        #self.pi =  np.array(self.pi).astype(float)
+        #self.pi /= np.sum(self.pi)
 
-        if not stationary_distributions is None:
+        # determine the total number of frames working with:
+        # need to send each thread the total number of states
+        if self.rank == 0:
+            # receive from each thread:
+            total = np.sum(self.ni)
+            for i in range(1, self.size):
+                this_sum = self.comm.recv(source=i, tag=3)
+                total += this_sum
+
+            # now send back the total
+            for i in range(1, self.size):
+                self.comm.send(total, dest=i, tag=5)
+        else:
+            # send this threads total
+            self.comm.send(np.sum(self.ni), dest=0, tag=3)
+            # now get back the true total
+            total = self.comm.recv(source=0, tag=5)
+
+        self.total_ni = total
+
+        if stationary_distributions is None:
+            print "Determining Stationary Distribution Based on State Counts"
+            # now compute the pi for each state
+            self.pi = self.ni / float(self.total_ni)
+        else:
             print "Using Inputted Stationary Distribution"
             if np.shape(stationary_distributions)[0] == len(self.ni):
                 print "Percent Difference of Selected Stationary Distribution from expected"
-                diff = self.pi - stationary_distributions
-                print np.abs(diff/self.pi)
+                total_approximate = self.ni / np.sum(self.total_ni)
+                diff = stationary_distributions - total_approximate
+                print np.abs(diff/stationary_distributions)
                 self.pi = stationary_distributions
             else:
                 print "Input Stationry Distribution Dimensions = %d" % np.shape(stationary_distributions)[0]
                 print "Number of Equilibrium States = %d" % len(self.ni)
                 raise IOError("Inputted stationary distributions does match not number of equilibrium states.")
 
+        print "THREAD %d PI: %s" % (self.rank, str(self.pi))
         ##Compute factors that don't depend on the re-weighting
         self.state_prefactors = []
         for i in range(self.number_equilibrium_states):
@@ -198,6 +181,20 @@ class EstimatorsObject(object):
         self.count_dhepsilon = 0
         self.trace_Q_values= []
         self.trace_log_Q_values = []
+
+        self.set_poison_pill() # default should be to not continue indefinitely
+
+    def set_good_pill(self):
+        self.pill = True
+
+    def set_poison_pill(self):
+        self.pill = False
+
+    def set_pill(self, value):
+        self.pill = value
+
+    def get_pill(self):
+        return self.pill
 
     def get_reweighted_observable_function(self):
         return self.calculate_observables_reweighted
@@ -279,16 +276,36 @@ class EstimatorsObject(object):
             float: Q value.
 
         """
+        # send the values of the epsilons from rank=0 to all other processes
+        epsilons = self.comm.bcast(epsilons, root=0)
+
         #initiate value for observables:
+        next_observed, total_weight, boltzman_weights = self.get_reweights_norescale(epsilons)
 
-        next_observed, total_weight, boltzman_weights = self.get_reweights(epsilons)
-
+        if self.rank == 0:
+            total_observed = next_observed
+            total_all_weights = total_weight
+            for i in range(1, self.size):
+                that_observed = self.comm.recv(source=i, tag=7)
+                that_weight = self.comm.recv(source=i, tag=11)
+                total_observed += that_observed
+                total_all_weights += that_weight
+            total_observed /= total_all_weights
+            Q = -1.0 * self.Q_function(total_observed)
+        else:
+            self.comm.send(next_observed, dest=0, tag=7)
+            self.comm.send(total_weight, dest=0, tag=11)
+            Q = None
         #Minimization, so make maximal value a minimal value with a negative sign.
-        Q = -1.0 * self.Q_function(next_observed)
+        Q = self.comm.bcast(Q, root=0)
 
         ##debug
         self.count_Qcalls += 1
         self.trace_Q_values.append(Q)
+
+        # broadcast the pill:
+        this_pill = self.comm.bcast(self.get_pill(), root=0)
+        self.set_pill(this_pill)
 
         return Q
 
@@ -302,16 +319,37 @@ class EstimatorsObject(object):
             float: -log(Q) value.
 
         """
+        epsilons = self.comm.bcast(epsilons, root=0)
 
-        next_observed, total_weight, boltzman_weights = self.get_reweights(epsilons)
+        next_observed, total_weight, boltzman_weights = self.get_reweights_norescale(epsilons)
+
+        if self.rank == 0:
+            total_observed = next_observed
+            total_all_weights = total_weight
+            for i in range(1, self.size):
+                that_observed = self.comm.recv(source=i, tag=7)
+                that_weight = self.comm.recv(source=i, tag=11)
+                total_observed += that_observed
+                total_all_weights += that_weight
+            total_observed /= total_all_weights
+            Q = self.log_Q_function(total_observed)
+        else:
+            self.comm.send(next_observed, dest=0, tag=7)
+            self.comm.send(total_weight, dest=0, tag=11)
+            Q = None
+        #Minimization, so make maximal value a minimal value with a negative sign.
+        Q = self.comm.bcast(Q, root=0)
 
         #Minimization, so make maximal value a minimal value with a negative sign.
-        Q = self.log_Q_function(next_observed)
         #print epsilons
 
         ##debug
         self.count_Qcalls += 1
         self.trace_log_Q_values.append(Q)
+
+        # broadcast the pill:
+        this_pill = self.comm.bcast(self.get_pill(), root=0)
+        self.set_pill(this_pill)
 
         return Q
 
@@ -326,22 +364,61 @@ class EstimatorsObject(object):
             array of float: dQ/dEpsilon
 
         """
-        next_observed, total_weight, boltzman_weights = self.get_reweights(epsilons)
+        epsilons = self.comm.bcast(epsilons, root=0)
 
-        Q = self.Q_function(next_observed)
+        next_observed, total_weight, boltzman_weights = self.get_reweights_norescale(epsilons)
+        if self.rank == 0:
+            total_observed = next_observed
+            total_all_weights = total_weight
+            for i in range(1, self.size):
+                that_observed = self.comm.recv(source=i, tag=7)
+                that_weight = self.comm.recv(source=i, tag=11)
+                total_observed += that_observed
+                total_all_weights += that_weight
+            total_observed /= total_all_weights
+            Q = self.Q_function(total_observed)
+        else:
+            self.comm.send(next_observed, dest=0, tag=7)
+            self.comm.send(total_weight, dest=0, tag=11)
+            Q = None
+            total_all_weights = None
+
+        Q = self.comm.bcast(Q, root=0)
+        total_all_weights = self.comm.bcast(total_all_weights, root=0)
+
         derivative_observed_first, derivative_observed_second = self.get_derivative_pieces(epsilons, boltzman_weights)
 
-        dQ_vector = []
-        for j in range(self.number_params):
-            derivative_observed = (derivative_observed_first[j]  - (next_observed * derivative_observed_second[j])) / total_weight
-            dQ = self.dQ_function(next_observed, derivative_observed) * Q
-            dQ_vector.append(dQ)
+        if self.rank == 0:
+            for i in range(1, self.size):
+                that_first = self.comm.recv(source=i, tag=13)
+                that_second = self.comm.recv(source=i, tag=17)
+                derivative_observed_first += that_first
+                derivative_observed_second += that_second
+            dQ_vector = []
+            for j in range(self.number_params):
+                derivative_observed = (derivative_observed_first[j]  - (total_observed * derivative_observed_second[j])) / total_all_weights
+                dQ = self.dQ_function(next_observed, derivative_observed) * Q
+                dQ_vector.append(dQ)
 
-        dQ_vector = -1. * np.array(dQ_vector)
+            dQ_vector = np.array(dQ_vector)
+
+        else:
+            self.comm.send(derivative_observed_first, dest=0, tag=13)
+            self.comm.send(derivative_observed_second, dest=0, tag=17)
+
+            dQ_vector = None
+
+        dQ_vector = self.comm.bcast(dQ_vector, root=0)
+
+        dQ_vector = -1. * dQ_vector
         Q *= -1.
 
         self.trace_Q_values.append(Q)
         self.count_Qcalls += 1
+
+        # broadcast the pill:
+        this_pill = self.comm.bcast(self.get_pill(), root=0)
+        self.set_pill(this_pill)
 
         return Q, dQ_vector
 
@@ -356,23 +433,61 @@ class EstimatorsObject(object):
             array of float: dQ/dEpsilon
 
         """
+        epsilons = self.comm.bcast(epsilons, root=0)
 
-        next_observed, total_weight, boltzman_weights = self.get_reweights(epsilons)
+        next_observed, total_weight, boltzman_weights = self.get_reweights_norescale(epsilons)
 
-        Q = self.log_Q_function(next_observed)
+        if self.rank == 0:
+            total_observed = next_observed
+            total_all_weights = total_weight
+            for i in range(1, self.size):
+                that_observed = self.comm.recv(source=i, tag=7)
+                that_weight = self.comm.recv(source=i, tag=11)
+                total_observed += that_observed
+                total_all_weights += that_weight
+            total_observed /= total_all_weights
+            Q = self.log_Q_function(total_observed)
+        else:
+            self.comm.send(next_observed, dest=0, tag=7)
+            self.comm.send(total_weight, dest=0, tag=11)
+            Q = None
+            total_all_weights = None
+        #Minimization, so make maximal value a minimal value with a negative sign.
+
+        # broadcast the Q-value and total_all_weights to all threads
+        Q = self.comm.bcast(Q, root=0)
+        total_all_weights = self.comm.bcast(total_all_weights, root=0)
+
+        # compute each individual piece
         derivative_observed_first, derivative_observed_second = self.get_derivative_pieces(epsilons, boltzman_weights)
+        # then sum up the derivative pieces form each thread
+        if self.rank == 0:
+            for i in range(1, self.size):
+                that_first = self.comm.recv(source=i, tag=13)
+                that_second = self.comm.recv(source=i, tag=17)
+                derivative_observed_first += that_first
+                derivative_observed_second += that_second
+            dQ_vector = []
+            for j in range(self.number_params):
+                derivative_observed = (derivative_observed_first[j]  - (total_observed * derivative_observed_second[j])) / total_all_weights
+                dQ = self.dlog_Q_function(total_observed, derivative_observed)
+                dQ_vector.append(dQ)
 
-        dQ_vector = []
-        for j in range(self.number_params):
-            derivative_observed = (derivative_observed_first[j]  - (next_observed * derivative_observed_second[j])) / total_weight
-            dQ = self.dlog_Q_function(next_observed, derivative_observed)
-            dQ_vector.append(dQ)
+            dQ_vector = np.array(dQ_vector)
+        else:
+            self.comm.send(derivative_observed_first, dest=0, tag=13)
+            self.comm.send(derivative_observed_second, dest=0, tag=17)
 
-        dQ_vector = np.array(dQ_vector)
+            dQ_vector = None
+
+        dQ_vector = self.comm.bcast(dQ_vector, root=0)
 
         self.trace_log_Q_values.append(Q)
         self.count_Qcalls += 1
 
+        # broadcast the pill:
+        this_pill = self.comm.bcast(self.get_pill(), root=0)
+        self.set_pill(this_pill)
         #print "%f   %f" % (Q, np.abs(np.max(dQ_vector)))
 
         return Q, dQ_vector
@@ -391,7 +506,7 @@ class EstimatorsObject(object):
 
         return derivative_observed_first, derivative_observed_second
 
-    def get_reweights(self, epsilons):
+    def get_reweights_norescale(self, epsilons):
         #initialize final matrices
         next_observed = np.zeros(self.num_observable)
 
@@ -405,9 +520,38 @@ class EstimatorsObject(object):
             next_weight = np.sum(boltzman_weights[i]) / self.ni[i]
             next_observed += next_weight * self.state_prefactors[i]
             total_weight += next_weight * self.pi[i]
-        next_observed /= total_weight
-
         return next_observed, total_weight, boltzman_weights
+
+    def _get_reweights(self, epsilons):
+        """ Currently not used anymore.
+        TODO: Standardize all calls to get_reweights_norescale() in all functions with this function"""
+        next_observed, total_weight, boltzman_weights = self.get_reweights_norescale(epsilons)
+
+        return next_observed, total_all_weights, boltzman_weights
+
+    def get_reweighted_observables(self, epsilons):
+        """ Return the total observable over all cores"""
+        next_observed, total_weight, boltzman_weights = self.get_reweights_norescale(epsilons)
+
+        if self.rank == 0:
+            total_observed = next_observed
+            total_all_weights = total_weight
+            for i in range(1, self.size):
+                that_observed = self.comm.recv(source=i, tag=7)
+                that_weight = self.comm.recv(source=i, tag=11)
+                total_observed += that_observed
+                total_all_weights += that_weight
+            total_observed /= total_all_weights
+        else:
+            self.comm.send(next_observed, dest=0, tag=7)
+            self.comm.send(total_weight, dest=0, tag=11)
+            total_observed = None
+            total_all_weights = None
+
+        total_weights = self.comm.bcast(total_all_weights, root=0)
+        total_observed = self.comm.bcast(total_observed, root=0)
+
+        return total_observed, total_weights
 
     def get_boltzman_weights(self, epsilons):
         #calculate the boltzman weights.
@@ -441,7 +585,7 @@ class EstimatorsObject(object):
         assert len(boltzman_weights) == self.number_equilibrium_states
         for idx in self.non_zero_states: # only check non-zero, rest okay
             state = boltzman_weights[idx]
-            assert np.shape(state)[0] == self.state_size[idx]
+            assert np.shape(state)[0] == self.ni[idx]
         return boltzman_weights
 
     def save_debug_files(self):
