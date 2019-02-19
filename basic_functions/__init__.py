@@ -2,6 +2,6 @@
 
 ##to do: set up importing of statistical module to parent level of max_likelihood
 
-import statistical
-import log_statistical
-import util
+from . import statistical
+from . import log_statistical
+from . import util

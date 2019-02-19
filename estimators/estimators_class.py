@@ -52,7 +52,7 @@ class EstimatorsObject(object):
                 object state.
 
         """
-        print "Initializing EstimatorsObject"
+        print("Initializing EstimatorsObject")
         t1 = time.time()
         # set MPI stuff:
         self.comm = MPI.COMM_WORLD
@@ -148,23 +148,23 @@ class EstimatorsObject(object):
         self.total_ni = total
 
         if stationary_distributions is None:
-            print "Determining Stationary Distribution Based on State Counts"
+            print("Determining Stationary Distribution Based on State Counts")
             # now compute the pi for each state
             self.pi = self.ni / float(self.total_ni)
         else:
-            print "Using Inputted Stationary Distribution"
+            print("Using Inputted Stationary Distribution")
             if np.shape(stationary_distributions)[0] == len(self.ni):
-                print "Percent Difference of Selected Stationary Distribution from expected"
+                print("Percent Difference of Selected Stationary Distribution from expected")
                 total_approximate = self.ni / np.sum(self.total_ni)
                 diff = stationary_distributions - total_approximate
-                print np.abs(diff/stationary_distributions)
+                print(np.abs(diff/stationary_distributions))
                 self.pi = stationary_distributions
             else:
-                print "Input Stationry Distribution Dimensions = %d" % np.shape(stationary_distributions)[0]
-                print "Number of Equilibrium States = %d" % len(self.ni)
+                print("Input Stationry Distribution Dimensions = %d" % np.shape(stationary_distributions)[0])
+                print("Number of Equilibrium States = %d" % len(self.ni))
                 raise IOError("Inputted stationary distributions does match not number of equilibrium states.")
 
-        print "THREAD %d PI: %s" % (self.rank, str(self.pi))
+        print("THREAD %d PI: %s" % (self.rank, str(self.pi)))
         ##Compute factors that don't depend on the re-weighting
         self.state_prefactors = []
         for i in range(self.number_equilibrium_states):
@@ -173,7 +173,7 @@ class EstimatorsObject(object):
 
         t2 = time.time()
         total_time = (t2-t1) / 60.0
-        print "Initializaiton Completed: %f Minutes" % total_time
+        print("Initializaiton Completed: %f Minutes" % total_time)
 
         ##debugging options below
         self.count_Qcalls = 0
@@ -565,7 +565,7 @@ class EstimatorsObject(object):
                 self.count_hepsilon += 1
                 boltzman_weights[i] = boltzman_wt
         except:
-            print "Exponential Function Failed"
+            print("Exponential Function Failed")
             exponents = []
             boltzman_weights = []
             max_val = 0
@@ -596,7 +596,7 @@ class EstimatorsObject(object):
 
         """
         cwd = os.getcwd()
-        print "Saving Debug files to %s" % cwd
+        print("Saving Debug files to %s" % cwd)
         f = open("function_calls.dat", "w")
         f.write("Number of times Q was computed: %d\n" % self.count_Qcalls)
         f.write("Number of times the Hamiltonian was computed: %d\n" % self.count_hepsilon)

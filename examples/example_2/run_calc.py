@@ -4,7 +4,7 @@ import scipy.stats as stats
 import os
 import mdtraj as md
 import shutil
-import ConfigParser
+import configparser
 import model_builder as mdb
 import argparse as argparse
 import pyemma.coordinates as coor
@@ -13,7 +13,7 @@ import pyfexd
 model_name = "ww_domain.ini"
 
 def save_model(inifile, newiter, newfile_location):
-    config = ConfigParser.SafeConfigParser(allow_no_value=True)
+    config = configparser.SafeConfigParser(allow_no_value=True)
     config.read(inifile)
 
     config.set("fitting", "iteration", str(newiter))
@@ -110,7 +110,7 @@ reg_space_obj = coor.cluster_regspace(all_dist, dmin=0.05)
 dtrajs = np.array(reg_space_obj.dtrajs)[0,:]
 assert np.min(dtrajs) == 0
 assert np.shape(dtrajs)[0] == np.shape(data)[0]
-print "Number of equilibrium states are : %d" % (np.max(dtrajs))
+print("Number of equilibrium states are : %d" % (np.max(dtrajs)))
 equilibrium_frames = []
 indices = np.arange(np.shape(data)[0])
 for i in range(np.max(dtrajs)+1):
@@ -149,7 +149,7 @@ try:
     solutions = ene(data, equilibrium_frames, obs, pmodel, obs_data=obs_data, solver="bfgs", logq=True, kwargs=function_args)
     save_results = True
 except:
-    print "FAILURE TO OPTIMIZE"
+    print("FAILURE TO OPTIMIZE")
     raise
     save_results = False
 
@@ -160,13 +160,13 @@ if save_results:
     Qnew = solutions.newQ
     Qfunction = solutions.log_Qfunction_epsilon
 
-    print "Epsilons are: "
-    print new_eps
-    print old_eps
+    print("Epsilons are: ")
+    print(new_eps)
+    print(old_eps)
 
-    print ""
-    print "Qold: %g" %Qfunction(old_eps)
-    print "Qnew: %g" %Qfunction(new_eps)
+    print("")
+    print("Qold: %g" %Qfunction(old_eps))
+    print("Qnew: %g" %Qfunction(new_eps))
     pmodel.save_model_parameters(new_eps)
     save_dir = "%s/newton_%d" % (cwd, iteration)
     if not os.path.isdir(save_dir):

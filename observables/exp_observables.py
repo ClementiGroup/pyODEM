@@ -128,10 +128,10 @@ class ExperimentalObservables(object):
         #add observable object if compute is False.
         #Otherwise, compute the actual observed values.
         if compute == False:
-		    observable = HistogramO(nbins, histrange, spacing, edges)
-		    self.observables.append(observable)
+            observable = HistogramO(nbins, histrange, spacing, edges)
+            self.observables.append(observable)
         else:
-        	pass #implement a method for analyzing a data file based on the parameters for the histogram given here.
+            pass #implement a method for analyzing a data file based on the parameters for the histogram given here.
 
         exp_data = np.loadtxt(exp_file)
 

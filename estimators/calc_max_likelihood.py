@@ -17,8 +17,8 @@ from mpi4py import MPI
 #import copy_reg
 #import types
 
-from estimators_class import EstimatorsObject
-from optimizers import function_dictionary
+from .estimators_class import EstimatorsObject
+from .optimizers import function_dictionary
 from pyODEM.basic_functions import util
 
 """
@@ -115,7 +115,7 @@ def max_likelihood_estimate(formatted_data, observables, model, solver="bfgs", l
         this_stationary_distribution = np.array(this_stationary_distribution)
 
     derivative = ensure_derivative(derivative, solver)
-    print "number of inputted data sets: %d" % len(all_data)
+    print("number of inputted data sets: %d" % len(all_data))
     eo = EstimatorsObject(all_indices, all_data, all_obs_data, observables, model, stationary_distributions=this_stationary_distribution)
 
     Qfunction_epsilon = eo.get_function(derivative, logq)
@@ -131,7 +131,7 @@ def max_likelihood_estimate(formatted_data, observables, model, solver="bfgs", l
     if rank == 0:
         func_solver = get_solver(solver)
 
-        print "Starting Optimization"
+        print("Starting Optimization")
         t1 = time.time()
         #Then run the solver
 
@@ -155,7 +155,7 @@ def max_likelihood_estimate(formatted_data, observables, model, solver="bfgs", l
         t2 = time.time()
         total_time = (t2-t1) / 60.0
 
-        print "Optimization Complete: %f minutes" % total_time
+        print("Optimization Complete: %f minutes" % total_time)
         eo.set_poison_pill() #activate the poison pill
         final = Qfunction_epsilon(new_epsilons)
     else:
@@ -169,134 +169,6 @@ def max_likelihood_estimate(formatted_data, observables, model, solver="bfgs", l
     new_epsilons = comm.bcast(new_epsilons, root=0)
 
     eo.set_poison_pill()
-    #then return a new set of epsilons inside the EstimatorsObject
-    eo.save_solutions(new_epsilons)
-    return eo
-
-
-def max_likelihood_estimate_serial(data, dtrajs, observables, model, obs_data=None, solver="bfgs", logq=False, derivative=None, x0=None, kwargs={}, stationary_distributions=None, model_state=None):
-    """ Optimizes model's paramters using a max likelihood method
-
-    Args:
-        See pyfexd.estimators.estimators_class.EstimatorsObject for:
-            data (array), observables (ExperimentalObservables),
-            model (ModelLoader), obs_data(list) and
-            stationary_distributions (list)
-        dtrajs (array of int): Discrete trajectory index for each frame of data.
-        solver (str): Optimization procedures. Defaults to Simplex. Available
-            methods include: simplex, anneal, cg, custom.
-        logq (bool): Use the logarithmic Q functions. Default: False.
-        derivative (bool): True if Q function returns a derivative. False if it
-            does not. Default is None, automatically selected based upon the
-            requested solver.
-        x0 (array): Specify starting epsilons for optimization methods. Defaults
-            to current epsilons from the model.
-        kwargs (dictionary): Key word arguments passed to the solver.
-
-    Returns:
-        eo (EstimatorsObject): Object that contains the data used for the
-            computation and the results.
-
-    """
-    if type(data) is list:
-        # need to vstack data, dtrajs and obs_data
-        # do checks to verify everything is the right shape
-        nsets = len(data)
-        if not len(dtrajs) == nsets:
-            raise IOError("data and dtrajs must have same number of sets")
-        if obs_data is None:
-            if not len(obs_data) == nsets:
-                raise IOError("data and obs_data must have same number of sets")
-        sizes = []
-        for thing in data:
-            sizes.append(np.shape(thing)[0])
-        if obs_data is not None:
-            for i,first in enumerate(obs_data):
-                for second in first:
-                    if not np.shape(second)[0] == sizes[i]:
-                        raise IOError("Shape of obs_data does not match shape of data")
-        for i,thing in enumerate(dtrajs):
-            if not np.shape(thing)[0] == sizes[i]:
-                raise IOError("Shape of dtrajs does not match shape of data")
-
-        # at this point, all checks passed and data is formatted as expected
-        all_data = None
-        all_obs_data = None
-        all_dtrajs = None
-        for thing in data:
-            if all_data is None:
-                all_data = np.copy(thing)
-            else:
-                all_data = np.append(all_data, thing, axis=0)
-        nframes_total = np.shape(all_data)[0]
-        try:
-            assert np.sum(sizes) == nframes_total #sanity check its correct shape
-        except:
-            print sizes
-            print nframes_total
-            raise
-
-        if obs_data is not None:
-            for thing in obs_data:
-                if all_obs_data is None:
-                    all_obs_data = [obs_value for obs_value in thing]
-                else:
-                    all_obs_data = [np.append(all_obs_value, obs_value, axis=0) for all_obs_value,obs_value in zip(all_obs_data,thing)]
-
-            for thing in all_obs_data:
-                assert np.shape(thing)[0] == nframes_total # sanity check
-
-        for thing in dtrajs:
-            if all_dtrajs is None:
-                all_dtrajs = np.copy(thing)
-            else:
-                all_dtrajs = np.append(all_dtrajs, thing)
-        assert np.shape(all_dtrajs)[0] == nframes_total
-
-    else:
-        all_data = data
-        all_obs_data = obs_data
-        all_dtrajs = dtrajs
-
-    derivative = ensure_derivative(derivative, solver)
-    data_sets = util.get_state_indices(all_dtrajs)
-    print "number of inputted data sets: %d" % len(data_sets)
-    eo = EstimatorsObject(all_data, data_sets, observables, model, obs_data=all_obs_data, stationary_distributions=stationary_distributions, model_state=model_state)
-
-    Qfunction_epsilon = eo.get_function(derivative, logq)
-    func_solver = get_solver(solver)
-
-    if x0 is None:
-        current_epsilons = eo.current_epsilons
-    else:
-        current_epsilons = x0
-
-    print "Starting Optimization"
-    t1 = time.time()
-    #Then run the solver
-
-    ##add keyword args thatn need to be passed
-    #kwargs["logq"] = logq
-    try:
-        new_epsilons = func_solver(Qfunction_epsilon, current_epsilons, **kwargs)
-    except:
-        debug_dir = "debug_0"
-        for count in range(100):
-            debug_dir = "debug_%d" % count
-            if not os.path.isdir(debug_dir):
-                break
-        os.mkdir(debug_dir)
-        cwd = os.getcwd()
-        os.chdir(debug_dir)
-        eo.save_debug_files()
-        os.chdir(cwd)
-        raise
-
-    t2 = time.time()
-    total_time = (t2-t1) / 60.0
-
-    print "Optimization Complete: %f minutes" % total_time
-
     #then return a new set of epsilons inside the EstimatorsObject
     eo.save_solutions(new_epsilons)
     return eo
@@ -378,8 +250,8 @@ class ListDataConstructors(object):
         new_q = generator_sync_manager.Queue()
 
         sorted_args = np.argsort(np.array(self.estimator_size) * -1)
-        print "Estimator Sizes: "
-        print self.estimator_size
+        print("Estimator Sizes: ")
+        print(self.estimator_size)
         for idx in sorted_args:
             new_q.put(self.inputs_collected[idx])
 
@@ -387,7 +259,7 @@ class ListDataConstructors(object):
 
     def add_estimators_to_list(self, results_q):
         num_found = len(results_q)
-        print "Found %d/%d Estimators" % (num_found, (self.n_validations*2)+1)
+        print("Found %d/%d Estimators" % (num_found, (self.n_validations*2)+1))
         i_collected = []
         e_collected = []
         f_collected = []
@@ -421,10 +293,10 @@ class ListDataConstructors(object):
             assert len(self.list_train_qfunctions) == self.n_validations
             assert len(self.list_validation_qfunctions) == self.n_validations
         except:
-            print len(self.list_train_estimators)
-            print len(self.list_validation_estimators)
-            print len(self.list_train_qfunctions)
-            print len(self.list_validation_qfunctions)
+            print(len(self.list_train_estimators))
+            print(len(self.list_validation_estimators))
+            print(len(self.list_train_qfunctions))
+            print(len(self.list_validation_qfunctions))
             raise
 
     def _check_and_append_inputs(self, this_training, this_dtrajs, this_observables, data, dtraj, obs):
@@ -492,7 +364,7 @@ class EstimateMulti(multiprocessing.Process):
             #print "Final Score: %f" % this_score
             self.save_q.put([this_score, position])
             num_completed = self.save_q.qsize()
-            print "Completed %d/%d computations" % (num_completed, self.total_computations)
+            print("Completed %d/%d computations" % (num_completed, self.total_computations))
 
         self.still_going = False
 
@@ -540,7 +412,7 @@ class IterContainer(object):
             self.print_every = 1
         else:
             self.print_every = int(self.total_send / 10)
-        print "Total of %d Optimizations Necessary" % self.total_send
+        print("Total of %d Optimizations Necessary" % self.total_send)
 
     def get_queue(self):
         new_sync_manager = mpmanagers.SyncManager()
@@ -565,14 +437,14 @@ class IterContainer(object):
             score = stuff[0]
             position = stuff[1]
             self.save(score, position)
-            print self.save_array
+            print(self.save_array)
             count += 1
 
         if count == self.total_send:
-            print "Success!"
+            print("Success!")
         else:
-            print "Failure!"
-        print "Completed %d/%d computations" % (count, self.total_send)
+            print("Failure!")
+        print("Completed %d/%d computations" % (count, self.total_send))
 
     def save(self, score, position):
         self.save_array[position] = score
@@ -580,7 +452,7 @@ class IterContainer(object):
 
     def _compute_score(self):
         if np.any(self.save_complete < 0):
-            print "Warning: Many parameters were not saved. See the save_complete attribute for which ones."
+            print("Warning: Many parameters were not saved. See the save_complete attribute for which ones.")
 
         total_scores = np.sum(self.save_array, axis=1)
         return total_scores
@@ -591,7 +463,7 @@ class IterContainer(object):
             self.comparison_array[coord] = score
 
         if np.any(self.comparison_array < 0):
-            print "Error: Some scores not properly set"
+            print("Error: Some scores not properly set")
 
         return self.comparison_array
 
@@ -610,7 +482,7 @@ class IterContainer(object):
         print_str = "Best Score of %f, with the following selected parameters:\n" % (best_score)
         for thing in self.all_kwargs_printable[pos]:
             print_str += "%s:%s  " % (thing, self.all_kwargs_printable[pos][thing])
-        print print_str
+        print(print_str)
 
         return self.all_kwargs[pos], self.all_kwargs_printable[pos]
 
@@ -662,7 +534,7 @@ def prepare_kwargs_dictionary(kwargs, epsilon_possible, bounds_function, gtol_po
 
     if verbose:
         for idx,dic in enumerate(all_kwargs):
-            print "Dictionary %d" % idx
+            print("Dictionary %d" % idx)
             this_str = ""
             for entry in dic:
                 this_str += "%s " % entry
@@ -671,7 +543,7 @@ def prepare_kwargs_dictionary(kwargs, epsilon_possible, bounds_function, gtol_po
                 else:
                     this_str += str(dic[entry])
                 this_str += "   "
-            print this_str
+            print(this_str)
 
     return list_kwargs, list_kwargs_printable, all_kwargs, all_kwargs_printable, all_entries, all_entry_sizes, all_coordinates
 
@@ -709,7 +581,7 @@ def kfold_crossvalidation_max_likelihood(list_data, list_dtrajs, observables, mo
     print_str = "Initializing Training and Validation Functions"
     if use_multi:
         print_str += " with %d threads" % n_threads
-    print print_str
+    print(print_str)
     t1 = time.time()
     data_constructor = ListDataConstructors(list_data, list_dtrajs, list_obs_data, n_validations, derivative, logq)
     input_q, server_manager = data_constructor.get_queue()
@@ -740,7 +612,7 @@ def kfold_crossvalidation_max_likelihood(list_data, list_dtrajs, observables, mo
     list_train_estimators, list_validation_estimators, list_train_qfunctions, list_validation_qfunctions, complete_estimator, complete_qfunction = data_constructor.add_estimators_to_list(collected_solutions)
 
     t2 = time.time()
-    print "Finished Initializing %d-Fold cross-validation in %f minutes" % (n_validations, (t2-t1)/60.)
+    print("Finished Initializing %d-Fold cross-validation in %f minutes" % (n_validations, (t2-t1)/60.))
 
     # set the epsilons
     if x0 is None:
@@ -753,7 +625,7 @@ def kfold_crossvalidation_max_likelihood(list_data, list_dtrajs, observables, mo
 
     # go through and determine which hyper parameters need to be cycled
     # then perform a grid search for the ideal hyper parameters
-    print "Beginning Grid Search of Hyper Parameters"
+    print("Beginning Grid Search of Hyper Parameters")
     list_kwargs, list_kwargs_printable, all_kwargs, all_kwargs_printable, all_entries, all_entry_sizes, all_coordinates = prepare_kwargs_dictionary(kwargs, epsilon_possible, bounds_function, gtol_possible, ftol_possible, current_epsilons, epsilon_function_type, verbose=verbose)
 
     iter_container = IterContainer(n_validations, all_kwargs, all_kwargs_printable, all_entries, all_entry_sizes, all_coordinates)
@@ -805,8 +677,8 @@ def kfold_crossvalidation_max_likelihood(list_data, list_dtrajs, observables, mo
             f_save_printable.write("%s\n\n" % str(best_hyper_params_printable[entry]))
         f_save_printable.close()
     except:
-        print "Failed to save best hyper params. The printable form is not easy to save"
-        print best_hyper_params_printable
+        print("Failed to save best hyper params. The printable form is not easy to save")
+        print(best_hyper_params_printable)
 
     func_solver = get_solver(solver)
     new_epsilons_cv = func_solver(complete_qfunction, current_epsilons, **best_hyper_params)

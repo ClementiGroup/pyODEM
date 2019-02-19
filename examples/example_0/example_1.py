@@ -15,10 +15,10 @@ qcalc = obs.get_q_functions()[0] ##first function is Q-funciton. Second function
 
 regdata = np.array([20, 110, 300, 90, 30])
 
-print qcalc(regdata)
+print(qcalc(regdata))
 regdata[0] = 10
-print qcalc(regdata)
+print(qcalc(regdata))
 regdata[0] = 10.0
-print qcalc(regdata)
+print(qcalc(regdata))
 regdata[2] = 282.0
-print qcalc(regdata)
+print(qcalc(regdata))

@@ -1,9 +1,9 @@
 """ Initiate all the sub packages for calculating things """
 
 
-import basic_functions
+from . import basic_functions
 
-import model_loaders
-import observables
+from . import model_loaders
+from . import observables
 
-import estimators
+from . import estimators

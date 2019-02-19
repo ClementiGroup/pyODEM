@@ -46,7 +46,7 @@ def order_epsilons_atm_types(dict_atm_types, n_types):
     # get an ordered list of eps and sigmas from a dictionary of atom types
     epsilons_atm_types = np.zeros(n_types)
     sigmas_atm_types = np.zeros(n_types)
-    for k1, v1 in dict_atm_types.iteritems():
+    for k1, v1 in dict_atm_types.items():
         idx = v1[0]
         c6 = v1[1]
         c12 = v1[2]
@@ -68,7 +68,7 @@ def compute_mixed_table(params, mix_rule):
                 params_mat[idx, jdx] = math.sqrt(params[idx] * params[jdx])
                 params_mat[jdx, idx] = params_mat[idx, jdx]
             else:
-                print "Mixing rule not defined in compute_mixed_table()"
+                print("Mixing rule not defined in compute_mixed_table()")
 
     return params_mat
 
@@ -199,9 +199,9 @@ def calc_nb_ene_fast(dist_array, pot_type, parms):
             #print k,x,pot_type[k],p0,p1,u, U
 
         else:
-            print "********************************************"
-            print "Code unavailable for this type of potential:",pot_type[k]
-            print "********************************************"
+            print("********************************************")
+            print("Code unavailable for this type of potential:",pot_type[k])
+            print("********************************************")
             exit()
 
         U_list[k] = u
@@ -291,9 +291,9 @@ def calc_nb_ene(dist_array, pot_type, parms, printf, use_full=False):
             #print k,x,pot_type[k],p0,p1,u, U
 
         else:
-            print "********************************************"
-            print "Code unavailable for this type of potential:",pot_type[k]
-            print "********************************************"
+            print("********************************************")
+            print("Code unavailable for this type of potential:",pot_type[k])
+            print("********************************************")
             exit()
 
         if printf:
@@ -332,8 +332,8 @@ def nb_parms_from_atmtypes(dict_atm_types, mix_rule, n_types):
     c_homo = 0
     c_hetero = 0
 
-    for k1, v1 in dict_atm_types.iteritems():
-        for k2, v2 in dict_atm_types.iteritems():
+    for k1, v1 in dict_atm_types.items():
+        for k2, v2 in dict_atm_types.items():
             i = v1[0]
             j = v2[0]
             if mix_rule[0] == 1:
@@ -350,13 +350,13 @@ def nb_parms_from_atmtypes(dict_atm_types, mix_rule, n_types):
                     p1 = math.sqrt(v1[2]*v2[2])
                     parms_mat[i][j] = [p0, p1]
             elif mix_rule == 2:
-                print "Mixing rule not defined."
+                print("Mixing rule not defined.")
                 exit()
             elif mix_rule == 3:
-                print "Mixing rule not defined."
+                print("Mixing rule not defined.")
                 exit()
 
-    print "Number of homo and hetero (divide by 2 if isotropic pots) combinations are:",c_homo,c_hetero
+    print("Number of homo and hetero (divide by 2 if isotropic pots) combinations are:",c_homo,c_hetero)
     return parms_mat
 
 def all_pairs_in_nl(neighbors):
@@ -391,7 +391,7 @@ def parse_gmxtop(filen):
     try:
         open(filen, "r")
     except:
-        print "Error: file %s not found" % filen
+        print("Error: file %s not found" % filen)
         exit()
 
     top_sections = {
@@ -452,7 +452,7 @@ def parse_gmxtop(filen):
                             right_types.append(typized)
                         top_entries[curr_sec].append(right_types)
                     else:
-                        print "Possible errors in .top file:", line
+                        print("Possible errors in .top file:", line)
                         exit()
 
 
@@ -478,7 +478,7 @@ def dictionarize(key, value):
     # i its (unique) position in the section [ atomtypes ]
     # p0 and p1 the parameters for the interaction potential
     if len(key) != len(value):
-        print "Number of keys and number of values differ:",len(key),len(value)
+        print("Number of keys and number of values differ:",len(key),len(value))
         exit()
 
     dictionary = {}
@@ -555,16 +555,16 @@ def check_atmtyp_sect(attyp, mass, chrg, chn, parms, pot_type):
     # 1.
     tmp = [len(attyp), len(mass), len(chrg), len(chn), len(parms)]
     if not tmp.count(tmp[0]) == len(tmp):
-        print ".top file is potentially wrong. Check that attyp, mass, chrg, chn are properly defined in the atomtypes section."
-        print len(attyp), len(mass), len(chrg), len(chn), len(parms)
+        print(".top file is potentially wrong. Check that attyp, mass, chrg, chn are properly defined in the atomtypes section.")
+        print(len(attyp), len(mass), len(chrg), len(chn), len(parms))
         exit()
 
     # 2.
     for c, p in enumerate(parms):
         n_prms = dict_pot[pot_type[0]][1]
         if len(p) != n_prms:
-            print "Error: pair interaction num %d has %d parameters in .top file, while expected are %d" % (c+1, len(p), n_prms)
-            print attyp[c], mass[c], chrg[c], chn[c], parms[c]
+            print("Error: pair interaction num %d has %d parameters in .top file, while expected are %d" % (c+1, len(p), n_prms))
+            print(attyp[c], mass[c], chrg[c], chn[c], parms[c])
             exit()
     return
 
@@ -572,8 +572,8 @@ def check_atoms_sect(nr, typ, resnr, res, atom, cgnr, charge, weight):
     # 1.
     tmp = [len(nr), len(typ), len(resnr), len(res), len(atom), len(cgnr), len(charge), len(weight)]
     if not tmp.count(tmp[0]) == len(tmp):
-        print ".top file is potentially wrong. Check that the entries in [ atoms ] section are properly defined."
-        print len(nr), len(typ), len(resnr), len(res), len(atom), len(cgnr), len(charge), len(weight)
+        print(".top file is potentially wrong. Check that the entries in [ atoms ] section are properly defined.")
+        print(len(nr), len(typ), len(resnr), len(res), len(atom), len(cgnr), len(charge), len(weight))
         exit()
 
     return
@@ -582,21 +582,21 @@ def check_pairs_sect(at1, at2, pot_type, parms):
     # 1.
     tmp = [len(at1), len(at2), len(pot_type), len(parms)]
     if not tmp.count(tmp[0]) == len(tmp):
-        print ".top file is potentially wrong. Check that at1, at2 and pot_type are defined in the pairs section."
+        print(".top file is potentially wrong. Check that at1, at2 and pot_type are defined in the pairs section.")
         exit()
 
     # 2.
     for c, p in enumerate(parms):
         n_prms = dict_pot[pot_type[c]][1]
         if len(p) != n_prms:
-            print "Error: pair interaction num %d has %d parameters in .top file, while expected are %d" % (c+1, len(p), n_prms)
-            print at1[c], at2[c], pot_type[c], parms[c]
+            print("Error: pair interaction num %d has %d parameters in .top file, while expected are %d" % (c+1, len(p), n_prms))
+            print(at1[c], at2[c], pot_type[c], parms[c])
             exit()
     return
 
 def check_pairs_arr(pairsidx_ps, pairs_sect):
     if len(pairsidx_ps) != len(pairs_sect):
-        print "Error: array pairsidx_ps and pairs_sect do not have the same size",len(pairsidx_ps), len(pairs_sect)
+        print("Error: array pairsidx_ps and pairs_sect do not have the same size",len(pairsidx_ps), len(pairs_sect))
         exit()
     else:
         pass
@@ -608,7 +608,7 @@ def check_pairs_arr(pairsidx_ps, pairs_sect):
 
 def check_nl_arr(nl_ps, nl_atmtyp, nl_pairs):
     if (len(nl_ps)+len(nl_atmtyp)) != len(nl_pairs):
-        print "Error: the sum of %d and %d is not equal to the number of pairs %d in the nl" % (len(nl_ps), len(nl_atmtyp),len(nl_pairs))
+        print("Error: the sum of %d and %d is not equal to the number of pairs %d in the nl" % (len(nl_ps), len(nl_atmtyp),len(nl_pairs)))
         exit()
     return
 
@@ -630,7 +630,7 @@ def  exclude_pairs(nrexcl, nl_atmtyp):
 def check_nl_arr2(n_pairs_atmtyp_excluded, n_pairs_atmtyp_w_excl, n_pairs_atmtyp):
 
     if n_pairs_atmtyp_excluded + n_pairs_atmtyp_w_excl != n_pairs_atmtyp:
-        print "nb pairs excluded + included is not equal to n_pairs_atmtyp:",n_pairs_atmtyp_excluded, n_pairs_atmtyp_w_excl, n_pairs_atmtyp
+        print("nb pairs excluded + included is not equal to n_pairs_atmtyp:",n_pairs_atmtyp_excluded, n_pairs_atmtyp_w_excl, n_pairs_atmtyp)
         exit()
 
     return
@@ -662,26 +662,26 @@ def upd_on_max_displacement(nca, traj, frame_at_upd):
 def check_arr_sizes_are_equal(*list_args):
     xxx = [arg for arg in list_args]
     if xxx.count(xxx[0]) != len(xxx):
-        print "ERROR: arrays given as arguments have not the same size.", xxx
+        print("ERROR: arrays given as arguments have not the same size.", xxx)
         exit()
 
     return
 
 def check_if_dist_longer_cutoff(dist_array, strr, cutoff):
     if any(x>cutoff for x in dist_array):
-        print "ERROR: distance in array %s larger than cutoff. It might be due to a too large nstlist." % (strr)
+        print("ERROR: distance in array %s larger than cutoff. It might be due to a too large nstlist." % (strr))
     return
 
 def print_atmtypes_info(dict_atm_types, parms_mt, size):
-    print "Dictionary of atom types:"
+    print("Dictionary of atom types:")
     print(dict_atm_types)
-    print ""
-    print "Matrix of nb interactions between types:"
+    print("")
+    print("Matrix of nb interactions between types:")
     for i in range(size):
         for j in range(size):
-            print ('[%15.13f, %15.13f]') % (parms_mt[i][j][0], parms_mt[i][j][1]),
-        print ""
-    print""
+            print(('[%15.13f, %15.13f]') % (parms_mt[i][j][0], parms_mt[i][j][1]), end=' ')
+        print("")
+    print("")
 
     return
 
@@ -772,7 +772,7 @@ def parse_and_return_relevant_parameters(topf, outdir=None):
         molnam, nrexcl = parse_moltype_section(moltype_sect)
 
     else:
-        print "No force field parameters specified. Energy calculation impossible."
+        print("No force field parameters specified. Energy calculation impossible.")
 
     return dict_atm_types_extended, dict_atm_types, numeric_atmtyp, pairsidx_ps, all_ps_pairs, pot_type1_, pot_type2_, parms_mt, parms2_, nrexcl
 
@@ -929,8 +929,8 @@ def parse_traj_neighbors(traj, numeric_atmtyp, pairsidx_ps, all_ps_pairs, pot_ty
 
                 # patch
                 if tmp.count(i) > 1:
-                    print "Problems: nbrs has multiple occurrences of residue %d, which might indicate something wrong in pysph (for certain radius_scale values)" %(i)
-                    print "Patching this problem by assuming that residue %d has no neighbors other than itself" % (i)
+                    print("Problems: nbrs has multiple occurrences of residue %d, which might indicate something wrong in pysph (for certain radius_scale values)" %(i))
+                    print("Patching this problem by assuming that residue %d has no neighbors other than itself" % (i))
                     tmp = [i]
                 else:
                     pass
@@ -1009,7 +1009,7 @@ def parse_traj_neighbors(traj, numeric_atmtyp, pairsidx_ps, all_ps_pairs, pot_ty
                     pot_type2.append(pot_type2_[idx])
 
             else:
-                print "No pairs. Array neighbors has only %d elements" % (len_nl_arr)
+                print("No pairs. Array neighbors has only %d elements" % (len_nl_arr))
                 exit()
     ######## END ORGANIZE NL ARRAYS AND ORDER POT PARAMS BASED ON NL ARRAYS ############
 
@@ -1201,10 +1201,10 @@ def prep_compute_energy_fast(traj, all_nl_ps, all_nl_atmtyp_w_excl, numeric_atmt
         assert len(all_pairwise_factors) == nfr
         assert len(all_pairwise_eps_idx) == nfr
     except:
-        print len(all_nonbonded_factors)
-        print len(all_nonbonded_eps_idxs)
-        print len(all_pairwise_factors)
-        print len(all_pairwise_eps_idx)
+        print(len(all_nonbonded_factors))
+        print(len(all_nonbonded_eps_idxs))
+        print(len(all_pairwise_factors))
+        print(len(all_pairwise_eps_idx))
         raise
     return all_nonbonded_eps_idxs, all_nonbonded_factors, all_pairwise_eps_idx, all_pairwise_factors
 
