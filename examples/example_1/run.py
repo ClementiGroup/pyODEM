@@ -49,13 +49,13 @@ Qnew = solutions.newQ
 Qfunction = solutions.Qfunction_epsilon #-Q function
 Qfunction_log = solutions.log_Qfunction_epsilon #-log(Q) function
 
-print "Epsilons are: "
-print new_eps
-print old_eps
+print("Epsilons are: ")
+print(new_eps)
+print(old_eps)
 
-print ""
-print "Qold: %g" %Qold
-print "Qnew: %g" %Qnew
+print("")
+print("Qold: %g" %Qold)
+print("Qnew: %g" %Qnew)
 
 savestr = "iteration_%d/newton" % iteration
 if not os.path.isdir(savestr):

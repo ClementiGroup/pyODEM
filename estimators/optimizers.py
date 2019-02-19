@@ -142,7 +142,7 @@ def solve_simplex_global(Qfunc, x0, ntries=0):
 
     #check for global minima near found minima if ntries >0
     if not ntries <= 0:
-        print "Searching for a global minima. Trying %d times." % ntries
+        print("Searching for a global minima. Trying %d times." % ntries)
         num_eps = np.shape(x0)[0]
         for i in range(ntries):
             #generate random +/- perturbation to local minima found with
@@ -152,23 +152,23 @@ def solve_simplex_global(Qfunc, x0, ntries=0):
                 if np.random.rand(1)[0] < 0.5:
                     rand[j] *= -1.0
 
-            print "new starting epsilons:"
-            print start_eps + rand
+            print("new starting epsilons:")
+            print(start_eps + rand)
 
             try:
                 optime = solve_simplex(Qfunc, start_eps+rand)
                 optimQ = Qfunc(optime)
             except FailedToOptimizeException:
-                print "Epsilons failed to optimize. Try another."
+                print("Epsilons failed to optimize. Try another.")
 
             #save if new found func Q value is better than the rest
             if out_Q > optimQ:
                 out_eps = optime
-                print "found better global Q"
-                print "new finished epsilons:"
-                print optime
-                print "new Q"
-                print optimQ
+                print("found better global Q")
+                print("new finished epsilons:")
+                print(optime)
+                print("new Q")
+                print(optimQ)
                 out_Q = optimQ
 
     return out_eps
@@ -203,7 +203,7 @@ def solve_annealing_custom(Qfunc, x0,  ntries=1000, scale=0.2, stuck=100, bounds
     #sort bounds so the smallest is first
     if not np.shape(bounds)[0] == 2:
         bounds = [-10, 10]
-        print "Invalid bounds, setting to default of (-10,10)"
+        print("Invalid bounds, setting to default of (-10,10)")
 
     use_bounds = []
     use_bounds.append(np.min(bounds))
@@ -269,8 +269,8 @@ def solve_newton_step_custom(Qfunc, x0, stepsize=1.0, maxiters=200, proximity=1.
         qoldest = qval
         xold = xval
         xval = xval + step
-        print "Current Q Value:"
-        print qval
+        print("Current Q Value:")
+        print(qval)
         #print "moving to:"
         #print xval
 
@@ -280,23 +280,23 @@ def solve_newton_step_custom(Qfunc, x0, stepsize=1.0, maxiters=200, proximity=1.
         while go_find_step:
             qval, qderiv = Qfunc(xval)
             if qval > qold:
-                print "Scaling down the step"
+                print("Scaling down the step")
                 step *= 0.1
                 xval = xold + step
                 go_find_step_count += 1
                 if go_find_step_count == 4:
-                    print "Failed to find a minima within 1/1000 of the step"
-                    print "Exiting the Optimizer"
+                    print("Failed to find a minima within 1/1000 of the step")
+                    print("Exiting the Optimizer")
                     go = False
                     go_find_step = False
                     qval = qold
             else:
-                print "Step is OKay now"
+                print("Step is OKay now")
                 go_find_step = False
 
         go_along_line = True
         while go_along_line:
-            print "Going along line"
+            print("Going along line")
             qval, qderiv = Qfunc(xval)
             if qval > qold:
                 go_along_line = False #started going up hill
@@ -309,10 +309,10 @@ def solve_newton_step_custom(Qfunc, x0, stepsize=1.0, maxiters=200, proximity=1.
 
         diffq = qoldest - qval
         if diffq > 0 and diffq < qstop:
-            print "Stopping as dq is within qstop"
+            print("Stopping as dq is within qstop")
             go = False
         if count > maxiters:
-            print "Reached the maximum number of iterations."
+            print("Reached the maximum number of iterations.")
             go = False
 
     return xval
@@ -325,8 +325,8 @@ def solve_one_step(Qfunc, x0, stepsize=1.0, bounds=None):
     go = True
     count = 0
     qval, qderiv = Qfunc(xval)
-    print "Starting Value for Q:"
-    print qval
+    print("Starting Value for Q:")
+    print(qval)
     #print np.min(np.abs(qderiv))
     #print np.max(np.abs(qderiv))
     qold = qval
@@ -347,16 +347,16 @@ def solve_one_step(Qfunc, x0, stepsize=1.0, bounds=None):
     #go along line until it reaches a minima
     go_along_line = True
     while go_along_line:
-        print "Going along line"
+        print("Going along line")
         xval = enforce_bounds(xold+step, bound_terms)
         qval, qderiv = Qfunc(xval)
-        print qval
-        print np.max(np.abs(xval-xold))
+        print(qval)
+        print(np.max(np.abs(xval-xold)))
         if qval > qold:
-            print "Started going uphill. Terminating"
+            print("Started going uphill. Terminating")
             go_along_line = False #started going up hill
         elif check_bounds(xval,bound_terms):
-            print "Hit the bounded wall"
+            print("Hit the bounded wall")
             go_along_line = False #started going up hill
         else:
             qold = qval

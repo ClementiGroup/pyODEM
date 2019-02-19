@@ -115,7 +115,7 @@ def max_likelihood_estimate(formatted_data, observables, model, solver="bfgs", l
         this_stationary_distribution = np.array(this_stationary_distribution)
 
     derivative = ensure_derivative(derivative, solver)
-    print("number of inputted data sets: %d" % len(all_data))
+    print(("number of inputted data sets: %d" % len(all_data)))
     eo = EstimatorsObject(all_indices, all_data, all_obs_data, observables, model, stationary_distributions=this_stationary_distribution)
 
     Qfunction_epsilon = eo.get_function(derivative, logq)
@@ -155,7 +155,7 @@ def max_likelihood_estimate(formatted_data, observables, model, solver="bfgs", l
         t2 = time.time()
         total_time = (t2-t1) / 60.0
 
-        print("Optimization Complete: %f minutes" % total_time)
+        print(("Optimization Complete: %f minutes" % total_time))
         eo.set_poison_pill() #activate the poison pill
         final = Qfunction_epsilon(new_epsilons)
     else:
@@ -251,7 +251,7 @@ class ListDataConstructors(object):
 
         sorted_args = np.argsort(np.array(self.estimator_size) * -1)
         print("Estimator Sizes: ")
-        print(self.estimator_size)
+        print((self.estimator_size))
         for idx in sorted_args:
             new_q.put(self.inputs_collected[idx])
 
@@ -259,7 +259,7 @@ class ListDataConstructors(object):
 
     def add_estimators_to_list(self, results_q):
         num_found = len(results_q)
-        print("Found %d/%d Estimators" % (num_found, (self.n_validations*2)+1))
+        print(("Found %d/%d Estimators" % (num_found, (self.n_validations*2)+1)))
         i_collected = []
         e_collected = []
         f_collected = []
@@ -293,10 +293,10 @@ class ListDataConstructors(object):
             assert len(self.list_train_qfunctions) == self.n_validations
             assert len(self.list_validation_qfunctions) == self.n_validations
         except:
-            print(len(self.list_train_estimators))
-            print(len(self.list_validation_estimators))
-            print(len(self.list_train_qfunctions))
-            print(len(self.list_validation_qfunctions))
+            print((len(self.list_train_estimators)))
+            print((len(self.list_validation_estimators)))
+            print((len(self.list_train_qfunctions)))
+            print((len(self.list_validation_qfunctions)))
             raise
 
     def _check_and_append_inputs(self, this_training, this_dtrajs, this_observables, data, dtraj, obs):
@@ -364,7 +364,7 @@ class EstimateMulti(multiprocessing.Process):
             #print "Final Score: %f" % this_score
             self.save_q.put([this_score, position])
             num_completed = self.save_q.qsize()
-            print("Completed %d/%d computations" % (num_completed, self.total_computations))
+            print(("Completed %d/%d computations" % (num_completed, self.total_computations)))
 
         self.still_going = False
 
@@ -412,7 +412,7 @@ class IterContainer(object):
             self.print_every = 1
         else:
             self.print_every = int(self.total_send / 10)
-        print("Total of %d Optimizations Necessary" % self.total_send)
+        print(("Total of %d Optimizations Necessary" % self.total_send))
 
     def get_queue(self):
         new_sync_manager = mpmanagers.SyncManager()
@@ -437,14 +437,14 @@ class IterContainer(object):
             score = stuff[0]
             position = stuff[1]
             self.save(score, position)
-            print(self.save_array)
+            print((self.save_array))
             count += 1
 
         if count == self.total_send:
             print("Success!")
         else:
             print("Failure!")
-        print("Completed %d/%d computations" % (count, self.total_send))
+        print(("Completed %d/%d computations" % (count, self.total_send)))
 
     def save(self, score, position):
         self.save_array[position] = score
@@ -534,7 +534,7 @@ def prepare_kwargs_dictionary(kwargs, epsilon_possible, bounds_function, gtol_po
 
     if verbose:
         for idx,dic in enumerate(all_kwargs):
-            print("Dictionary %d" % idx)
+            print(("Dictionary %d" % idx))
             this_str = ""
             for entry in dic:
                 this_str += "%s " % entry
@@ -612,7 +612,7 @@ def kfold_crossvalidation_max_likelihood(list_data, list_dtrajs, observables, mo
     list_train_estimators, list_validation_estimators, list_train_qfunctions, list_validation_qfunctions, complete_estimator, complete_qfunction = data_constructor.add_estimators_to_list(collected_solutions)
 
     t2 = time.time()
-    print("Finished Initializing %d-Fold cross-validation in %f minutes" % (n_validations, (t2-t1)/60.))
+    print(("Finished Initializing %d-Fold cross-validation in %f minutes" % (n_validations, (t2-t1)/60.)))
 
     # set the epsilons
     if x0 is None:
