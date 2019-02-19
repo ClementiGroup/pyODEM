@@ -18,7 +18,6 @@ Example:
 
 
 """
-from .calc_max_likelihood import max_likelihood_estimate_serial
 from .calc_max_likelihood import max_likelihood_estimate
 from .calc_max_likelihood import kfold_crossvalidation_max_likelihood
 from .estimators_class import EstimatorsObject
