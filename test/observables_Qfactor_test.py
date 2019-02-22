@@ -20,7 +20,7 @@ class TestQfactor(object):
         obs = get_observables_histogram
         assert True
 
-    def test_obs_seen(self, get_observables_histogram):
+    def test_q_factor(self, get_observables_histogram):
         """ Q-factor is accurate to within 7 orders of magnitude """
         obs = get_observables_histogram
 
@@ -31,11 +31,11 @@ class TestQfactor(object):
         qfunc, derivq = obs.get_q_functions()
 
         # confirm Q-factor counts only the first bin
-        diff = np.abs(np.exp(-((1-0.2)**2)/(2 * 0.01)) == qfunc(observations))
+        diff = np.abs(np.exp(-((1-0.2)**2)/(2 * 0.01)) - qfunc(observations))
         diff /= qfunc(observations)
         assert diff < 0.0000001 # ~ single point error
 
-
+        obs.prep()
         data = [np.array([0.5, 2.5])]
 
         observations, obs_std = obs.compute_observations(data)
@@ -48,4 +48,30 @@ class TestQfactor(object):
         diff /= qfunc(observations)
         assert diff < 0.0000001 # ~ single point error
 
-    def test_obs_seen()
+    def test_q_factor_logarithm(self, get_observables_histogram):
+        """ Q-factor is accurate to within 7 orders of magnitude """
+        obs = get_observables_histogram
+
+        # put all values in 0
+        data = [np.array([0, 0, 0, 0, 0, 0, 0, 0])]
+
+        observations, obs_std = obs.compute_observations(data)
+        qfunc, derivq = obs.get_log_q_functions()
+
+        # confirm Q-factor counts only the first bin
+        diff = np.abs((((1-0.2)**2)/(2 * 0.01)) - qfunc(observations))
+        diff /= qfunc(observations)
+        assert diff < 0.0000001 # ~ single point error
+
+        obs.prep()
+        data = [np.array([0.5, 2.5])]
+
+        observations, obs_std = obs.compute_observations(data)
+        qfunc, derivq = obs.get_log_q_functions()
+
+        manual_calculation = (((0.5-0.2)**2)/(2 * 0.01))
+        manual_calculation +=(((0.5-0.3)**2)/(2 * (0.15**2)))
+        #confirm q-factor can skip two bins
+        diff = np.abs(manual_calculation - qfunc(observations))
+        diff /= qfunc(observations)
+        assert diff < 0.0000001 # ~ single point error
