@@ -32,9 +32,6 @@ def make_pmodel_energies():
     return pmodel, data, heps, dheps, true_energies
 
 class TestProtein(object):
-    def test_dumb(self):
-        assert 5 == 5 # duhh
-
     def test_import_pmodel(self, make_objects):
         """ Check Protein class loads values correctly """
         # test that the various values are correctly loaded
