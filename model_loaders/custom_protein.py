@@ -124,6 +124,7 @@ class CustomProtein(ModelLoader):
         if native_distances.shape[0] != data.shape[1]:
             print('The fixed parameters are not consistent to the data!')
 
+        """
         # Define functions for different forms of energy function
         # Attractive energy
         def h_attractive(r, epsilon, native_distance, exclusive_distance):
@@ -153,30 +154,50 @@ class CustomProtein(ModelLoader):
             dh = - (np.tanh((native_distance - r + sigmas) / sigmas) + 1) / 2
 
             return dh
+        """
 
-        #compute the function for the potential energy
+        # Compute the function for the potential energy
         def hepsilon(epsilons):
             total = np.zeros(np.shape(data)[0])
+            # Precalculate all attractive energies
+            V_rep = 1 + (1 / epsilons) * (exclusive_distances / data) ** 12
+            V_gauss = epsilons * (1 - np.exp(- (((data - native_distances) ** 2)/(2 * (sigmas ** 2)))))
+            h_attractive = V_rep * V_gauss - epsilons
+
+            # Precalculate all repulsive energies
+            V_tanh = - (epsilons * (np.tanh((native_distances - data + sigmas) / sigmas) + 1)) / 2
+            h_repulsive = (exclusive_distances / data) ** 12 + V_tanh
+
+            # Precalculate all exclusive energies
+            h_exclusive = (exclusive_distances / data) ** 12
+
             for i in range(np.shape(epsilons)[0]):
                 if epsilons[i] > 0:
-                    total += h_attractive(data[:,i], epsilons[i], native_distances[i], exclusive_distances[i])
+                    total += h_attractive[:,i]
                 elif epsilons[i] == 0:
-                    total += h_exclusive(data[:,i], exclusive_distances[i])
+                    total += h_exclusive[:,i]
                 else:
-                    total += h_repulsive(data[:,i], epsilons[i], native_distances[i], exclusive_distances[i])
+                    total += h_repulsive[:,i]
 
             return total * -1. * self.beta
 
-        #compute the function for the derivative of the potential energy
+        # Compute the function for the derivative of the potential energy
         def dhepsilon(epsilons):
             # It will return a (n * k) array, where n is the length of the trajectory,
             # and k is the number of epsilons.
             derivative = np.zeros((np.shape(epsilons)[0], np.shape(data)[0]))
+
+            # Precalculate all attractive derivatives
+            dh_attractive = - np.exp(- (((data - native_distances) ** 2)/(2 * (sigmas ** 2))))
+
+            # Precalculate all repulsive derivatives
+            dh_repulsive = - (np.tanh((native_distances - data + sigmas) / sigmas) + 1) / 2
+
             for i in range(np.shape(epsilons)[0]):
                 if epsilons[i] < 0:
-                    derivative[i,:] += dh_repulsive(data[:,i], native_distances[i])
+                    derivative[i,:] += dh_repulsive[:,i]
                 else:
-                    derivative[i,:] += dh_attractive(data[:,i], native_distances[i])
+                    derivative[i,:] += dh_attractive[:,i]
 
             return derivative * -1. * self.beta
 
