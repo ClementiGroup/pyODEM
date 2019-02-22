@@ -9,7 +9,7 @@ def make_objects():
     cwd = os.getcwd()
     obs = pyODEM.observables.ExperimentalObservables()
 
-    os.chdir("test_data")
+    os.chdir("test_data/protein_load")
     pmodel = pyODEM.model_loaders.Protein("ww_domain.ini")
     os.chdir(cwd)
 
@@ -23,14 +23,14 @@ def make_objects():
 def make_pmodel_energies():
     cwd = os.getcwd()
 
-    os.chdir("test_data")
+    os.chdir("test_data/protein_load")
     pmodel = pyODEM.model_loaders.Protein("ww_domain.ini")
     os.chdir(cwd)
 
-    data = pmodel.load_data("test_data/traj/traj_test.xtc")
+    data = pmodel.load_data("test_data/protein_load/traj/traj_test.xtc")
     heps, dheps = pmodel.get_potentials_epsilon(data)
 
-    true_energies = np.loadtxt("test_data/traj/energy_gaussian_test.dat")
+    true_energies = np.loadtxt("test_data/protein_load/traj/energy_gaussian_test.dat")
 
     return pmodel, data, heps, dheps, true_energies
 
