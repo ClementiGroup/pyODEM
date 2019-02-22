@@ -8,7 +8,7 @@ import mdtraj as md
 from pyODEM.model_loaders import ModelLoader
 
 
-class Custom_Protein(ModelLoader):
+class CustomProtein(ModelLoader):
     """ Subclass for making a ModelLoader for a Customized Protein Model
 
     Methods:
@@ -74,10 +74,10 @@ class Custom_Protein(ModelLoader):
         if epsilons.shape[0] != self.n_pairs:
             print('The length of epsilons is not consistent with the model')
 
-        return 
+        return
 
     def get_epsilons(self):
-        return self.epsilons   
+        return self.epsilons
 
     def load_native_distances(self, native_distances):
         """ Load the fixed parameter of native pairwise distances
@@ -107,7 +107,7 @@ class Custom_Protein(ModelLoader):
         Potential Energy is calculated since as a factors * epsilons, as the
         Hamiltonian only depends linearly on each epsilon.
 
-        The native distances and exclusive distances are the fixed parameters, 
+        The native distances and exclusive distances are the fixed parameters,
         the sigmas will be fixed.
 
         """
@@ -164,7 +164,7 @@ class Custom_Protein(ModelLoader):
                     total += h_exclusive(data[:,i], exclusive_distances[i])
                 else:
                     total += h_repulsive(data[:,i], epsilons[i], native_distances[i], exclusive_distances[i])
-            
+
             return total * -1. * self.beta
 
         #compute the function for the derivative of the potential energy
