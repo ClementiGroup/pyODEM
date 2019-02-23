@@ -90,6 +90,11 @@ def max_likelihood_estimate(formatted_data, observables, model, solver="bfgs", l
             computation and the results.
 
     """
+    try:
+        MPI.Init()
+    except:
+        pass
+
     comm = MPI.COMM_WORLD
 
     size = comm.Get_size()
