@@ -28,6 +28,7 @@ from .super_model import ModelLoader
 
 #load all subclasses below
 from .langevin_1d import Langevin
+from .langevin_1d import LangevinCustom
 from .proteins import Protein
 from .proteins import ProteinMultiTemperature
 from .proteins import ProteinNonLinear
