@@ -6,6 +6,19 @@ import numpy as np
 
 @pytest.fixture
 def get_observables_histogram():
+    """ Make the ExperimentalObservables object with a histogram observable
+
+    The histogram values and standard deviations are:
+    value | standard deviation
+    --------------------------
+    0.2   | 0.1
+    0.4   | 0.2
+    0.3   | 0.15
+    0.1   | 0.05
+
+    for edges = [0, 1, 2, 3, 4, 5]
+    """
+    
     cwd = os.getcwd()
     obs = pyODEM.observables.ExperimentalObservables()
     obs.add_histogram("%s/test_data/qfactor_load/exp_data.dat" % cwd, edges=np.loadtxt("%s/test_data/qfactor_load/edges.dat" % cwd))
