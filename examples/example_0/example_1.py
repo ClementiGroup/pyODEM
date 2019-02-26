@@ -2,9 +2,9 @@
 
 ##import the basic things
 import numpy as np
-import pyfexd
+import pyODEM
 
-observables = pyfexd.observables
+observables = pyODEM.observables
 
 #load a histogram data
 edges = np.loadtxt("edges.dat")

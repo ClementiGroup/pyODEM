@@ -7,10 +7,10 @@ import numpy as np
 import scipy.stats as stats
 import os
 
-import pyfexd
-ml = pyfexd.model_loaders
-observables = pyfexd.observables
-ene = pyfexd.estimators.max_likelihood_estimate
+import pyODEM
+ml = pyODEM.model_loaders
+observables = pyODEM.observables
+ene = pyODEM.estimators.max_likelihood_estimate
 
 
 #load the model and load the data per the model's load_data method.

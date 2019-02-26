@@ -61,7 +61,7 @@ class Langevin(ModelLoader):
     """ Subclass for making a ModelLoader for a 1-D Langevin dynamics
 
     Methods:
-        See ModelLoader in pyfexd/super_model/ModelLoader
+        See ModelLoader in pyODEM/super_model/ModelLoader
 
     """
 

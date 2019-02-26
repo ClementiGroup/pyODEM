@@ -9,7 +9,7 @@ import model_builder as mdb
 import argparse as argparse
 import pyemma.coordinates as coor
 
-import pyfexd
+import pyODEM
 model_name = "ww_domain.ini"
 
 def save_model(inifile, newiter, newfile_location):
@@ -36,9 +36,9 @@ parser.add_argument("--temperature", default=None, type=int)
 args = parser.parse_args()
 temperature = args.temperature
 
-ml = pyfexd.model_loaders
-observables = pyfexd.observables
-ene = pyfexd.estimators.max_likelihood_estimate
+ml = pyODEM.model_loaders
+observables = pyODEM.observables
+ene = pyODEM.estimators.max_likelihood_estimate
 
 cwd = os.getcwd()
 #Pro6-Arg14,  Phe21-Ser28
