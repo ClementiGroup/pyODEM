@@ -14,6 +14,7 @@ from . import estimators
 def Init():
     """ Optional (often required) for initializing MPI and numpy in parallel """
 
+    print("Initializing pyODEM")
     try:
         MPI.Init()
     except:
