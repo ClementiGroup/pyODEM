@@ -6,6 +6,7 @@ import numpy as np
 
 @pytest.fixture
 def make_objects():
+    """ Make a pyODEM.model_loaders.Protein object and set the temperature to 120."""
     cwd = os.getcwd()
 
     os.chdir("test_data/protein_load")
@@ -18,6 +19,14 @@ def make_objects():
 
 @pytest.fixture
 def make_pmodel_energies():
+    """ Make the pyODEM.model_loaders.Protein object and load correct energies
+
+    Energies were calculated in GROMACS for the gaussian pairwise energies and
+    is loaded here. Keep in mind, pyODEM.model_loaders.Protein's normal energy
+    calculation only computes the gaussian component of the energy, not the
+    total energy.
+
+    """
     cwd = os.getcwd()
 
     os.chdir("test_data/protein_load")
@@ -33,7 +42,7 @@ def make_pmodel_energies():
 
 class TestProtein(object):
     def test_import_pmodel(self, make_objects):
-        """ Check Protein class loads values correctly """
+        """ Confirm Protein object's values are loaded correctly """
         # test that the various values are correctly loaded
         pmodel = make_objects
         assert pmodel.epsilons[0] == 0.0
@@ -45,7 +54,7 @@ class TestProtein(object):
         assert pmodel.use_pairs[844][1] == 50
 
     def test_pmodel_energies(self, make_pmodel_energies):
-        """ Check potential energy values and compare with values from GROMACS
+        """ Confirm Proteins energy computation agrees with GROMACS
 
         Perform two checks:
         1. Confirm energies from model_builder agree with energies from GROMACS
@@ -79,7 +88,7 @@ class TestProtein(object):
         assert np.max(total_diff - diff) < 0.001
 
     def test_pmodel_derivatives(self, make_pmodel_energies):
-        """ Test the derivatives calculations, deps.
+        """ Confirm Protein's derivative calculation is correct
 
         This test will confirm if deps correctly determines the derivative by
         comparing with the numeric derivative computed from heps

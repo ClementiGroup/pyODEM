@@ -6,6 +6,7 @@ import numpy as np
 
 @pytest.fixture
 def make_objects():
+    """ Make a pyODEM.model_loaders.CustomProtein object """
     cwd = os.getcwd()
 
     pmodel = pyODEM.model_loaders.CustomProtein()
@@ -16,7 +17,7 @@ def make_objects():
 
 class TestProtein(object):
     def test_import_pmodel(self, make_objects):
-        """ Check Protein class loads values correctly """
+        """ Confirm  CustomProtein loads its values correctly """
         # test that the various values are correctly loaded
         pmodel = make_objects
         assert True

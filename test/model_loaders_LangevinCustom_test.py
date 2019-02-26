@@ -28,7 +28,7 @@ def _make_lmodel_objects():
 
 class TestLangevin(object):
     def test_import_langevin(self, make_lmodel_objects):
-        """ Check Protein class loads values correctly """
+        """ Confirm LangevinCustom class loaded values correctly """
         # test that the various values are correctly loaded
         lmodel = make_lmodel_objects
         assert lmodel.parameters[0][0] == 0.5
@@ -39,9 +39,11 @@ class TestLangevin(object):
 
 
     def test_langevin_energies(self, make_lmodel_objects):
-        """ Check potential energy values and compare with expected values
+        """ Confirm langevin energy computation is correct
 
-        There are two gaussian wells placed
+        There are two gaussian wells placed at 0.5 and 2.5. Given the width of
+        each well, these values and floating point addition, the total energy
+        is 1 for each data point centered in a well, (scaled by *-lmodel.beta)
 
         """
 
@@ -60,7 +62,7 @@ class TestLangevin(object):
         assert heps(np.array([0,1]))[1] == 1
 
     def test_lmodel_derivatives(self, make_lmodel_objects):
-        """ Test the derivatives calculations, deps.
+        """ Confirm calculation of derivative is correct
 
         This test will confirm if deps correctly determines the derivative by
         comparing with the numeric derivative computed from heps
