@@ -11,11 +11,57 @@ try:
 except:
     pass
 
+def compute_gaussian(eps, r, r0, sigma):
+    return - eps * np.exp(-((r-r0)**2) / (2 * (sigma**2)))
+
+class LangevinCustom(ModelLoader):
+    def __init__(self):
+        self.GAS_CONSTANT_KJ_MOL = 0.0083144621 #kJ/mol*k
+
+        self.set_temperature(1.0)
+
+        self.epsilons_list = []
+        self.epsilons = np.array(self.epsilons_list)
+        self.parameters = []
+        self.n_params = 0
+
+
+
+    def add_gaussian(self, parameters):
+        self.epsilons_list.append(parameters["epsilons"])
+        self.epsilons = np.array(self.epsilons_list)
+        self.parameters.append([parameters["r0"], parameters["sigma"]])
+        self.n_params = np.shape(self.epsilons)[0]
+
+    def get_potentials_epsilon(self, data):
+
+        def hepsilon(epsilons):
+            total = np.zeros(np.shape(data)[0])
+
+            for eps, param in zip(epsilons, self.parameters):
+                value = compute_gaussian(eps, data, param[0], param[1])
+                assert np.shape(value)[0] == np.shape(total)[0]
+                total += value
+            total *= - self.beta
+
+            return total
+
+        def dhepsilon(epsilons):
+            total = np.zeros((np.shape(self.epsilons)[0], np.shape(data)[0]))
+
+            for i in range(self.n_params):
+                total[i,:] = compute_gaussian(1, data, self.parameters[i][0], self.parameters[i][1])
+            total *= - self.beta
+
+            return total
+
+        return hepsilon, dhepsilon
+
 class Langevin(ModelLoader):
     """ Subclass for making a ModelLoader for a 1-D Langevin dynamics
 
     Methods:
-        See ModelLoader in pyfexd/super_model/ModelLoader
+        See ModelLoader in pyODEM/super_model/ModelLoader
 
     """
 

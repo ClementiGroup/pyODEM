@@ -12,9 +12,9 @@ import mdtraj as md
 # improt non-bonded methods for protein calculation
 #from calc_nb_gromacs import check_if_dist_longer_cutoff, check_arr_sizes_are_equal, calc_nb_ene
 
-from calc_nb_gromacs import parse_and_return_relevant_parameters, parse_traj_neighbors, prep_compute_energy_fast, compute_energy_fast, compute_derivative_fast, order_epsilons_atm_types, compute_mixed_table, compute_mixed_derivatives_table, get_c6c12_matrix_noeps, convert_sigma_eps_to_c6c12
+from .calc_nb_gromacs import parse_and_return_relevant_parameters, parse_traj_neighbors, prep_compute_energy_fast, compute_energy_fast, compute_derivative_fast, order_epsilons_atm_types, compute_mixed_table, compute_mixed_derivatives_table, get_c6c12_matrix_noeps, convert_sigma_eps_to_c6c12
 
-from data_loaders import DataObjectList
+from .data_loaders import DataObjectList
 
 from pyODEM.model_loaders import ModelLoader
 try:
@@ -576,8 +576,8 @@ class ProteinAwsem(ProtoProtein):
             try:
                 assert param != 0 # Temporary check as we do  divide by zero later
             except:
-                print param
-                print indices
+                print(param)
+                print(indices)
                 raise
             constant_value = np.sum(potentials[:,indices], axis=1)
             constants_list.append(constant_value)
@@ -597,8 +597,8 @@ class ProteinAwsem(ProtoProtein):
             try:
                 assert param != 0 # Temporary check as we do  divide by zero later
             except:
-                print param
-                print indices
+                print(param)
+                print(indices)
                 raise
             constant_value = np.sum(water_mediated[:,indices], axis=1)
             constants_list.append(constant_value)
@@ -609,8 +609,8 @@ class ProteinAwsem(ProtoProtein):
             try:
                 assert param != 0 # Temporary check as we do  divide by zero later
             except:
-                print param
-                print indices
+                print(param)
+                print(indices)
                 raise
             constant_value = np.sum(protein_mediated[:,indices], axis=1)
             constants_list.append(constant_value)
@@ -662,8 +662,8 @@ class ProteinAwsem(ProtoProtein):
             try:
                 assert self._check_code_potential_assignment[i] == self.epsilons_codes[i]
             except:
-                print self._check_code_potential_assignment[i]
-                print self.epsilons_codes[i]
+                print(self._check_code_potential_assignment[i])
+                print(self.epsilons_codes[i])
                 raise
 
         #compute the function for the potential energy
@@ -723,7 +723,7 @@ class ProteinNonBonded(ModelLoader):
                 the G epsions from the gaussian native contacts.
 
         """
-        print "Initializing a Protein non-bonded interactions model"
+        print("Initializing a Protein non-bonded interactions model")
 
         self.GAS_CONSTANT_KJ_MOL = 0.0083144621 #kJ/mol*k
         self.dict_atm_types_extended, self.dict_atm_types, self.numeric_atmtyp, self.pairsidx_ps, self.all_ps_pairs, self.pot_type1_, self.pot_type2_, self.parms_mt, self.parms2_, self.nrexcl = parse_and_return_relevant_parameters(topf)
@@ -952,7 +952,7 @@ class ProteinNonBonded(ModelLoader):
         #self.all_ps_pairs
 
         self.epsilons_atm_types, self.sigmas_atm_types
-        for key,values in new_atm_types.iteritems():
+        for key,values in new_atm_types.items():
             idx = values[0]
             new_c6, new_c12 = convert_sigma_eps_to_c6c12(self.sigmas_atm_types[idx], nonbonded_epsilons[idx])
             values[4] = new_c6

@@ -36,21 +36,21 @@ for pot in model.Hamiltonian._pairs:
         pairs_list.append([pot.atmi.index, pot.atmj.index])
         r0_list.append(r0)
 if not len(pairs) == len(pairs_list):
-    print "Some of our pairs are not found!!"
-    print len(pairs)
-    print len(pairs_list)
+    print("Some of our pairs are not found!!")
+    print((len(pairs)))
+    print((len(pairs_list)))
     for pa in pairs:
         if not pa in pairs_list:
-            print pa
-print pairs_list
-print pairs
+            print(pa)
+print(pairs_list)
+print(pairs)
 
 if not os.path.isdir(savedir):
     os.mkdir(savedir)
 
 for iteration in [fitopts["iteration"]]:
     for temp in np.arange(50, 300,1):  
-        print "Analyze Iteration: %d, Temperature : %d K" % (iteration,temp)  
+        print(("Analyze Iteration: %d, Temperature : %d K" % (iteration,temp)))  
         traj_file = "iteration_%d/%d/traj.xtc"%(iteration, temp)
         if os.path.isfile(traj_file):
             traj = md.load("iteration_%d/%d/traj.xtc"%(iteration,temp), top="iteration_%d/%d/conf.gro"%(iteration,temp))
@@ -85,13 +85,13 @@ for iteration in [fitopts["iteration"]]:
             try:
                 assert np.all(fe>=0)
             except:
-                print fe
-                print hist
+                print(fe)
+                print(hist)
                 raise
             max_val = np.max(fe)
             plt.figure()
-            print centers
-            print fe
+            print(centers)
+            print(fe)
             plt.plot(centers, fe)
             plt.ylabel("Free Energy (kT)")
             plt.xlabel("Q")
