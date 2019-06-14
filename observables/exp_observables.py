@@ -15,6 +15,7 @@ from mpi4py import MPI
 
 
 from pyODEM.observables.hist_analysis_pkg import HistogramO
+from pyODEM.observables.average_analysis_pkg import AverageO
 import pyODEM.basic_functions as bf
 
 

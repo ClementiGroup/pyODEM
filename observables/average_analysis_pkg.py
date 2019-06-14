@@ -27,8 +27,8 @@ class AverageO(Observable):
         
         """
         
+        stdev = np.std(data, axis=0)      
         seen = [True for i in stdev]
         value = np.mean(data,axis=0)
-        stdev = np.std(data,axis=0)
         return value, stdev, seen
    
