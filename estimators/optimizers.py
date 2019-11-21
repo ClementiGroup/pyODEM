@@ -379,6 +379,78 @@ def check_bounds(eps, bounds):
             bad = True
 
     return bad
+def solve_sgd_custom(Qfunc, x0,
+                     stepsize=0.001,
+                     maxiters=60,
+                     batch_number=1,
+                     gtol = 1.0e-5,
+                     alpha = 0.0,
+                     lr_decay = True,
+                     num_of_step = 200,
+                     multiplicator = 0.70):
+
+    """ Solve using stochastic gradent descent                                   
+                                                                                 
+    Arguments:                                                                   
+    ----------                                                                   
+   Qfunc : function                                                              
+       function for computing loss function and gradient                         
+   x0    : list                                                                  
+       list of model parameters                                                  
+   stepsize : float                                                              
+       learning rate. Kept fixed  during the  optimization                       
+  maxiters  : int                                                                
+     maximum number of iterations                                                
+  batch_number : int                                                             
+       number of batches to devide  parameter space                              
+  alpha  : float                                                                 
+      regularization parameter
+  lr_decay : bool, default True
+      defines, whether learning rate decay is used
+  num_of_step : int, default 200
+      step, at which decay is introduced
+  multiplicator : float default 0.70
+      defines, how step decreases at iteration num_of_step
+                                                                                 
+    """
+    print("Starting stochastic gradient descent optimization")
+    print ("Parameters of optimization:")
+    print("stepsize = {}, \n maxiters = {}, \n batch_number = {}".format(stepsize,maxiters, batch_number))
+    x_new = np.copy(x0)
+    param_num = len(x_new) # number of parameters to optimize                    
+    batch_size = param_num//batch_number # minimum number of elements in a batch
+    for k in range(maxiters+1):
+        if k%num_of_step==0:
+            stepsize = multiplicator*stepsize
+        changed_params = 0
+        Q_value, gradient = Qfunc(x_new)
+        gradient += (2*alpha)*(x_new-x0)  #Correct the gradient                  
+
+        labels = np.random.permutation(param_num) # Generates list of elements   
+        for i in range(0,param_num,batch_size):
+            batch_label = labels[i:i+batch_size]
+            for j in batch_label:
+                step = stepsize*gradient[j]
+                x_new[j] = x_new[j] - step
+                changed_params+=1
+        Q_value,gradient=Qfunc(x_new)
+        gradient += (2*alpha)*(x_new-x0)
+        grad_norm = np.linalg.norm(gradient)
+        print("New Q value after update: {}".format(Q_value))
+        print("Norm of the gradient:   {}".format(grad_norm))
+        print("New valuew of the loss function:", Q_value + alpha*sum(np.square(\
+x_new-x0)))
+        if grad_norm < gtol:
+            print("Optimization done successfully in  {} steps ".format(k))
+            break
+
+        print("Iteration {} done".format(k))
+        if k == maxiters:
+            print("Number of interations exceeded")
+            raise FailedToOptimizeException("Number of iteration exceeded",{'iteration': maxiter})
+    print(x_new)
+    return(x_new)
+
 
 #### dictionary of all the functions ####
 function_dictionary = {"simplex":solve_simplex}
@@ -390,3 +462,4 @@ function_dictionary["custom"] = solve_annealing_custom
 function_dictionary["newton"] = solve_newton_step_custom
 function_dictionary["bfgs"] = solve_bfgs
 function_dictionary["one"] = solve_one_step
+function_dictionary["sgd"] = solve_sgd_custom
