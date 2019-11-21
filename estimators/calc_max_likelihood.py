@@ -44,7 +44,7 @@ copy_reg.pickle(types.MethodType, _pickle_method, _unpickle_method)
 
 def ensure_derivative(derivative, solver):
     if derivative is None:
-        if solver in ["cg", "newton", "bfgs", "one"]:
+        if solver in ["cg", "newton", "bfgs", "one","sgd"]:
             derivative = True
         else:
             derivative = False
