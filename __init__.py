@@ -8,6 +8,7 @@ from . import model_loaders
 from . import observables
 
 from . import estimators
+from . import ddG_estimators
 
 
 
