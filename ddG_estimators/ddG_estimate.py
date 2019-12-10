@@ -277,34 +277,56 @@ class ddG(Observable):
                 dH = depsilons(epsilons)
         return np.array(H), np.array(dH)
 
+    def _compute_reweight_prefactor(self,epsilon_old):
+        """
+        The method computes prefactor, that does not change during optimization.
+        it is exp(-beta*H(epsilon_old))
+        """
+        H,_ = self._compute_H(epsilon_old)
+        prefactor  = np.exp(H)
+        self.prefactor = prefactor
+        return
 
-    def _reweight_microstates(self,epsilon_old,epsilon_new):
+    def _count_frames_in_microstates(self):
+        """
+        The method counts number of frames in each microstate.
+        Creates a new atribute count, wich is a 1d numpy array,
+        element [i] of which holds number of frames, that correspond
+        to  microstate i.
+        """
+        counts = np.zeros(np.shape(self.distribution)[0],dtype=int)
+        for state in self.dtrajs:
+            counts[state] += 1
+        self.counts = counts
+        return
+
+    def prepare_observables(self,optimize=True, epsilon=None):
+        """
+        Method prepares observable for optimization by
+        calculating prefactor and  counting number of microstates for a
+        """
+        self._count_frames_in_microstates()
+        if optimize:
+            self._compute_reweight_prefactor(epsilon)
+        return
+
+    def _reweight_microstates(self,epsilons_new):
         """
         The function produces reweighted values for microstates based on change in epsilon
         upon optimization
         """
         average_weight = np.zeros(np.shape(self.distribution)[0])
-        counts = np.zeros(np.shape(self.distribution)[0],dtype=int)
-        H_old = self. _compute_H(epsilons_old)
-        H_new = self._compute_H(epsilons_new)
-        change = np.exp(np.subtract(H_new-H_old))
-        for state, difference in zip (self.dtraj, change):
-            average_weight[state] += change
-            counts[state] += 1
-        average_weight = np.divide(average_weight,counts)
-        norm = np.sum(average_weight)
+        new_H, _ = self._compute_H(epsilons_new)
+        new_exponent = np.exp(new_H)
+        change = np.divide(new_exponent,self.prefactor)
+        for state, difference in zip (self.dtrajs, change):
+            average_weight[state] += difference
+        average_weight = np.divide(average_weight,self.counts)
         distribution_reweighted =  np.multiply(self.distribution,average_weight)
+        norm = np.sum(distribution_reweighted)
         distribution_reweighted /= norm
-        return distribution_reweighted
-
-
-
-
-
-
-
-
-
+        self.distribution_reweighted = distribution_reweighted
+        return
 
 
     def _compute_mutated_H(self,epsilons,compute_derivative=False):
@@ -379,21 +401,23 @@ class ddG(Observable):
         else:
             raise ValueError("Array for averaging should have no more than 1 dimensions")
 
-    def _reweight_microstate(self,epsilon)
-
-
-    def _get_ensemble_averages(self,macrostate,microstate_averages):
+    def _get_ensemble_averages(self,macrostate,microstate_averages,reweighted=False,epsilons=None):
         """
         The function computes ensemble average for a particular macrostate
         data : 1D or 2D numpy array.
         """
         microstates = self._get_microstates(macrostate)
+        if reweighted:
+            distribution = self.distribution_reweighted
+        else:
+            distribution = self.distribution
+
         if microstate_averages.ndim == 1:
             average = 0.0
             normalization = 0.0
             for microstate  in microstates:
-                average += microstate_averages[microstate]*self.distribution[microstate]
-                normalization += self.distribution[microstate]
+                average += microstate_averages[microstate]*distribution[microstate]
+                normalization += distribution[microstate]
 
             average /= normalization
             return average
@@ -402,7 +426,7 @@ class ddG(Observable):
 
 
 
-    def compute_delta_delta_G(self,epsilons,compute_derivative=False):
+    def compute_delta_delta_G(self,epsilons,compute_derivative=False,reweighted=True):
         """
         The function computes a delta_delta_G of mutation for a particular macrostate.
         Parameters
@@ -413,14 +437,18 @@ class ddG(Observable):
                              deltaG
         epsilon            : array of array-like object of float
                              Contains  parameters of the model
+
+        reweighted         :
         """
         # Find all the  microstates, that correspond to a particular microstate
+        if reweighted:
+             self._reweight_microstates(epsilons)
         H0,d_H0 = self._compute_H(epsilons,compute_derivative=compute_derivative)
         H_mutated, d_H_mutated = self._compute_mutated_H(epsilons,compute_derivative=compute_derivative)
         exp_delta_H = np.exp(self._compute_delta_H(H0,H_mutated))
         exp_delta_H_micro_aver = self._get_microstate_averages(exp_delta_H)
-        aver_folded = self._get_ensemble_averages(0,exp_delta_H_micro_aver)
-        aver_unfolded = self._get_ensemble_averages(1,exp_delta_H_micro_aver)
+        aver_folded = self._get_ensemble_averages(0,exp_delta_H_micro_aver,reweighted=reweighted,epsilons=epsilons)
+        aver_unfolded = self._get_ensemble_averages(1,exp_delta_H_micro_aver,reweighted=reweighted,epsilons=epsilons)
         delta_delta_G = -1*np.log(aver_folded) + np.log(aver_unfolded)
 
         if compute_derivative:
@@ -433,10 +461,10 @@ class ddG(Observable):
             aver_d_H0 = self._get_microstate_averages(d_H0, non_frame_axis=0)
             derivatives = []
             for parameters in range(aver_d_H0.shape[1]):
-                product_folded = self._get_ensemble_averages(0,aver_exp_product_dHm[:,parameters])
-                product_unfolded = self._get_ensemble_averages(1,aver_exp_product_dHm[:,parameters])
-                dH_0_folded = self._get_ensemble_averages(0,aver_d_H0[:,parameters])
-                dH_0_unfolded = self._get_ensemble_averages(1,aver_d_H0[:,parameters])
+                product_folded = self._get_ensemble_averages(0,aver_exp_product_dHm[:,parameters],reweighted=True,epsilons=epsilons)
+                product_unfolded = self._get_ensemble_averages(1,aver_exp_product_dHm[:,parameters],reweighted=True,epsilons=epsilons)
+                dH_0_folded = self._get_ensemble_averages(0,aver_d_H0[:,parameters],reweighted=reweighted,epsilons=epsilons)
+                dH_0_unfolded = self._get_ensemble_averages(1,aver_d_H0[:,parameters],reweighted=reweighted,epsilons=epsilons)
                 d_delta_G_folded = product_folded/aver_folded - dH_0_folded
                 d_delta_G_unfolded = product_unfolded/aver_unfolded - dH_0_unfolded
                 result = -1*(d_delta_G_folded - d_delta_G_unfolded) #Need to multipy by -1, because all the hamiltonians return -beta*H
