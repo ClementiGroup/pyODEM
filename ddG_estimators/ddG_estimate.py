@@ -141,53 +141,40 @@ def test_compute_ensemble_average():
     computed_value = compute_ensemble_average(data,dtraj,pi)
     assert(computed_value == expected_value)
 
-test_compute_ensemble_average()
 
-
-
-class DiscreteTrajectory():
+def unwrap_formatted_data(input_data,key):
     """
-    The class holds methods to work with descrete trajectories. The descrete trajectory is
-    build around a list of dictionaries. Each dictionary in this list represents one
-    descrete microstate.  At this point, the list of dictionaries is passed during initiali
-    zation. Later, an alternative constractor may be created
+    The method converts formatted data of the following format:
+    [
+    {'index': <int>, 'key':[ <one list of values for each frame, that belongs to state with a particular index>]},
+    ...
+    ]
+
+    to two numpy arrays.
+    output_states : 1D  numpy array of ints
+                    Length is equal to number of frames in trajectory.
+    output_data   : 2D numpy array. Each row represents on frame, each column represents on parameter.
+
+    Parameters
+    -----------
+
+    input_data : list of dictionaries
+                 see description above
+
+    key       : str
+                Key of dictionary used for unwrapping
     """
 
-    def __init__(self,data):
-        """
-        Initialization method. Directly passed pre-formated dictionary
-        """
-        self.data = data
-
-    def check_dimensions(self):
-        """
-        Method checks, that all the data fields have two or less dimentions
-        """
-        for microstate in data:
-            for key in microstate:
-                if isinstance(microstate[key],list):
-                    assert np.array(microstate[key]).ndim < 3, "Dimension of %s in state %d is > 2.  " %(key,microstate['index'])
-
-
-    def add_new_function(self,function,key_initial,key_final):
-        """
-        The method creates a new dictionary, computed based on
-        values in existant keys.
-        Parameters
-        ----------
-        function :  function object
-                    A function, that computes new values based on existing parameters.
-
-        key_initial : str
-                      Name of the key, that is used as parameters for function
-        key_final :  str
-                     Name of key for new value in dictionary
-        """
-
-        for microstate in self.data:
-            self.data[key_final] = function([self.data[key_initial]])
-
-
+    output_states = []
+    output_data = []
+    for microstates in input_data:
+        for frames in microstates[key]:
+            output_states.append(microstates['index'])
+            output_data.append(frames)
+    output_states = np.array(output_states,dtype=int)
+    output_data = np.array(output_data)
+    assert output_data.ndim == 2
+    return output_states, output_data
 
 class ddG(Observable):
     """
@@ -196,7 +183,9 @@ class ddG(Observable):
     object.
     """
 
-    def __init__(self,model,data,partition,dtrajs,fraction,distribution,debug=False):
+
+
+    def __init__(self,model,data,partition,fraction,dtrajs_old,distribution,debug=False):
         """Initialize object.
         Parameters
         -----------
@@ -219,18 +208,18 @@ class ddG(Observable):
         """
         self.type = 'ddG'
         self.model = model
-        self.data = data
         self.partition = partition #hould be a descrete trajectory between macrostates.
-        self.dtrajs = dtrajs # A descrete trajectory between microstates
+        self.dtrajs, self.data = unwrap_formatted_data(data,'data')
         self.fraction  = fraction # list, that defines fractions of contacts,
+        self.dtrajs_old = dtrajs_old
                                    # that remains after mutation
         self.distribution = distribution
         self.debug = debug # debug flag
         if self.debug:
             print("fractions for mutations")
-            print(fraction)
+            print(self.fraction)
             print("Discrete trajectory in microstate space")
-            print(dtrajs)
+            print(self.dtrajs)
 
     def _get_microstates(self,index):
         """
@@ -247,192 +236,177 @@ class ddG(Observable):
 
         """
         microstates = []
-        for microstate, macrostate in zip(self.dtrajs,self.partition):
+        for microstate, macrostate in zip(self.dtrajs_old,self.partition):
             if macrostate == index:
                 microstates.append(microstate)
         microstates = set(microstates)
         return microstates
 
 
-    def _compute_H(self,microstates,epsilons,compute_derivative=False):
+    def _compute_H(self,epsilons,compute_derivative=False):
         """
         The method computes unmutated hamiltonian values  and
-        corresponding derivatives for each frame of
-        each microstate. Returns a list dictionaries, one dictionary
-        for each microstate.
-         where the first key(['index']) corresponds to microstate index
-         the second key ['H'] holds a list of floats, where each value represents
-         H computed with particular epsilons
-         the third key ['dH'] holds a list of floats, where each values represents
-         H derivative, computed with particular epsilons
-        """
+        corresponding derivatives for each frame of the trajectory
+        each microstate.
 
-        H_values = []
-        for microstate in microstates:
-            dict = {}
-            hepsilons, depsilons  = self.model.get_potentials_epsilon(self.data[microstate]['data'])
-            dict['index'] = microstate
-            dict['H'] = hepsilons(epsilons)
-            if compute_derivative:
-                dict['dH'] = depsilons(epsilons)
-            H_values.append(dict)
-        return H_values
+        Parameters
+        ----------
 
-    def _compute_mutated_H(self,microstates,epsilons,compute_derivative=False):
+        epsilons : numpy.ndarray of floats
+                   Array of model parameters. Order should be the same as
+                   order of parameters in the model used to create object
+        compute_deriative : bool
+                            If true, both hamiltonian and derivative with respect
+                            to epsilon are computed
+
+        Return
+        ------
+
+        H : 1D numpy.ndarray
+            1 float value per frame, representing energy of Hamiltonian
+        dH : 2D numpy.ndarray
+             Array of H derivatives with respect to epsilons
+             shape (N,M), where N - index of parameter (epsilon),
+             M - index of the frame. Order of frame is the seme as in self.data
+
         """
-        The function computes mutated Hamiltonian. Fore details, see _compute_H method
+        hepsilons, depsilons  = self.model.get_potentials_epsilon(self.data)
+        H = hepsilons(epsilons)
+        dH = None
+        if compute_derivative:
+                dH = depsilons(epsilons)
+        return np.array(H), np.array(dH)
+
+
+    def _reweight_microstates(self,epsilon_old,epsilon_new):
+        """
+        The function produces reweighted values for microstates based on change in epsilon
+        upon optimization
+        """
+        average_weight = np.zeros(np.shape(self.distribution)[0])
+        counts = np.zeros(np.shape(self.distribution)[0],dtype=int)
+        H_old = self. _compute_H(epsilons_old)
+        H_new = self._compute_H(epsilons_new)
+        change = np.exp(np.subtract(H_new-H_old))
+        for state, difference in zip (self.dtraj, change):
+            average_weight[state] += change
+            counts[state] += 1
+        average_weight = np.divide(average_weight,counts)
+        norm = np.sum(average_weight)
+        distribution_reweighted =  np.multiply(self.distribution,average_weight)
+        distribution_reweighted /= norm
+        return distribution_reweighted
+
+
+
+
+
+
+
+
+
+
+
+    def _compute_mutated_H(self,epsilons,compute_derivative=False):
+        """
+        The function computes mutated Hamiltonian. Parameters and returns is the
+        same as in _compute_H method
         """
         mutated_epsilons = np.multiply(epsilons,self.fraction)
-        if self.debug:
-            print("Mutated_epsilons")
-            print(mutated_epsilons)
-        if compute_derivative == False:
-            H_values = self._compute_H(microstates,mutated_epsilons,compute_derivative=False)
-        else:
-            raise ValueError("Derivatives for mutated hamiltonian are not implemented yet")
-        return H_values
 
-    def _compute_delta_H(self,H0,mutated_H,compute_derivative=False):
+
+        H, dH = self._compute_H(mutated_epsilons,compute_derivative=compute_derivative)
+        if compute_derivative:
+            for frame_ndx in range(0,dH.shape[1]):
+                dH[:,frame_ndx] = np.multiply(dH[:,frame_ndx],self.fraction)
+        return H, dH
+
+    def _compute_delta_H(self,H0,mutated_H):
         """
         The function computes change in Hamiltonian upon mutation.
         Parameters
         ----------
-        H0 : list of dicts
-              Output of _compute_H function
-        mutated_H : list of dicts
-                    Output of _compute_mutated_H function
+        H0, mutated_H : 1D numpy.ndarray
+                        Native and mutated Hamiltonian, correspondingly
 
         """
+        assert H0.shape == mutated_H.shape
+        return np.subtract(mutated_H,H0)
 
-        assert len(H0) == len(mutated_H)
-        delta_H = []
-        for microstate0, microstate_mutated in zip(H0,mutated_H):
-            microstate_delta_H = {}
-            assert microstate0['index'] == microstate_mutated['index']
-            microstate_delta_H['index'] = microstate0['index']
-            microstate_delta_H['delta_H'] = np.subtract(microstate_mutated['H'],microstate0['H'])
-            delta_H.append(microstate_delta_H)
-            if compute_derivative == True:
-                raise ValueError ("Derivatives are not implemented yet")
-        return delta_H
-
-    def _compute_microstate_average(self,data,keys):
+    def _compute_d_delta_H(d_H0,d_mutated_H):
         """
-        The method computes microstate average based on data list
-
-        Parameters
-        -----------
-        data : list of dictionaries
-               Each dictionary contains index key, that represents
-               number of frames, and different keys with data. Each
-               data entry is a list, each element of this list represents information
-               for one frame.
-               {'index' : <int, index of microstate>,
-                 'key1' : <list, each entry on the list corresponds to one frame, that
-                          belongs to that particular microstate>,
-                 'key2" : <list, the same as key1
-                          }
-        keys :   list of  'str'
-                 List of keys, that should be used for averaging.
-
-        Returns
-        --------
-
-        aver_data : list of dictionaries with microstate averages.
-
-        """
-        aver_data = []
-        for microstate in data:
-            microstate_aver = {}
-            microstate_aver['index'] = microstate['index']
-            for key in keys:
-                data_array = np.array(microstate[key])
-                if self.debug:
-                    if microstate['index'] == 0:
-                        print(data_array)
-                assert data_array.ndim <= 2, "arrays with more than two dimensions are not accepted as data"
-                microstate_aver[key] = np.mean(data_array,axis=-1)
-            aver_data.append(microstate_aver)
-        if self.debug:
-            print(aver_data)
-        return (aver_data)
-
-
-    def _compute_ensemble_average(self,data,keys):
-        """
-        The method computes ensemble averages for data in the dictionary.
+        The function computes derivative of change in Hamiltonian upon mutation
+        with respect to model parameters.
         Parameters
         ----------
-        data : list of dictionaries
-
-
+        d_H0, d_mutated_H : 2D numpy.ndarray
+                        Derivatives of native and mutated Hamiltoian, correspondingly
         """
-        aver_data = self._compute_microstate_average(data,keys)
-        ensemble_averages = {}
-        for key in keys:
-            normalization = 0
-            if np.array(aver_data[0][key]).ndim == 0:
-                key_average = 0.0
-                for microstate in aver_data:
-                    key_average += self.distribution[microstate['index']]*microstate[key]
-                    normalization += self.distribution[microstate['index']]
-                key_average = key_average/normalization
-
-            elif np.array(aver_data[0][key]).ndim == 1:
-                key_average = np.zeros(np.array(aver_data[0][key]).shape[0])
-                for microstate in aver_data:
-                    key_average += np.multiply(self.distribution[microstate['index']],microstate[key])
-                    normalization += self.distribution[microstate['index']]
-                key_average = np.divide(key_average,normalization)
-            ensemble_averages[key] = key_average
-        return ensemble_averages
+        assert d_H0.shape == d_mutated_H.shape
+        return np.subtract(d_mutated_H,d_H0)
 
 
-    def get_boltzman_weight(self,H):
-        """The function computes boltzman weight for Hamiltonian, exp(-beta*H)
-           Parameters
-           ----------
-           H : np.array
-               Array of floats
-
-            Returns
-            -------
-             np.array, the same size as H
-             exponent = exp(H). H already includes beta.
-
+    def _get_microstate_averages(self,data,non_frame_axis=None):
         """
-
-        #return np.exp(-1*self.model.beta*H)
-        return np.exp(H)
-
-
-    def add_new_function(self,dictionary,function,key_initial,key_final):
+        The function computes microstate averages for an array.
+        data : 1D or 2D numpy array.
         """
-        The method creates a new dictionary, computed based on
-        values in existant keys.
-        Parameters
-        ----------
-        dictionary : dictionary to use
-        function :  function object
-                    A function, that computes new values based on existing parameters.
+        num_of_microstates = len(set(self.dtrajs))
+        if data.ndim == 1:
+            microstate_averages = np.zeros((num_of_microstates))
+            counts = np.zeros(num_of_microstates,dtype=int)
+            for microstate, value in zip(self.dtrajs,data):
+                counts[microstate] += 1
+                microstate_averages[microstate] += value
+            microstate_averages = np.divide(microstate_averages,counts)
+            return np.array(microstate_averages)
+        elif data.ndim == 2:
+            assert non_frame_axis is not None, "Specify an additional axis"
+            number_of_values = data.shape[non_frame_axis]
+            microstate_averages = np.zeros((num_of_microstates,number_of_values))
+            counts = np.zeros(num_of_microstates,dtype=int)
+            if non_frame_axis == 0:
+                for frame,microstate in enumerate(self.dtrajs):
+                    microstate_averages[microstate,:] += data[:,frame]
+                    counts[microstate] += 1
+            if non_frame_axis == 1:
+                for frame,microstate in enumerate(self.dtrajs):
+                    microstate_averages[microstate,:] += data[frame,:]
+                    counts[microstate] += 1
+            for parameter in range(number_of_values):
+                microstate_averages[:,parameter] /= counts
+            return microstate_averages
+        else:
+            raise ValueError("Array for averaging should have no more than 1 dimensions")
 
-        key_initial : str
-                      Name of the key, that is used as parameters for function
-        key_final :  str
-                     Name of key for new value in dictionary
+    def _reweight_microstate(self,epsilon)
+
+
+    def _get_ensemble_averages(self,macrostate,microstate_averages):
         """
-
-        for microstate in dictionary:
-            microstate[key_final] = function(microstate[key_initial])
-
-
-    def _compute_delta_G(self,macrostate,epsilons,compute_derivative=False):
+        The function computes ensemble average for a particular macrostate
+        data : 1D or 2D numpy array.
         """
-        The function computes a delta_G of mutation for a particular macrostate.
+        microstates = self._get_microstates(macrostate)
+        if microstate_averages.ndim == 1:
+            average = 0.0
+            normalization = 0.0
+            for microstate  in microstates:
+                average += microstate_averages[microstate]*self.distribution[microstate]
+                normalization += self.distribution[microstate]
+
+            average /= normalization
+            return average
+        else:
+            raise ValueError("Array for averaging should have no more than 1 dimensions")
+
+
+
+    def compute_delta_delta_G(self,epsilons,compute_derivative=False):
+        """
+        The function computes a delta_delta_G of mutation for a particular macrostate.
         Parameters
         -----------
-        marcostate : int
-                     Index of a macrostate to use for computation
 
         compute_derivative : bool
                              If true, the function returns also derivative of
@@ -441,59 +415,43 @@ class ddG(Observable):
                              Contains  parameters of the model
         """
         # Find all the  microstates, that correspond to a particular microstate
-        microstates = self._get_microstates(macrostate)
-        H0 = self._compute_H(microstates,epsilons,compute_derivative=compute_derivative)
-        H_mutated = self._compute_mutated_H(microstates,epsilons,compute_derivative=compute_derivative)
-        delta_H = self._compute_delta_H(H0,H_mutated,compute_derivative=compute_derivative)
-        if self.debug:
-            print(delta_H[0])
-        self.add_new_function(delta_H,self.get_boltzman_weight,'delta_H','exp(-bH)')
-        average = self._compute_ensemble_average(delta_H,['exp(-bH)'])
-        if self.debug:
-            print("Average value of delta_H")
-            print(average)
-        delta_G = -np.log(average['exp(-bH)'])
-        if compute_derivative == True:
-            raise ValueError ("Derivatives are not yet implemented")
-        return(delta_G)
+        H0,d_H0 = self._compute_H(epsilons,compute_derivative=compute_derivative)
+        H_mutated, d_H_mutated = self._compute_mutated_H(epsilons,compute_derivative=compute_derivative)
+        exp_delta_H = np.exp(self._compute_delta_H(H0,H_mutated))
+        exp_delta_H_micro_aver = self._get_microstate_averages(exp_delta_H)
+        aver_folded = self._get_ensemble_averages(0,exp_delta_H_micro_aver)
+        aver_unfolded = self._get_ensemble_averages(1,exp_delta_H_micro_aver)
+        delta_delta_G = -1*np.log(aver_folded) + np.log(aver_unfolded)
+
+        if compute_derivative:
+            derivatives = []
+            exp_product_dHm = np.copy(d_H_mutated) #Compute product
+            for parameters in range(exp_product_dHm.shape[0]):
+                exp_product_dHm[parameters,:] = np.multiply(exp_product_dHm[parameters,:],exp_delta_H)
+            # Compute microstate averages for
+            aver_exp_product_dHm = self._get_microstate_averages(exp_product_dHm, non_frame_axis=0)
+            aver_d_H0 = self._get_microstate_averages(d_H0, non_frame_axis=0)
+            derivatives = []
+            for parameters in range(aver_d_H0.shape[1]):
+                product_folded = self._get_ensemble_averages(0,aver_exp_product_dHm[:,parameters])
+                product_unfolded = self._get_ensemble_averages(1,aver_exp_product_dHm[:,parameters])
+                dH_0_folded = self._get_ensemble_averages(0,aver_d_H0[:,parameters])
+                dH_0_unfolded = self._get_ensemble_averages(1,aver_d_H0[:,parameters])
+                d_delta_G_folded = product_folded/aver_folded - dH_0_folded
+                d_delta_G_unfolded = product_unfolded/aver_unfolded - dH_0_unfolded
+                result = -1*(d_delta_G_folded - d_delta_G_unfolded) #Need to multipy by -1, because all the hamiltonians return -beta*H
+                derivatives.append(result)
+            return delta_delta_G, derivatives
 
 
-    def  compute_delta_delta_G(self,
-                                epsilons,
-                                state_dictionary = {'F':0,'U':1},
-                                compute_derivative=False):
+        return delta_delta_G
+
+
+
+    def compute_observation(self,epsilons):
         """
-        The function computes delta_delta_G based on epsilons.
-        Parameters:
-        -----------
-        epsilons : numpy array of floats
-                   Contains model parameters
-        state_dictionary : dict
-                           Contains two keys, each of which can have an integer value.
-                           Key 'F' corresponds to the index of macrostate, that is considered
-                           as Folded state in macrostate trajectory file
-                           Key 'U' corresponsd to the index of macrostate, that is considered as
-                           Unfolded state in macrostate trajectory file
-        compute_derivateve : bool
-                             Compute DeltaDeltaG derivatives, if True
-
-        RETURNS delta_delta_G/kT!
-
+        The function returns observed values of delta_delta_G and
+         corresponding derivatives
         """
 
-        G_folded = self._compute_delta_G(state_dictionary['F'],epsilons,compute_derivative=compute_derivative)
-        G_unfolded = self._compute_delta_G(state_dictionary['U'],epsilons,compute_derivative=compute_derivative)
-        if self.debug:
-            print("delta G of mutation in folded ensemble")
-            print(G_folded)
-            print("delta G of mutation in unfolded ensemble")
-            print(G_unfolded)
-
-        return G_folded - G_unfolded
-
-
-    def compute_observation(self):
-        """
-        The function returns observed values of delta_deltaG.
-        """
-        pass
+        return self._compute_delta_delta_G(epsilons,compute_derivative=True)
