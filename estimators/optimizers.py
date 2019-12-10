@@ -389,21 +389,21 @@ def solve_sgd_custom(Qfunc, x0,
                      num_of_step = 200,
                      multiplicator = 0.70):
 
-    """ Solve using stochastic gradent descent                                   
-                                                                                 
-    Arguments:                                                                   
-    ----------                                                                   
-   Qfunc : function                                                              
-       function for computing loss function and gradient                         
-   x0    : list                                                                  
-       list of model parameters                                                  
-   stepsize : float                                                              
-       learning rate. Kept fixed  during the  optimization                       
-  maxiters  : int                                                                
-     maximum number of iterations                                                
-  batch_number : int                                                             
-       number of batches to devide  parameter space                              
-  alpha  : float                                                                 
+    """ Solve using stochastic gradent descent
+
+    Arguments:
+    ----------
+   Qfunc : function
+       function for computing loss function and gradient
+   x0    : list
+       list of model parameters
+   stepsize : float
+       learning rate. Kept fixed  during the  optimization
+  maxiters  : int
+     maximum number of iterations
+  batch_number : int
+       number of batches to devide  parameter space
+  alpha  : float
       regularization parameter
   lr_decay : bool, default True
       defines, whether learning rate decay is used
@@ -411,22 +411,24 @@ def solve_sgd_custom(Qfunc, x0,
       step, at which decay is introduced
   multiplicator : float default 0.70
       defines, how step decreases at iteration num_of_step
-                                                                                 
+
     """
     print("Starting stochastic gradient descent optimization")
     print ("Parameters of optimization:")
     print("stepsize = {}, \n maxiters = {}, \n batch_number = {}".format(stepsize,maxiters, batch_number))
+    print("gtol = {}, \n alpha = {}, \n lr_decay = {}".format(gtol,alpha, lr_decay))
+    print("num_of_step = {}, \n multiplicator = {}".format(num_of_step,multiplicator))
     x_new = np.copy(x0)
-    param_num = len(x_new) # number of parameters to optimize                    
+    param_num = len(x_new) # number of parameters to optimize
     batch_size = param_num//batch_number # minimum number of elements in a batch
     for k in range(maxiters+1):
         if k%num_of_step==0:
             stepsize = multiplicator*stepsize
         changed_params = 0
         Q_value, gradient = Qfunc(x_new)
-        gradient += (2*alpha)*(x_new-x0)  #Correct the gradient                  
+        gradient += (2*alpha)*(x_new-x0)  #Correct the gradient
 
-        labels = np.random.permutation(param_num) # Generates list of elements   
+        labels = np.random.permutation(param_num) # Generates list of elements
         for i in range(0,param_num,batch_size):
             batch_label = labels[i:i+batch_size]
             for j in batch_label:
