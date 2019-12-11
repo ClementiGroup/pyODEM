@@ -449,7 +449,7 @@ x_new-x0)))
         print("Iteration {} done".format(k))
         if k == maxiters:
             print("Number of interations exceeded")
-            raise FailedToOptimizeException("Number of iteration exceeded",{'iteration': maxiter})
+            raise FailedToOptimizeException("Number of iteration exceeded",{'iteration': maxiters})
     print(x_new)
     return(x_new)
 
