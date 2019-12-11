@@ -86,7 +86,7 @@ Functions that should be included in the package:
 
 import numpy as np
 from pyODEM.observables import Observable
-
+import time
 
 
 # Set of helper functions will go here.
@@ -401,12 +401,11 @@ class ddG(Observable):
         else:
             raise ValueError("Array for averaging should have no more than 1 dimensions")
 
-    def _get_ensemble_averages(self,macrostate,microstate_averages,reweighted=False,epsilons=None):
+    def _get_ensemble_averages(self,microstates,microstate_averages,reweighted=False,epsilons=None):
         """
         The function computes ensemble average for a particular macrostate
         data : 1D or 2D numpy array.
         """
-        microstates = self._get_microstates(macrostate)
         if reweighted:
             distribution = self.distribution_reweighted
         else:
@@ -424,8 +423,6 @@ class ddG(Observable):
         else:
             raise ValueError("Array for averaging should have no more than 1 dimensions")
 
-
-
     def compute_delta_delta_G(self,epsilons,compute_derivative=False,reweighted=True):
         """
         The function computes a delta_delta_G of mutation for a particular macrostate.
@@ -441,16 +438,18 @@ class ddG(Observable):
         reweighted         :
         """
         # Find all the  microstates, that correspond to a particular microstate
+        start = time.time()
         if reweighted:
              self._reweight_microstates(epsilons)
+        microstates_folded = self._get_microstates(0)
+        microstates_unfolded = self._get_microstates(1)
         H0,d_H0 = self._compute_H(epsilons,compute_derivative=compute_derivative)
         H_mutated, d_H_mutated = self._compute_mutated_H(epsilons,compute_derivative=compute_derivative)
         exp_delta_H = np.exp(self._compute_delta_H(H0,H_mutated))
         exp_delta_H_micro_aver = self._get_microstate_averages(exp_delta_H)
-        aver_folded = self._get_ensemble_averages(0,exp_delta_H_micro_aver,reweighted=reweighted,epsilons=epsilons)
-        aver_unfolded = self._get_ensemble_averages(1,exp_delta_H_micro_aver,reweighted=reweighted,epsilons=epsilons)
+        aver_folded = self._get_ensemble_averages(microstates_folded,exp_delta_H_micro_aver,reweighted=reweighted,epsilons=epsilons)
+        aver_unfolded = self._get_ensemble_averages(microstates_unfolded,exp_delta_H_micro_aver,reweighted=reweighted,epsilons=epsilons)
         delta_delta_G = -1*np.log(aver_folded) + np.log(aver_unfolded)
-
         if compute_derivative:
             derivatives = []
             exp_product_dHm = np.copy(d_H_mutated) #Compute product
@@ -461,10 +460,10 @@ class ddG(Observable):
             aver_d_H0 = self._get_microstate_averages(d_H0, non_frame_axis=0)
             derivatives = []
             for parameters in range(aver_d_H0.shape[1]):
-                product_folded = self._get_ensemble_averages(0,aver_exp_product_dHm[:,parameters],reweighted=True,epsilons=epsilons)
-                product_unfolded = self._get_ensemble_averages(1,aver_exp_product_dHm[:,parameters],reweighted=True,epsilons=epsilons)
-                dH_0_folded = self._get_ensemble_averages(0,aver_d_H0[:,parameters],reweighted=reweighted,epsilons=epsilons)
-                dH_0_unfolded = self._get_ensemble_averages(1,aver_d_H0[:,parameters],reweighted=reweighted,epsilons=epsilons)
+                product_folded = self._get_ensemble_averages(microstates_folded,aver_exp_product_dHm[:,parameters],reweighted=True,epsilons=epsilons)
+                product_unfolded = self._get_ensemble_averages(microstates_unfolded,aver_exp_product_dHm[:,parameters],reweighted=True,epsilons=epsilons)
+                dH_0_folded = self._get_ensemble_averages(microstates_folded,aver_d_H0[:,parameters],reweighted=reweighted,epsilons=epsilons)
+                dH_0_unfolded = self._get_ensemble_averages(microstates_unfolded,aver_d_H0[:,parameters],reweighted=reweighted,epsilons=epsilons)
                 d_delta_G_folded = product_folded/aver_folded - dH_0_folded
                 d_delta_G_unfolded = product_unfolded/aver_unfolded - dH_0_unfolded
                 result = -1*(d_delta_G_folded - d_delta_G_unfolded) #Need to multipy by -1, because all the hamiltonians return -beta*H
@@ -474,12 +473,10 @@ class ddG(Observable):
 
         return delta_delta_G
 
-
-
     def compute_observation(self,epsilons):
         """
         The function returns observed values of delta_delta_G and
          corresponding derivatives
         """
 
-        return self._compute_delta_delta_G(epsilons,compute_derivative=True)
+        return self._compute_delta_delta_G_optimized(epsilons,compute_derivative=True)
