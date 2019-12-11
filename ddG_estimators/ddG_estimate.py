@@ -86,8 +86,6 @@ Functions that should be included in the package:
 
 import numpy as np
 from pyODEM.observables import Observable
-import time
-
 
 # Set of helper functions will go here.
 def compute_ensemble_average(data,dtraj,pi):
@@ -438,7 +436,6 @@ class ddG(Observable):
         reweighted         :
         """
         # Find all the  microstates, that correspond to a particular microstate
-        start = time.time()
         if reweighted:
              self._reweight_microstates(epsilons)
         microstates_folded = self._get_microstates(0)
