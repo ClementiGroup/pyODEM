@@ -476,4 +476,4 @@ class ddG(Observable):
          corresponding derivatives
         """
 
-        return self._compute_delta_delta_G_optimized(epsilons,compute_derivative=True)
+        return self._compute_delta_delta_G(epsilons,compute_derivative=True)
