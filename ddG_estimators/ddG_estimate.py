@@ -421,6 +421,23 @@ class ddG(Observable):
         else:
             raise ValueError("Array for averaging should have no more than 1 dimensions")
 
+
+    def set_temperature_rescaling(self,experiment_temperature,folding_temperature):
+        """
+        The method creates rescaling factor atribute, i.e ratio of folding temperature
+        and experimental temperature. It alows to normalize results simulated at folding
+        temperature to the temperature yielding the same stablity as measured in experiment
+
+        experiment_temperature : float
+                                 Temperature (K), at which mutational experiment was counducted
+        folding_temperature    : float
+                                  Tagret temperature (K), usually experimental folding
+                                  temperature of protein.
+
+
+        """
+        return
+
     def compute_delta_delta_G(self,epsilons,compute_derivative=False,reweighted=True):
         """
         The function computes a delta_delta_G of mutation for a particular macrostate.
