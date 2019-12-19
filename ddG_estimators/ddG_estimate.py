@@ -213,6 +213,7 @@ class ddG(Observable):
                                    # that remains after mutation
         self.distribution = distribution
         self.debug = debug # debug flag
+        self.rescale_temperature = False
         if self.debug:
             print("fractions for mutations")
             print(self.fraction)
@@ -433,9 +434,10 @@ class ddG(Observable):
         folding_temperature    : float
                                   Tagret temperature (K), usually experimental folding
                                   temperature of protein.
-
-
         """
+
+         self.rescale_temperature = True
+         self.scaling_facror = float(folding_temperature)/float(experiment_temperature)
         return
 
     def compute_delta_delta_G(self,epsilons,compute_derivative=False,reweighted=True):
