@@ -466,6 +466,8 @@ class ddG(Observable):
         aver_folded = self._get_ensemble_averages(microstates_folded,exp_delta_H_micro_aver,reweighted=reweighted,epsilons=epsilons)
         aver_unfolded = self._get_ensemble_averages(microstates_unfolded,exp_delta_H_micro_aver,reweighted=reweighted,epsilons=epsilons)
         delta_delta_G = -1*np.log(aver_folded) + np.log(aver_unfolded)
+        if self.rescale_temperature:
+            delta_delta_G *= self.scaling_facror
         if compute_derivative:
             derivatives = []
             exp_product_dHm = np.copy(d_H_mutated) #Compute product
@@ -483,6 +485,8 @@ class ddG(Observable):
                 d_delta_G_folded = product_folded/aver_folded - dH_0_folded
                 d_delta_G_unfolded = product_unfolded/aver_unfolded - dH_0_unfolded
                 result = -1*(d_delta_G_folded - d_delta_G_unfolded) #Need to multipy by -1, because all the hamiltonians return -beta*H
+                if self.rescale_temperature:
+                    result *= self.scaling_facror
                 derivatives.append(result)
             return delta_delta_G, derivatives
 
