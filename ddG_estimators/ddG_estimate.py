@@ -436,8 +436,8 @@ class ddG(Observable):
                                   temperature of protein.
         """
 
-         self.rescale_temperature = True
-         self.scaling_facror = float(folding_temperature)/float(experiment_temperature)
+        self.rescale_temperature = True
+        self.scaling_facror = float(folding_temperature)/float(experiment_temperature)
         return
 
     def compute_delta_delta_G(self,epsilons,compute_derivative=False,reweighted=True):
