@@ -419,7 +419,11 @@ def solve_sgd_custom(Qfunc, x0,
     log_file.write("stepsize = {}, \n maxiters = {}, \n batch_number = {}".format(stepsize,maxiters, batch_number))
     log_file.write("gtol = {}, \n alpha = {}, \n lr_decay = {}".format(gtol,alpha, lr_decay))
     log_file.write("num_of_step = {}, \n multiplicator = {}".format(num_of_step,multiplicator))
+<<<<<<< HEAD
     x_new = np.copy(x0)
+=======
+x_new = np.copy(x0)
+>>>>>>> 5001f3e3318818d891f62c04d5ef5d32acd276a2
     param_num = len(x_new) # number of parameters to optimize
     batch_size = param_num//batch_number # minimum number of elements in a batch
     for k in range(maxiters+1):
