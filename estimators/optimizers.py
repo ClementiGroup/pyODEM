@@ -413,12 +413,13 @@ def solve_sgd_custom(Qfunc, x0,
       defines, how step decreases at iteration num_of_step
 
     """
-    print("Starting stochastic gradient descent optimization")
-    print ("Parameters of optimization:")
-    print("stepsize = {}, \n maxiters = {}, \n batch_number = {}".format(stepsize,maxiters, batch_number))
-    print("gtol = {}, \n alpha = {}, \n lr_decay = {}".format(gtol,alpha, lr_decay))
-    print("num_of_step = {}, \n multiplicator = {}".format(num_of_step,multiplicator))
-    x_new = np.copy(x0)
+    log_file = open("optimization_log.txt","wt")
+    log_file.write("Starting stochastic gradient descent optimization")
+    log_file.write("Parameters of optimization:")
+    log_file.write("stepsize = {}, \n maxiters = {}, \n batch_number = {}".format(stepsize,maxiters, batch_number))
+    log_file.write("gtol = {}, \n alpha = {}, \n lr_decay = {}".format(gtol,alpha, lr_decay))
+    log_file.write("num_of_step = {}, \n multiplicator = {}".format(num_of_step,multiplicator))
+x_new = np.copy(x0)
     param_num = len(x_new) # number of parameters to optimize
     batch_size = param_num//batch_number # minimum number of elements in a batch
     for k in range(maxiters+1):
@@ -438,17 +439,19 @@ def solve_sgd_custom(Qfunc, x0,
         Q_value,gradient=Qfunc(x_new)
         gradient += (2*alpha)*(x_new-x0)
         grad_norm = np.linalg.norm(gradient)
-        print("New Q value after update: {}".format(Q_value))
-        print("Norm of the gradient:   {}".format(grad_norm))
-        print("New valuew of the loss function:", Q_value + alpha*sum(np.square(\
+        log_file.write("New Q value after update: {}".format(Q_value))
+        log_file.write("Norm of the gradient:   {}".format(grad_norm))
+        log_file.write("New valuew of the loss function:", Q_value + alpha*sum(np.square(\
 x_new-x0)))
         if grad_norm < gtol:
-            print("Optimization done successfully in  {} steps ".format(k))
+            log_file.write("Optimization done successfully in  {} steps ".format(k))
             break
 
         print("Iteration {} done".format(k))
         if k == maxiters:
-            print("Number of interations exceeded")
+            print("Number of interations exceeded. The last x is recorded")
+            log_file.write("Number of interations exceeded. The last x is recorded")
+            np.savetxt("epsilons_checkpoint.txt",x_new)
             raise FailedToOptimizeException("Number of iteration exceeded",{'iteration': maxiters})
     print(x_new)
     return(x_new)
