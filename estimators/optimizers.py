@@ -441,8 +441,8 @@ def solve_sgd_custom(Qfunc, x0,
         grad_norm = np.linalg.norm(gradient)
         log_file.write("New Q value after update: {}".format(Q_value))
         log_file.write("Norm of the gradient:   {}".format(grad_norm))
-        log_file.write("New valuew of the loss function:", Q_value + alpha*sum(np.square(\
-x_new-x0)))
+        log_file.write("New valuew of the loss function: {}".format(Q_value + alpha*sum(np.square(\
+x_new-x0))))
         if grad_norm < gtol:
             log_file.write("Optimization done successfully in  {} steps ".format(k))
             break
