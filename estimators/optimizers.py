@@ -448,7 +448,7 @@ x_new-x0))))
             break
 
         print("Iteration {} done".format(k))
-        log_file.write(("Iteration {} done \n".format(k))
+        log_file.write("Iteration {} done \n".format(k))
         if k == maxiters:
             print("Number of interations exceeded. The last x is recorded")
             log_file.write("Number of interations exceeded. The last x is recorded \n")
