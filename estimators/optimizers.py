@@ -454,6 +454,7 @@ x_new-x0))))
             log_file.write("Number of interations exceeded. The last x is recorded \n")
             np.savetxt("epsilons_checkpoint.txt",x_new)
             raise FailedToOptimizeException("Number of iteration exceeded",{'iteration': maxiters})
+    log_file.close()
     print(x_new)
     return(x_new)
 
