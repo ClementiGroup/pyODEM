@@ -487,7 +487,7 @@ class ddG(Observable):
         print(aver_folded)
         aver_folded = self._get_ensemble_averages2(microstates_folded,exp_delta_H_micro_aver,reweighted=reweighted,epsilons=epsilons)
         print(aver_folded)
-        assert np.all(np.subtract(self._get_ensemble_averages(microstates_folded,exp_delta_H_micro_aver,reweighted=reweighted,epsilons=epsilons),self._get_ensemble_averages2(microstates_folded,exp_delta_H_micro_aver,reweighted=reweighted,epsilons=epsilons)))<0.00001
+        assert (self._get_ensemble_averages(microstates_folded,exp_delta_H_micro_aver,reweighted=reweighted,epsilons=epsilons)-self._get_ensemble_averages2(microstates_folded,exp_delta_H_micro_aver,reweighted=reweighted,epsilons=epsilons))<0.0000001
         aver_unfolded = self._get_ensemble_averages2(microstates_unfolded,exp_delta_H_micro_aver,reweighted=reweighted,epsilons=epsilons)
         delta_delta_G = -1*np.log(aver_folded) + np.log(aver_unfolded)
         if self.rescale_temperature:
