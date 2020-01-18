@@ -434,7 +434,7 @@ class ddG(Observable):
             distribution = self.distribution
 
         if microstate_averages.ndim == 1:
-            microstates_array = np.array(microstates,dtype=int)
+            microstates_array = np.array(list(microstates))
             ensemble_microstate = microstate_averages[microstates_array]
             ensemble_distribution = distribution[microstates_array]
             average = np.sum(np.multiply(ensemble_microstate,ensemble_distribution))/np.sum(ensemble_distribution)
