@@ -483,8 +483,7 @@ class ddG(Observable):
         H_mutated, d_H_mutated = self._compute_mutated_H(epsilons,compute_derivative=compute_derivative)
         exp_delta_H = np.exp(self._compute_delta_H(H0,H_mutated))
         exp_delta_H_micro_aver = self._get_microstate_averages(exp_delta_H)
-        assert np.all(np.subtract(self._get_ensemble_averages(microstates_folded,exp_delta_H_micro_aver,reweighted=reweighted,epsilons=epsilons),
-        self._get_ensemble_averages2(microstates_folded,exp_delta_H_micro_aver,reweighted=reweighted,epsilons=epsilons)))<0.00001
+        assert np.all(np.subtract(self._get_ensemble_averages(microstates_folded,exp_delta_H_micro_aver,reweighted=reweighted,epsilons=epsilons),self._get_ensemble_averages2(microstates_folded,exp_delta_H_micro_aver,reweighted=reweighted,epsilons=epsilons)))<0.00001
         aver_folded = self._get_ensemble_averages2(microstates_folded,exp_delta_H_micro_aver,reweighted=reweighted,epsilons=epsilons)
         aver_unfolded = self._get_ensemble_averages2(microstates_unfolded,exp_delta_H_micro_aver,reweighted=reweighted,epsilons=epsilons)
         delta_delta_G = -1*np.log(aver_folded) + np.log(aver_unfolded)
