@@ -5,7 +5,7 @@ import numpy as np
 import mdtraj as md
 import pyODEM
 ddG_est_new = pyODEM.ddG_estimators.ddG_estimate
-ml = pODEM.model_loaders
+ml = pyODEM.model_loaders
 
 def _reference_ddG_implementation(trajfile,topfile,stationary_distribution):
     """
@@ -19,17 +19,17 @@ def _reference_ddG_implementation(trajfile,topfile,stationary_distribution):
     pair_2_33_distances = md.compute_distances(trajectory,[[1,32]])[:,0]
 
     def compute_delta_H(r0,factor,epsilon,distances,sigma=0.05):
-    energies = []
-    for distance in distances:
-        energy = (1-factor)*np.exp(-1*(distance-r0)**2/(2*(sigma**2)))
-        energies.append(energy)
-    return energies
+        energies = []
+        for distance in distances:
+            energy = (1-factor)*np.exp(-1*(distance-r0)**2/(2*(sigma**2)))
+            energies.append(energy)
+        return energies
 
     # Temperature of the test trajectory is hard-coded here
     beta = 1000/(8.31446261815324*130)
     def compute_weight(energies):
-    res =  (np.exp(-1*beta*energies))
-    return np.array(res)
+        res =  (np.exp(-1*beta*energies))
+        return np.array(res)
 
     pair_1_30_energy = compute_delta_H(r0=0.550463,factor=0,epsilon=1,distances=pair_1_30_distances)
     pair_1_32_energy = compute_delta_H(r0=0.536207,factor=0.6666,epsilon=1,distances=pair_1_32_distances)
@@ -48,8 +48,8 @@ def _reference_ddG_implementation(trajfile,topfile,stationary_distribution):
 
     folded_state_average = (state0_average*stationary_distribution[0]+ state1_average*stationary_distribution[1])/(stationary_distribution[0]+stationary_distribution[1])
     unfolded_state_average = (state3_average*stationary_distribution[3]+ state4_average*stationary_distribution[4])/(stationary_distribution[3]+stationary_distribution[4])
-    ddG = np.log(unfolded_state_average) - np.log(folded_state_average)
-    beta_ddG = beta*ddG
+    beta_ddG = np.log(1.0*unfolded_state_average/folded_state_average)
+
 
     # Calculate derivative
 
@@ -103,15 +103,6 @@ def _reference_ddG_implementation(trajfile,topfile,stationary_distribution):
     product_exp_dH_mutated_pair_2_33 = np.multiply(weighted_delta_Hamiltonian,dH_mutated_d_pair_2_33)
 
     # compute derivative with respect to epsilon 1_30
-
-    # exponent average
-    state0_average = np.mean(weighted_delta_Hamiltonian[0:4])
-    state1_average = np.mean(weighted_delta_Hamiltonian[4:8])
-    state2_average = np.mean(weighted_delta_Hamiltonian[8:12])
-    state3_average = np.mean(weighted_delta_Hamiltonian[12:16])
-    state4_average = np.mean(weighted_delta_Hamiltonian[16:20])
-    folded_state_average = (state0_average*stationary_distribution[0]+ state1_average*stationary_distribution[1])/(stationary_distribution[0]+stationary_distribution[1])
-    unfolded_state_average = (state3_average*stationary_distribution[3]+ state4_average*stationary_distribution[4])/(stationary_distribution[3]+stationary_distribution[4])
 
     # derivative of initial Hamiltonian average
 
@@ -180,15 +171,6 @@ def _reference_ddG_implementation(trajfile,topfile,stationary_distribution):
 
     # compute derivative with respect to epsilon 1_28
 
-    # exponent average
-    state0_average = np.mean(weighted_delta_Hamiltonian[0:4])
-    state1_average = np.mean(weighted_delta_Hamiltonian[4:8])
-    state2_average = np.mean(weighted_delta_Hamiltonian[8:12])
-    state3_average = np.mean(weighted_delta_Hamiltonian[12:16])
-    state4_average = np.mean(weighted_delta_Hamiltonian[16:20])
-    folded_state_average = (state0_average*stationary_distribution[0]+ state1_average*stationary_distribution[1])/(stationary_distribution[0]+stationary_distribution[1])
-    unfolded_state_average = (state3_average*stationary_distribution[3]+ state4_average*stationary_distribution[4])/(stationary_distribution[3]+stationary_distribution[4])
-
     # derivative of initial Hamiltonian average
 
     state0_dH0_average = np.mean(dH0_d_pair_1_28[0:4])
@@ -211,11 +193,48 @@ def _reference_ddG_implementation(trajfile,topfile,stationary_distribution):
     folded_state_product_average = (state0_product_average*stationary_distribution[0]+ state1_product_average*stationary_distribution[1])/(stationary_distribution[0]+stationary_distribution[1])
     unfolded_state_product_average = (state3_product_average*stationary_distribution[3]+ state4_product_average*stationary_distribution[4])/(stationary_distribution[3]+stationary_distribution[4])
 
+
     d_folded_d_pair_1_28 = folded_state_product_average/folded_state_average - folded_state_dH0_average
     d_unfolded_d_pair_1_28 = unfolded_state_product_average/unfolded_state_average - unfolded_state_dH0_average
     delta_delta_G_derivative_pair_1_28 = d_folded_d_pair_1_28 -  d_unfolded_d_pair_1_28
     beta_delta_delta_G_derivative_pair_1_28 = beta*delta_delta_G_derivative_pair_1_28
-    return (beta_ddG,[beta_delta_delta_G_derivative_pair_1_30,beta_delta_delta_G_derivative_pair_1_32,beta_delta_delta_G_derivative_pair_1_28])
+
+
+    # compute derivative with respect to epsilon 2_33
+
+    # derivative of initial Hamiltonian average
+
+    state0_dH0_average = np.mean(dH0_d_pair_2_33[0:4])
+    state1_dH0_average = np.mean(dH0_d_pair_2_33[4:8])
+    state2_dH0_average = np.mean(dH0_d_pair_2_33[8:12])
+    state3_dH0_average = np.mean(dH0_d_pair_2_33[12:16])
+    state4_dH0_average = np.mean(dH0_d_pair_2_33[16:20])
+
+    folded_state_dH0_average = (state0_dH0_average*stationary_distribution[0]+ state1_dH0_average*stationary_distribution[1])/(stationary_distribution[0]+stationary_distribution[1])
+    unfolded_state_dH0_average = (state3_dH0_average*stationary_distribution[3]+ state4_dH0_average*stationary_distribution[4])/(stationary_distribution[3]+stationary_distribution[4])
+
+    # derivative of mutated hamiltonian times exponent average
+
+    state0_product_average = np.mean(product_exp_dH_mutated_pair_2_33[0:4])
+    state1_product_average = np.mean(product_exp_dH_mutated_pair_2_33[4:8])
+    state2_product_average = np.mean(product_exp_dH_mutated_pair_2_33[8:12])
+    state3_product_average = np.mean(product_exp_dH_mutated_pair_2_33[12:16])
+    state4_product_average = np.mean(product_exp_dH_mutated_pair_2_33[16:20])
+
+    folded_state_product_average = (state0_product_average*stationary_distribution[0]+ state1_product_average*stationary_distribution[1])/(stationary_distribution[0]+stationary_distribution[1])
+    unfolded_state_product_average = (state3_product_average*stationary_distribution[3]+ state4_product_average*stationary_distribution[4])/(stationary_distribution[3]+stationary_distribution[4])
+
+
+    d_folded_d_pair_2_33 = folded_state_product_average/folded_state_average - folded_state_dH0_average
+    d_unfolded_d_pair_2_33 = unfolded_state_product_average/unfolded_state_average - unfolded_state_dH0_average
+    delta_delta_G_derivative_pair_2_33 = d_folded_d_pair_2_33 -  d_unfolded_d_pair_2_33
+    beta_delta_delta_G_derivative_pair_2_33 = beta*delta_delta_G_derivative_pair_2_33
+
+
+    return (beta_ddG,[beta_delta_delta_G_derivative_pair_1_28,
+    beta_delta_delta_G_derivative_pair_1_30,
+    beta_delta_delta_G_derivative_pair_1_32,
+    beta_delta_delta_G_derivative_pair_2_33])
 
 
 
@@ -227,6 +246,7 @@ def test_compute_delta_delta_G():
     test_files_folder = 'test_data'
     trajfile = '{}/sample_traj.xtc'.format(test_files_folder)
     topfile = '{}/ref.pdb'.format(test_files_folder)
+    fraction = np.loadtxt('{}/fraction.txt'.format(test_files_folder))[:,2]
     stationary_distribution = np.loadtxt('{}/stationary_distribution.txt'.format(test_files_folder))
     macrostates = np.loadtxt('{}/macrostates.txt'.format(test_files_folder))
     dtrajs = np.loadtxt('{}/dtrajs.txt'.format(test_files_folder),dtype=int)
@@ -240,10 +260,15 @@ def test_compute_delta_delta_G():
                                                         observable_object=None,
                                                         obs_data=None)
     pmodel.set_temperature(130)  #Hardcoded temperature of the test set
-    obs  = ddG_est_new.ddG(pmodel,data_formatted,macro_states,fraction,dtrajs,stationary_distribution,debug=False)
-    obs.prepare_observables(optimize=True,epsilon-pmodel.get_epsilons())
+    obs  = ddG_est_new.ddG(pmodel,data_formatted,macrostates,fraction,dtrajs,stationary_distribution,debug=False)
+    obs.prepare_observables(optimize=True,epsilon=pmodel.get_epsilons())
     results = obs.compute_delta_delta_G(pmodel.get_epsilons(),compute_derivative=True)
     print(results)
+
+    assert np.abs(reference[0]-results[0]) < 1.0e-7, "beta_DDG deviates from the reference!"
+    for ndx in range(len(reference[1])):
+        assert np.abs(reference[1][ndx]-results[1][ndx]) < 1.0e-7, "Derivative number {} deviates from the reference!".format(ndx)
+
 
 
 if __name__=='__main__':
