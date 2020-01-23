@@ -86,6 +86,7 @@ Functions that should be included in the package:
 
 import numpy as np
 from pyODEM.observables import Observable
+from mpi4py import MPI
 
 # Set of helper functions will go here.
 def compute_ensemble_average(data,dtraj,pi):
@@ -512,6 +513,80 @@ class ddG(Observable):
 
 
         return delta_delta_G
+
+    def compute_delta_delta_G_parallel(self,epsilons,compute_derivative=False,reweighted=True):
+        """
+        The function computes a delta_delta_G of mutation for a particular macrostate.
+        Parameters
+        -----------
+
+        compute_derivative : bool
+                             If true, the function returns also derivative of
+                             deltaG
+        epsilon            : array of array-like object of float
+                             Contains  parameters of the model
+
+        reweighted         :
+        """
+        comm = MPI.COMM_WORLD
+        comm_size = comm.Get_size()
+        rank = comm.Get_rank()
+        print("Size of communicator: {}".format(comm_size))
+        # Find all the  microstates, that correspond to a particular microstate
+        if reweighted:
+             self._reweight_microstates(epsilons)
+        microstates_folded = self._get_microstates(0)
+        microstates_unfolded = self._get_microstates(1)
+        H0,d_H0 = self._compute_H(epsilons,compute_derivative=compute_derivative)
+        H_mutated, d_H_mutated = self._compute_mutated_H(epsilons,compute_derivative=compute_derivative)
+        exp_delta_H = np.exp(self._compute_delta_H(H0,H_mutated))
+        exp_delta_H_micro_aver = self._get_microstate_averages(exp_delta_H)
+        aver_folded = self._get_ensemble_averages(microstates_folded,exp_delta_H_micro_aver,reweighted=reweighted,epsilons=epsilons)
+        aver_unfolded = self._get_ensemble_averages(microstates_unfolded,exp_delta_H_micro_aver,reweighted=reweighted,epsilons=epsilons)
+        delta_delta_G = -1*np.log(aver_folded) + np.log(aver_unfolded)
+        if self.rescale_temperature:
+            delta_delta_G *= self.scaling_facror
+        if compute_derivative:
+            derivatives = []
+            exp_product_dHm = np.copy(d_H_mutated) #Compute product
+            for parameters in range(exp_product_dHm.shape[0]):
+                exp_product_dHm[parameters,:] = np.multiply(exp_product_dHm[parameters,:],exp_delta_H)
+            # Compute microstate averages for
+            aver_exp_product_dHm = self._get_microstate_averages(exp_product_dHm, non_frame_axis=0)
+            aver_d_H0 = self._get_microstate_averages(d_H0, non_frame_axis=0)
+            derivatives = []
+            indexes = []
+            num_of_params = aver_d_H0.shape[1]
+            for parameters in range(num_of_params):
+                if parameters%comm_size != rank:
+                    continue
+                product_folded = self._get_ensemble_averages(microstates_folded,aver_exp_product_dHm[:,parameters],reweighted=True,epsilons=epsilons)
+                product_unfolded = self._get_ensemble_averages(microstates_unfolded,aver_exp_product_dHm[:,parameters],reweighted=True,epsilons=epsilons)
+                dH_0_folded = self._get_ensemble_averages(microstates_folded,aver_d_H0[:,parameters],reweighted=reweighted,epsilons=epsilons)
+                dH_0_unfolded = self._get_ensemble_averages(microstates_unfolded,aver_d_H0[:,parameters],reweighted=reweighted,epsilons=epsilons)
+                d_delta_G_folded = product_folded/aver_folded - dH_0_folded
+                d_delta_G_unfolded = product_unfolded/aver_unfolded - dH_0_unfolded
+                result = -1*(d_delta_G_folded - d_delta_G_unfolded) #Need to multipy by -1, because all the hamiltonians return -beta*H
+                if self.rescale_temperature:
+                    result *= self.scaling_facror
+                derivatives.append(result)
+                indexes.append(parameters)
+            derivatives = np.array(derivatives)
+            indexes = np.array(indexes,dtype=int)
+            if rank == 0:
+                derivatives_final = np.zeros(num_of_params)
+                indexes_final = np.zeros(num_of_params,dtype=int)
+            comm.Gather(derivatives,derivatives_final,root=0) # Now derivatives_final contains
+            comm.Gather(indexes,indexes_final,root=0)
+            comm.Barrier()
+            if rank == 0:
+                derivatives_final = derivatives_final[indexes_final]
+
+            return delta_delta_G, derivatives_final
+
+
+        return delta_delta_G
+
 
     def compute_observation(self,epsilons):
         """
