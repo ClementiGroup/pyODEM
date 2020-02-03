@@ -461,7 +461,7 @@ class ddG(Observable):
         self.scaling_facror = float(folding_temperature)/float(experiment_temperature)
         return
 
-    def compute_delta_delta_G(self,epsilons,compute_derivative=False,reweighted=True):
+    def compute_delta_delta_G(self,epsilons,compute_derivative=False,reweighted=True,grad_parameters=None):
         """
         The function computes a delta_delta_G of mutation for a particular macrostate.
         Parameters
@@ -498,23 +498,37 @@ class ddG(Observable):
             aver_exp_product_dHm = self._get_microstate_averages(exp_product_dHm, non_frame_axis=0)
             aver_d_H0 = self._get_microstate_averages(d_H0, non_frame_axis=0)
             derivatives = []
-            for parameters in range(aver_d_H0.shape[1]):
-                product_folded = self._get_ensemble_averages(microstates_folded,aver_exp_product_dHm[:,parameters],reweighted=True,epsilons=epsilons)
-                product_unfolded = self._get_ensemble_averages(microstates_unfolded,aver_exp_product_dHm[:,parameters],reweighted=True,epsilons=epsilons)
-                dH_0_folded = self._get_ensemble_averages(microstates_folded,aver_d_H0[:,parameters],reweighted=reweighted,epsilons=epsilons)
-                dH_0_unfolded = self._get_ensemble_averages(microstates_unfolded,aver_d_H0[:,parameters],reweighted=reweighted,epsilons=epsilons)
-                d_delta_G_folded = product_folded/aver_folded - dH_0_folded
-                d_delta_G_unfolded = product_unfolded/aver_unfolded - dH_0_unfolded
-                result = -1*(d_delta_G_folded - d_delta_G_unfolded) #Need to multipy by -1, because all the hamiltonians return -beta*H
-                if self.rescale_temperature:
-                    result *= self.scaling_facror
-                derivatives.append(result)
+            if grad_parameters = None
+                for parameters in range(aver_d_H0.shape[1]):
+                    product_folded = self._get_ensemble_averages(microstates_folded,aver_exp_product_dHm[:,parameters],reweighted=True,epsilons=epsilons)
+                    product_unfolded = self._get_ensemble_averages(microstates_unfolded,aver_exp_product_dHm[:,parameters],reweighted=True,epsilons=epsilons)
+                    dH_0_folded = self._get_ensemble_averages(microstates_folded,aver_d_H0[:,parameters],reweighted=reweighted,epsilons=epsilons)
+                    dH_0_unfolded = self._get_ensemble_averages(microstates_unfolded,aver_d_H0[:,parameters],reweighted=reweighted,epsilons=epsilons)
+                    d_delta_G_folded = product_folded/aver_folded - dH_0_folded
+                    d_delta_G_unfolded = product_unfolded/aver_unfolded - dH_0_unfolded
+                    result = -1*(d_delta_G_folded - d_delta_G_unfolded) #Need to multipy by -1, because all the hamiltonians return -beta*H
+                    if self.rescale_temperature:
+                        result *= self.scaling_facror
+                    derivatives.append(result)
+            else:
+                for parameters in grad_parameters:
+                    product_folded = self._get_ensemble_averages(microstates_folded,aver_exp_product_dHm[:,parameters],reweighted=True,epsilons=epsilons)
+                    product_unfolded = self._get_ensemble_averages(microstates_unfolded,aver_exp_product_dHm[:,parameters],reweighted=True,epsilons=epsilons)
+                    dH_0_folded = self._get_ensemble_averages(microstates_folded,aver_d_H0[:,parameters],reweighted=reweighted,epsilons=epsilons)
+                    dH_0_unfolded = self._get_ensemble_averages(microstates_unfolded,aver_d_H0[:,parameters],reweighted=reweighted,epsilons=epsilons)
+                    d_delta_G_folded = product_folded/aver_folded - dH_0_folded
+                    d_delta_G_unfolded = product_unfolded/aver_unfolded - dH_0_unfolded
+                    result = -1*(d_delta_G_folded - d_delta_G_unfolded) #Need to multipy by -1, because all the hamiltonians return -beta*H
+                    if self.rescale_temperature:
+                        result *= self.scaling_facror
+                    derivatives.append(result)
+
             return delta_delta_G, derivatives
 
 
         return delta_delta_G
 
-    def compute_delta_delta_G_parallel(self,epsilons,compute_derivative=False,reweighted=True):
+    def compute_delta_delta_G_parallel(self,epsilons,compute_derivative=False,reweighted=True,grad_parameters=None):
         """
         The function computes a delta_delta_G of mutation for a particular macrostate.
         Parameters
@@ -588,10 +602,10 @@ class ddG(Observable):
         return delta_delta_G
 
 
-    def compute_observation(self,epsilons):
+    def compute_observation(self,epsilons,grad_parameters=None):
         """
         The function returns observed values of delta_delta_G and
          corresponding derivatives
         """
 
-        return self._compute_delta_delta_G(epsilons,compute_derivative=True)
+        return self._compute_delta_delta_G(epsilons,compute_derivative=True,grad_parameters=grad_parameters)
