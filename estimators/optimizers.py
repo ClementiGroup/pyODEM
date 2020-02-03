@@ -460,6 +460,87 @@ x_new-x0))))
     print(x_new)
     return(x_new)
 
+def solve_sgd_fast(Qfunc, x0,
+                     stepsize=0.001,
+                     maxiters=60,
+                     batch_number=1,
+                     gtol = 1.0e-5,
+                     alpha = 0.0,
+                     lr_decay = True,
+                     num_of_step = 200,
+                     multiplicator = 0.70):
+
+    """ Solve using stochastic gradent descent.
+    Q function should support calculation of gradient for a subset of
+    parameters
+
+    Arguments:
+    ----------
+   Qfunc : function
+       function for computing loss function and gradient
+   x0    : list
+       list of model parameters
+   stepsize : float
+       learning rate. Kept fixed  during the  optimization
+  maxiters  : int
+     maximum number of iterations
+  batch_number : int
+       number of batches to devide  parameter space
+  alpha  : float
+      regularization parameter
+  lr_decay : bool, default True
+      defines, whether learning rate decay is used
+  num_of_step : int, default 200
+      step, at which decay is introduced
+  multiplicator : float default 0.70
+      defines, how step decreases at iteration num_of_step
+
+    """
+    log_file = open("optimization_log.txt","wt")
+    log_file.write("Starting stochastic gradient descent optimization \n")
+    log_file.write("Parameters of optimization: \n")
+    log_file.write("stepsize = {}, \n maxiters = {}, \n batch_number = {} \n".format(stepsize,maxiters, batch_number))
+    log_file.write("gtol = {}, \n alpha = {}, \n lr_decay = {} \n".format(gtol,alpha, lr_decay))
+    log_file.write("num_of_step = {}, \n multiplicator = {} \n".format(num_of_step,multiplicator))
+    x_new = np.copy(x0)
+    param_num = len(x_new) # number of parameters to optimize
+    batch_size = param_num//batch_number # minimum number of elements in a batch
+    for k in range(maxiters+1):
+        labels = np.random.permutation(param_num) # Generates list of elements. Indexed from 0.
+        if k%num_of_step==0:
+            stepsize = multiplicator*stepsize
+        for i in range(0,param_num,batch_size):  #loop over batches.
+            #iterations within one epoch. Q-function should be able to take
+            # Full set of parameters, labels, and return Q-function value and
+            # gradients with respect two
+            batch_label = labels[i:i+batch_size]
+            Q_value,batch_grad = Qfunc(x_new,gradients = batch_grad)
+            batch_grad += (2*alpha)*(x_new[batch_label]-x0[batch_label])  #Correct the gradient
+            step = stepsize*batch_grad
+            x_new[batch_label] -= step
+        grad_norm = np.linalg.norm(gradient)
+        log_file.write("New Q value after update: {} \n".format(Q_value))
+        print("New Q value after update: {} \n".format(Q_value))
+        log_file.write("Norm of the gradient:   {} \n".format(grad_norm))
+        print("Norm of the gradient:   {} \n".format(grad_norm))
+        log_file.write("New valuew of the loss function: {} \n".format(Q_value + alpha*sum(np.square(\
+x_new-x0))))
+        if grad_norm < gtol:
+            log_file.write("Optimization done successfully in  {} steps \n".format(k))
+            break
+
+        print("Iteration {} done".format(k))
+        log_file.write("Iteration {} done \n".format(k))
+        if k == maxiters:
+            print("Number of interations exceeded. The last x is recorded")
+            log_file.write("Number of interations exceeded. The last x is recorded \n")
+            np.savetxt("epsilons_checkpoint.txt",x_new)
+            raise FailedToOptimizeException("Number of iteration exceeded",{'iteration': maxiters})
+    log_file.close()
+    print(x_new)
+    return(x_new)
+
+
 
 #### dictionary of all the functions ####
 function_dictionary = {"simplex":solve_simplex}
