@@ -498,7 +498,7 @@ class ddG(Observable):
             aver_exp_product_dHm = self._get_microstate_averages(exp_product_dHm, non_frame_axis=0)
             aver_d_H0 = self._get_microstate_averages(d_H0, non_frame_axis=0)
             derivatives = []
-            if grad_parameters = None
+            if grad_parameters == None:
                 for parameters in range(aver_d_H0.shape[1]):
                     product_folded = self._get_ensemble_averages(microstates_folded,aver_exp_product_dHm[:,parameters],reweighted=True,epsilons=epsilons)
                     product_unfolded = self._get_ensemble_averages(microstates_unfolded,aver_exp_product_dHm[:,parameters],reweighted=True,epsilons=epsilons)
