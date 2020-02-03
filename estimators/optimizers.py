@@ -514,7 +514,7 @@ def solve_sgd_fast(Qfunc, x0,
             # Full set of parameters, labels, and return Q-function value and
             # gradients with respect two
             batch_label = labels[i:i+batch_size]
-            Q_value,batch_grad = Qfunc(x_new,gradients = batch_grad)
+            Q_value,batch_grad = Qfunc(x_new,grad_parameters = batch_label)
             batch_grad += (2*alpha)*(x_new[batch_label]-x0[batch_label])  #Correct the gradient
             step = stepsize*batch_grad
             x_new[batch_label] -= step
