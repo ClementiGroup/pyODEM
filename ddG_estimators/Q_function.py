@@ -41,18 +41,27 @@ class Q_function():
     def _compute_z_score(self,calculated_value,std,observed_value):
         return (calculated_value-observed_value)/std
 
-    def compute_log_Q(self,epsilons):
+    def compute_log_Q(self,epsilons,grad_parameters=None):
         """
         Method copmutes -logQ and d(-logQ)/d(epsilon).
         At this point, only logarithmic function is implemented
+        Parameters
+        ----------
+        epsilons : 1D  numpy array of floats
+         set of model parameters
+        grad_parameters
+        numpy array of integer indexes. Each index
         """
         negative_lnQ = 0
-        derivative_negative_lnQ = np.zeros(epsilons.shape[0])
+        if grad_parameters == None:
+            derivative_negative_lnQ = np.zeros(epsilons.shape[0])
+        else:
+             derivative_negative_lnQ = np.zeros(grad_parameters.shape[0])
 
         for observable_ndx in range(self.num_of_ddG):
             observed_value = self.ddG_observed_values[observable_ndx]
             std = self.ddG_std[observable_ndx]
-            value, derivative = self.ddG_observables[observable_ndx].compute_delta_delta_G(epsilons,compute_derivative=True)
+            value, derivative = self.ddG_observables[observable_ndx].compute_delta_delta_G(epsilons,compute_derivative=True,grad_parameters=grad_parameters)
             z_score = self._compute_z_score(value,std, observed_value)
             negative_lnQ +=  0.5*(z_score)**2
             derivative_negative_lnQ +=  np.multiply(z_score/std,derivative)
