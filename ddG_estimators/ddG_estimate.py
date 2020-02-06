@@ -484,8 +484,8 @@ class ddG(Observable):
         H_mutated, d_H_mutated = self._compute_mutated_H(epsilons,compute_derivative=compute_derivative)
         exp_delta_H = np.exp(self._compute_delta_H(H0,H_mutated))
         exp_delta_H_micro_aver = self._get_microstate_averages(exp_delta_H)
-        aver_folded = self._get_ensemble_averages(microstates_folded,exp_delta_H_micro_aver,reweighted=reweighted,epsilons=epsilons)
-        aver_unfolded = self._get_ensemble_averages(microstates_unfolded,exp_delta_H_micro_aver,reweighted=reweighted,epsilons=epsilons)
+        aver_folded = self._get_ensemble_averages2(microstates_folded,exp_delta_H_micro_aver,reweighted=reweighted,epsilons=epsilons)
+        aver_unfolded = self._get_ensemble_averages2(microstates_unfolded,exp_delta_H_micro_aver,reweighted=reweighted,epsilons=epsilons)
         delta_delta_G = -1*np.log(aver_folded) + np.log(aver_unfolded)
         if self.rescale_temperature:
             delta_delta_G *= self.scaling_facror
@@ -498,12 +498,12 @@ class ddG(Observable):
             aver_exp_product_dHm = self._get_microstate_averages(exp_product_dHm, non_frame_axis=0)
             aver_d_H0 = self._get_microstate_averages(d_H0, non_frame_axis=0)
             derivatives = []
-            if grad_parameters == None:
+            if grad_parameters is None:
                 for parameters in range(aver_d_H0.shape[1]):
-                    product_folded = self._get_ensemble_averages(microstates_folded,aver_exp_product_dHm[:,parameters],reweighted=True,epsilons=epsilons)
-                    product_unfolded = self._get_ensemble_averages(microstates_unfolded,aver_exp_product_dHm[:,parameters],reweighted=True,epsilons=epsilons)
-                    dH_0_folded = self._get_ensemble_averages(microstates_folded,aver_d_H0[:,parameters],reweighted=reweighted,epsilons=epsilons)
-                    dH_0_unfolded = self._get_ensemble_averages(microstates_unfolded,aver_d_H0[:,parameters],reweighted=reweighted,epsilons=epsilons)
+                    product_folded = self._get_ensemble_averages2(microstates_folded,aver_exp_product_dHm[:,parameters],reweighted=True,epsilons=epsilons)
+                    product_unfolded = self._get_ensemble_averages2(microstates_unfolded,aver_exp_product_dHm[:,parameters],reweighted=True,epsilons=epsilons)
+                    dH_0_folded = self._get_ensemble_averages2(microstates_folded,aver_d_H0[:,parameters],reweighted=reweighted,epsilons=epsilons)
+                    dH_0_unfolded = self._get_ensemble_averages2(microstates_unfolded,aver_d_H0[:,parameters],reweighted=reweighted,epsilons=epsilons)
                     d_delta_G_folded = product_folded/aver_folded - dH_0_folded
                     d_delta_G_unfolded = product_unfolded/aver_unfolded - dH_0_unfolded
                     result = -1*(d_delta_G_folded - d_delta_G_unfolded) #Need to multipy by -1, because all the hamiltonians return -beta*H
@@ -512,10 +512,10 @@ class ddG(Observable):
                     derivatives.append(result)
             else:
                 for parameters in grad_parameters:
-                    product_folded = self._get_ensemble_averages(microstates_folded,aver_exp_product_dHm[:,parameters],reweighted=True,epsilons=epsilons)
-                    product_unfolded = self._get_ensemble_averages(microstates_unfolded,aver_exp_product_dHm[:,parameters],reweighted=True,epsilons=epsilons)
-                    dH_0_folded = self._get_ensemble_averages(microstates_folded,aver_d_H0[:,parameters],reweighted=reweighted,epsilons=epsilons)
-                    dH_0_unfolded = self._get_ensemble_averages(microstates_unfolded,aver_d_H0[:,parameters],reweighted=reweighted,epsilons=epsilons)
+                    product_folded = self._get_ensemble_averages2(microstates_folded,aver_exp_product_dHm[:,parameters],reweighted=True,epsilons=epsilons)
+                    product_unfolded = self._get_ensemble_averages2(microstates_unfolded,aver_exp_product_dHm[:,parameters],reweighted=True,epsilons=epsilons)
+                    dH_0_folded = self._get_ensemble_averages2(microstates_folded,aver_d_H0[:,parameters],reweighted=reweighted,epsilons=epsilons)
+                    dH_0_unfolded = self._get_ensemble_averages2(microstates_unfolded,aver_d_H0[:,parameters],reweighted=reweighted,epsilons=epsilons)
                     d_delta_G_folded = product_folded/aver_folded - dH_0_folded
                     d_delta_G_unfolded = product_unfolded/aver_unfolded - dH_0_unfolded
                     result = -1*(d_delta_G_folded - d_delta_G_unfolded) #Need to multipy by -1, because all the hamiltonians return -beta*H
