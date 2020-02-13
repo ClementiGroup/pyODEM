@@ -53,7 +53,7 @@ class Q_function():
         numpy array of integer indexes. Each index
         """
         negative_lnQ = 0
-        if grad_parameters == None:
+        if grad_parameters is None:
             derivative_negative_lnQ = np.zeros(epsilons.shape[0])
         else:
              derivative_negative_lnQ = np.zeros(grad_parameters.shape[0])
