@@ -254,7 +254,44 @@ class ddG_linear(Observable):
         self.scaling_facror = float(folding_temperature)/float(experiment_temperature)
         return
 
-    def compute_delta_G(self, macrostate, corrected_epsilons, distribution, compute_derivative=False):
+    def compute_delta_G(self,
+                        macrostate,
+                        corrected_epsilons,
+                        distribution,
+                        compute_derivative=False):
+        """
+        The function computes delta_G and corresponding derivative for
+         a particular ensemble.
+
+         Parameters
+         ----------
+
+         macrostate : str {'folded' or 'unfolded'}
+         A name of ensemble, for which calculations will be performed.
+
+         corrected_epsilons : 1D numpy  array
+
+         Model parameters, multiplied by NEGATIVE fraction of contacts,
+          that were deleted upon mutation
+
+          distribution :  1D numpy array
+          equilibrium distribution to use for calculation. If reweighting is
+          required, the distribution put here should already be reweighted.
+
+          compute_derivative : bool
+          If True, derivative is returend.
+
+          Returns
+          -------
+
+         dG : float
+         delta_G upon mutation for a particular ensemble
+
+         derivative : 1D numpy arrray
+         derivative of delta_G with respect to model parameters
+
+        """
+
         microstate_sets = {'folded': self.folded_states, 'unfolded': self.unfolded_states}
 
         microstates = microstate_sets[macrostate]
