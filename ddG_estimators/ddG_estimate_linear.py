@@ -97,7 +97,8 @@ class ddG_linear(Observable):
     mutational delta delta G value. It works when Hamiltonian linearly depends on
     parameters.
     The class inherits from pyODEM observable
-    object.
+    object. It is optimized to simultaneously perform calculations for
+    all the mutants.
     """
 
     def __init__(self, model, data, partition, fraction, dtrajs, distribution, debug=False):
@@ -124,10 +125,11 @@ class ddG_linear(Observable):
         """
         self.type = 'ddG'
         self.model = model
-        self.fraction = fraction  # list, that defines fractions of contacts,
+        self.fraction = np.array(fraction)  # list, that defines fractions of contacts,
         # that remains after mutation
         # Negative fraction of delated contacts (Negative for calculation simplification)
-        self.deleted_negative = fraction - 1
+        self.mask = self._get_mask()
+        self.deleted_negative = fraction[self.mask] - 1
         self.distribution = distribution
         self.debug = debug  # debug flag
         self.rescale_temperature = False
@@ -158,10 +160,18 @@ class ddG_linear(Observable):
             state = dictionary['index']
             values = np.array(dictionary['data'])
             _, depsilons = self.model.get_potentials_epsilon(values)
-            self.Q.append(depsilons(epsilon))
+            self.Q.append(np.array(depsilons(epsilon)))
         if self.debug:
             print("Q-functions")
             print(self.Q)
+
+    def _get_mask(self):
+        """
+        The function returns indexes of the parameters, that are affected by the
+        mutation. Only those parameters need to be included in the calculation of ddG
+        """
+        mask = np.transpose(np.argwhere(self.fraction < 0.99999999))[0]
+        return mask
 
     def _get_microstates(self, index, dtrajs, partition):
         """
@@ -302,7 +312,7 @@ class ddG_linear(Observable):
             mean_products = []
         for microstate in microstates:
             Q_microstate = self.Q[microstate]
-            microstate_delta_H = np.dot(corrected_epsilons, Q_microstate)
+            microstate_delta_H = np.dot(corrected_epsilons, Q_microstate[self.mask])
             microstate_exp_delta_H = np.exp(microstate_delta_H)
             mean_microstate_exp_delta_H = np.mean(microstate_exp_delta_H)
             mean_exp_delta_H.append(mean_microstate_exp_delta_H)
@@ -349,7 +359,7 @@ class ddG_linear(Observable):
             distribution = self.distribution
 
         # exponent exp(-beta*delta_H) for folded state.
-        corrected_epsilons = np.multiply(epsilons, self.deleted_negative)
+        corrected_epsilons = np.multiply(epsilons[self.mask], self.deleted_negative)
         # All the analysis  required for folded microstates. Done in one
         # place to reduce unnecessary repeating loops.
         if compute_derivative:
