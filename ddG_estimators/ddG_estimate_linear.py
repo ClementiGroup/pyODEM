@@ -100,7 +100,7 @@ class ddG_linear(Observable):
     object.
     """
 
-    def __init__(self, model, data, partition, fraction,  distribution, dtrajs, debug=False):
+    def __init__(self, model, data, partition, fraction, dtrajs, distribution, debug=False):
         """Initialize object.
         During initialization, data are converted into Q factor.
         Parameters
