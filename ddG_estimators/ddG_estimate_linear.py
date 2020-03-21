@@ -346,7 +346,7 @@ class ddG_linear(Observable):
 
         return dG
 
-    def compute_delta_delta_G(self, epsilons, compute_derivative=False, reweighted=True):
+    def compute_delta_delta_G(self, epsilons, compute_derivative=False, reweighted=True, grad_parameters=None):
         """
         The function computes a delta_delta_G of mutation for a particular macrostate.
         Parameters
