@@ -327,7 +327,8 @@ def test_compute_delta_delta_G_linear():
                                                                observable_object=None,
                                                                obs_data=None)
     pmodel.set_temperature(130)  # Hardcoded temperature of the test set
-    obs = ddG_est_linear.ddG_linear(pmodel, data_formatted, macrostates,
+    Q_energy_terms = ddG_est_linear.compute_Q(pmodel, data_formatted)
+    obs = ddG_est_linear.ddG_linear(pmodel, Q_energy_terms, macrostates,
                                     fraction, dtrajs, stationary_distribution, debug=False)
     obs.prepare_observables(optimize=True, epsilon=pmodel.get_epsilons())
     results = obs.compute_delta_delta_G(pmodel.get_epsilons(), compute_derivative=True)
