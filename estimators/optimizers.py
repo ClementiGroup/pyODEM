@@ -31,6 +31,8 @@ import numpy as np
 import scipy.optimize as optimize
 
 #### CUSTOM ERROR MESSAGES ####
+
+
 class FailedToOptimizeException(Exception):
     def __init__(self, method, relevant_parameters):
         message = "%s failed to optimize." % method
@@ -40,6 +42,8 @@ class FailedToOptimizeException(Exception):
         super(FailedToOptimizeException, self).__init__(message)
 
 #### SCIPY OPTIMIZER WRAPPERS ####
+
+
 def solve_simplex(Qfunc, x0, tol=None):
     """ Optimizes a function using the scipy siplex method.
 
@@ -64,23 +68,27 @@ def solve_simplex(Qfunc, x0, tol=None):
     optimal = optimize.minimize(Qfunc, x0, method="Nelder-Mead", tol=tol)
 
     if not optimal.success == True:
-        terms = {"message":optimal.message}
+        terms = {"message": optimal.message}
         raise FailedToOptimizeException("simplex", terms)
 
     return optimal.x
+
 
 def solve_cg(Qfunc, x0, norm=1, gtol=10**-5, bounds=None, tol=None):
     """ use the scipy.optimize.minimize, method=CG """
 
     if bounds is None:
-        optimal = optimize.minimize(Qfunc, x0, jac=True, method="CG", tol=tol, options={'norm':norm, 'gtol':gtol})
+        optimal = optimize.minimize(Qfunc, x0, jac=True, method="CG",
+                                    tol=tol, options={'norm': norm, 'gtol': gtol})
     else:
-        optimal = optimize.minimize(Qfunc, x0, jac=True, method="CG", tol=tol, options={'norm':norm, 'gtol':gtol}, bounds=bounds)
+        optimal = optimize.minimize(Qfunc, x0, jac=True, method="CG", tol=tol, options={
+                                    'norm': norm, 'gtol': gtol}, bounds=bounds)
     if not optimal.success == True:
-        terms = {"message":optimal.message}
+        terms = {"message": optimal.message}
         raise FailedToOptimizeException("Conjugate-Gradient", terms)
 
     return optimal.x
+
 
 def solve_bfgs(Qfunc, x0, bounds=None, gtol=None, ftol=None, tol=None, maxiter=10000):
     """ Use the scipy.optimize.minimize (bfgs) method """
@@ -88,22 +96,25 @@ def solve_bfgs(Qfunc, x0, bounds=None, gtol=None, ftol=None, tol=None, maxiter=1
     if ftol is None and gtol is None:
         # default termination criterion
         gtol = 10 ** -5
-    options_dictionary = {'maxiter':maxiter}
+    options_dictionary = {'maxiter': maxiter}
     if ftol is not None:
         options_dictionary['ftol'] = ftol
     if gtol is not None:
         options_dictionary['gtol'] = gtol
 
     if bounds is None:
-        optimal = optimize.minimize(Qfunc, x0, method="L-BFGS-B", jac=True, tol=tol, options=options_dictionary)
+        optimal = optimize.minimize(Qfunc, x0, method="L-BFGS-B", jac=True,
+                                    tol=tol, options=options_dictionary)
     else:
-        optimal = optimize.minimize(Qfunc, x0, method="L-BFGS-B", jac=True, bounds=bounds, tol=tol, options=options_dictionary)
+        optimal = optimize.minimize(Qfunc, x0, method="L-BFGS-B", jac=True,
+                                    bounds=bounds, tol=tol, options=options_dictionary)
 
     if not optimal.success == True:
-        terms = {"message":optimal.message}
+        terms = {"message": optimal.message}
         raise FailedToOptimizeException("BFGS", terms)
 
     return optimal.x
+
 
 def solve_annealing(Qfunc, x0, ntries=1000, scale=0.2, Tbarrier=200):
     """ Use the scipy basinhopping method """
@@ -113,11 +124,14 @@ def solve_annealing(Qfunc, x0, ntries=1000, scale=0.2, Tbarrier=200):
         else:
             return True
 
-    optimal = optimize.basinhopping(Qfunc, x0, niter=ntries, T=Tbarrier, stepsize=scale, accept_test=test_bounds, interval=100)
+    optimal = optimize.basinhopping(Qfunc, x0, niter=ntries, T=Tbarrier,
+                                    stepsize=scale, accept_test=test_bounds, interval=100)
 
     return optimal.x
 
 #### CUSTOM METHODS ####
+
+
 def solve_simplex_global(Qfunc, x0, ntries=0):
     """ Attempts to find global minima using solve_simplex()
 
@@ -133,20 +147,20 @@ def solve_simplex_global(Qfunc, x0, ntries=0):
         array(float): Array of optimal values of epsilons found.
 
     """
-    #best found epsilons so far
+    # best found epsilons so far
     out_eps = solve_simplex(Qfunc, x0)
-    #best found Q so far
-    out_Q  = Qfunc(out_eps)
-    #starting minima to search around.
+    # best found Q so far
+    out_Q = Qfunc(out_eps)
+    # starting minima to search around.
     start_eps = np.copy(out_eps)
 
-    #check for global minima near found minima if ntries >0
+    # check for global minima near found minima if ntries >0
     if not ntries <= 0:
         print("Searching for a global minima. Trying %d times." % ntries)
         num_eps = np.shape(x0)[0]
         for i in range(ntries):
-            #generate random +/- perturbation to local minima found with
-            #uniform distribution from -1 to 1'
+            # generate random +/- perturbation to local minima found with
+            # uniform distribution from -1 to 1'
             rand = np.random.rand(num_eps)
             for j in range(num_eps):
                 if np.random.rand(1)[0] < 0.5:
@@ -161,7 +175,7 @@ def solve_simplex_global(Qfunc, x0, ntries=0):
             except FailedToOptimizeException:
                 print("Epsilons failed to optimize. Try another.")
 
-            #save if new found func Q value is better than the rest
+            # save if new found func Q value is better than the rest
             if out_Q > optimQ:
                 out_eps = optime
                 print("found better global Q")
@@ -173,12 +187,14 @@ def solve_simplex_global(Qfunc, x0, ntries=0):
 
     return out_eps
 
+
 def solve_annealing_experimental(Qfunc, x0, ntries=1000, scale=0.2, Tbarrier=200):
     """ Experimental annealing methods for testing purposes only """
     numparams = np.shape(x0)[0]
+
     def take_step_custom(x):
         perturbation = np.array([random.choice([-0.1, 0.1]) for i in range(numparams)])
-        perturbation[np.where(np.random.rand(numparams)<0.8)] = 0
+        perturbation[np.where(np.random.rand(numparams) < 0.8)] = 0
         return x + perturbation
 
     def test_bounds(f_new=None, x_new=None, f_old=None, x_old=None):
@@ -187,11 +203,13 @@ def solve_annealing_experimental(Qfunc, x0, ntries=1000, scale=0.2, Tbarrier=200
         else:
             return True
 
-    optimal = optimize.basinhopping(Qfunc, x0, niter=ntries, T=Tbarrier, accept_test=test_bounds, take_step=take_step_custom)
+    optimal = optimize.basinhopping(Qfunc, x0, niter=ntries, T=Tbarrier,
+                                    accept_test=test_bounds, take_step=take_step_custom)
 
     return optimal.x
 
-def solve_annealing_custom(Qfunc, x0,  ntries=1000, scale=0.2, stuck=100, bounds=[-10,10]):
+
+def solve_annealing_custom(Qfunc, x0,  ntries=1000, scale=0.2, stuck=100, bounds=[-10, 10]):
     """ Custom stochastic method
 
     Currently perturbs randomly and steps downhill.
@@ -200,7 +218,7 @@ def solve_annealing_custom(Qfunc, x0,  ntries=1000, scale=0.2, stuck=100, bounds
 
     numparams = np.shape(x0)[0]
 
-    #sort bounds so the smallest is first
+    # sort bounds so the smallest is first
     if not np.shape(bounds)[0] == 2:
         bounds = [-10, 10]
         print("Invalid bounds, setting to default of (-10,10)")
@@ -209,7 +227,7 @@ def solve_annealing_custom(Qfunc, x0,  ntries=1000, scale=0.2, stuck=100, bounds
     use_bounds.append(np.min(bounds))
     use_bounds.append(np.max(bounds))
 
-    #current vals
+    # current vals
     Qval = Qfunc(x0)
     xval = x0
     #global vals
@@ -217,10 +235,10 @@ def solve_annealing_custom(Qfunc, x0,  ntries=1000, scale=0.2, stuck=100, bounds
     minQ = Qval
     for i in range(ntries):
         perturbation = np.array([random.choice([-0.1, 0.1]) for i in range(numparams)])
-        perturbation[np.where(np.random.rand(numparams)<0.8)] = 0
+        perturbation[np.where(np.random.rand(numparams) < 0.8)] = 0
         xnext = xval+perturbation
-        xnext[xnext<use_bounds[0]] = use_bounds[0]
-        xnext[xnext>use_bounds[1]] = use_bounds[1]
+        xnext[xnext < use_bounds[0]] = use_bounds[0]
+        xnext[xnext > use_bounds[1]] = use_bounds[1]
 
         Qnext = Qfunc(xnext)
 
@@ -234,10 +252,10 @@ def solve_annealing_custom(Qfunc, x0,  ntries=1000, scale=0.2, stuck=100, bounds
 
     for i in range(ntries/10):
         perturbation = np.array([random.uniform(-0.1, 0.1) for i in range(numparams)])
-        perturbation[np.where(np.random.rand(numparams)<0.8)] = 0
+        perturbation[np.where(np.random.rand(numparams) < 0.8)] = 0
         xnext = xval+perturbation
-        xnext[xnext<use_bounds[0]] = use_bounds[0]
-        xnext[xnext>use_bounds[1]] = use_bounds[1]
+        xnext[xnext < use_bounds[0]] = use_bounds[0]
+        xnext[xnext > use_bounds[1]] = use_bounds[1]
         Qnext = Qfunc(xnext)
 
         if Qnext < Qval:
@@ -251,6 +269,7 @@ def solve_annealing_custom(Qfunc, x0,  ntries=1000, scale=0.2, stuck=100, bounds
 
     return minima
 
+
 def solve_newton_step_custom(Qfunc, x0, stepsize=1.0, maxiters=200, proximity=1.0, qstop=1.0):
     """ Solve by taking a newton step """
 
@@ -260,7 +279,7 @@ def solve_newton_step_custom(Qfunc, x0, stepsize=1.0, maxiters=200, proximity=1.
     qval, qderiv = Qfunc(xval)
     while go:
         count += 1
-        target =  -qderiv
+        target = -qderiv
         step = target - xval
         if np.linalg.norm(step) > stepsize:
             step *= (stepsize/np.linalg.norm(step))
@@ -271,10 +290,10 @@ def solve_newton_step_custom(Qfunc, x0, stepsize=1.0, maxiters=200, proximity=1.
         xval = xval + step
         print("Current Q Value:")
         print(qval)
-        #print "moving to:"
-        #print xval
+        # print "moving to:"
+        # print xval
 
-        #Find an optimal step size
+        # Find an optimal step size
         go_find_step = True
         go_find_step_count = 0
         while go_find_step:
@@ -299,7 +318,7 @@ def solve_newton_step_custom(Qfunc, x0, stepsize=1.0, maxiters=200, proximity=1.
             print("Going along line")
             qval, qderiv = Qfunc(xval)
             if qval > qold:
-                go_along_line = False #started going up hill
+                go_along_line = False  # started going up hill
                 xval -= step
             else:
                 qold = qval
@@ -327,24 +346,24 @@ def solve_one_step(Qfunc, x0, stepsize=1.0, bounds=None):
     qval, qderiv = Qfunc(xval)
     print("Starting Value for Q:")
     print(qval)
-    #print np.min(np.abs(qderiv))
-    #print np.max(np.abs(qderiv))
+    # print np.min(np.abs(qderiv))
+    # print np.max(np.abs(qderiv))
     qold = qval
     target = -qderiv
     step = target - xval
     if np.linalg.norm(step) > stepsize:
         step *= (stepsize/np.linalg.norm(step))
-    #print np.min(np.abs(step))
-    #print np.max(np.abs(step))
-    #detemrine bounds
+    # print np.min(np.abs(step))
+    # print np.max(np.abs(step))
+    # detemrine bounds
     bound_terms = []
     if bounds is None:
         for i in xval:
-            bound_terms.append([0,10])
+            bound_terms.append([0, 10])
     else:
         bound_terms = bounds
 
-    #go along line until it reaches a minima
+    # go along line until it reaches a minima
     go_along_line = True
     while go_along_line:
         print("Going along line")
@@ -354,41 +373,44 @@ def solve_one_step(Qfunc, x0, stepsize=1.0, bounds=None):
         print(np.max(np.abs(xval-xold)))
         if qval > qold:
             print("Started going uphill. Terminating")
-            go_along_line = False #started going up hill
-        elif check_bounds(xval,bound_terms):
+            go_along_line = False  # started going up hill
+        elif check_bounds(xval, bound_terms):
             print("Hit the bounded wall")
-            go_along_line = False #started going up hill
+            go_along_line = False  # started going up hill
         else:
             qold = qval
             xold = xval
 
     return xold
 
+
 def enforce_bounds(eps, bounds):
-    for idx,i in enumerate(eps):
+    for idx, i in enumerate(eps):
         if i < bounds[idx][0]:
             eps[idx] = bounds[idx][0]
         elif i > bounds[idx][1]:
             eps[idx] = bounds[idx][1]
     return eps
 
+
 def check_bounds(eps, bounds):
     bad = False
-    for idx,i in enumerate(eps):
+    for idx, i in enumerate(eps):
         if i < bounds[idx][0] or i > bounds[idx][1]:
             bad = True
 
     return bad
+
+
 def solve_sgd_custom(Qfunc, x0,
                      stepsize=0.001,
                      maxiters=60,
                      batch_number=1,
-                     gtol = 1.0e-5,
-                     alpha = 0.0,
-                     lr_decay = True,
-                     num_of_step = 200,
-                     multiplicator = 0.70):
-
+                     gtol=1.0e-5,
+                     alpha=0.0,
+                     lr_decay=True,
+                     num_of_step=200,
+                     multiplicator=0.70):
     """ Solve using stochastic gradent descent
 
     Arguments:
@@ -413,38 +435,39 @@ def solve_sgd_custom(Qfunc, x0,
       defines, how step decreases at iteration num_of_step
 
     """
-    log_file = open("optimization_log.txt","wt")
+    log_file = open("optimization_log.txt", "wt")
     log_file.write("Starting stochastic gradient descent optimization \n")
     log_file.write("Parameters of optimization: \n")
-    log_file.write("stepsize = {}, \n maxiters = {}, \n batch_number = {} \n".format(stepsize,maxiters, batch_number))
-    log_file.write("gtol = {}, \n alpha = {}, \n lr_decay = {} \n".format(gtol,alpha, lr_decay))
-    log_file.write("num_of_step = {}, \n multiplicator = {} \n".format(num_of_step,multiplicator))
+    log_file.write("stepsize = {}, \n maxiters = {}, \n batch_number = {} \n".format(
+        stepsize, maxiters, batch_number))
+    log_file.write("gtol = {}, \n alpha = {}, \n lr_decay = {} \n".format(gtol, alpha, lr_decay))
+    log_file.write("num_of_step = {}, \n multiplicator = {} \n".format(num_of_step, multiplicator))
     x_new = np.copy(x0)
-    param_num = len(x_new) # number of parameters to optimize
-    batch_size = param_num//batch_number # minimum number of elements in a batch
+    param_num = len(x_new)  # number of parameters to optimize
+    batch_size = param_num//batch_number  # minimum number of elements in a batch
     for k in range(maxiters+1):
-        if k%num_of_step==0:
+        if k % num_of_step == 0:
             stepsize = multiplicator*stepsize
         changed_params = 0
         Q_value, gradient = Qfunc(x_new)
-        gradient += (2*alpha)*(x_new-x0)  #Correct the gradient
+        gradient += (2*alpha)*(x_new-x0)  # Correct the gradient
 
-        labels = np.random.permutation(param_num) # Generates list of elements
-        for i in range(0,param_num,batch_size):
+        labels = np.random.permutation(param_num)  # Generates list of elements
+        for i in range(0, param_num, batch_size):
             batch_label = labels[i:i+batch_size]
             for j in batch_label:
                 step = stepsize*gradient[j]
                 x_new[j] = x_new[j] - step
-                changed_params+=1
-        Q_value,gradient=Qfunc(x_new)
+                changed_params += 1
+        Q_value, gradient = Qfunc(x_new)
         gradient += (2*alpha)*(x_new-x0)
         grad_norm = np.linalg.norm(gradient)
         log_file.write("New Q value after update: {} \n".format(Q_value))
         print("New Q value after update: {} \n".format(Q_value))
         log_file.write("Norm of the gradient:   {} \n".format(grad_norm))
         print("Norm of the gradient:   {} \n".format(grad_norm))
-        log_file.write("New valuew of the loss function: {} \n".format(Q_value + alpha*sum(np.square(\
-x_new-x0))))
+        log_file.write("New valuew of the loss function: {} \n".format(Q_value + alpha*sum(np.square(
+            x_new-x0))))
         if grad_norm < gtol:
             log_file.write("Optimization done successfully in  {} steps \n".format(k))
             break
@@ -454,22 +477,100 @@ x_new-x0))))
         if k == maxiters:
             print("Number of interations exceeded. The last x is recorded")
             log_file.write("Number of interations exceeded. The last x is recorded \n")
-            np.savetxt("epsilons_checkpoint.txt",x_new)
-            raise FailedToOptimizeException("Number of iteration exceeded",{'iteration': maxiters})
+            np.savetxt("epsilons_checkpoint.txt", x_new)
+            raise FailedToOptimizeException("Number of iteration exceeded", {'iteration': maxiters})
     log_file.close()
     print(x_new)
     return(x_new)
 
-def solve_sgd_fast(Qfunc, x0,
-                     stepsize=0.001,
-                     maxiters=60,
-                     batch_number=1,
-                     gtol = 1.0e-5,
-                     alpha = 0.0,
-                     lr_decay = True,
-                     num_of_step = 200,
-                     multiplicator = 0.70):
 
+def solve_sgd_custom2(Qfunc, x0,
+                      stepsize=0.001,
+                      maxiters=60,
+                      batch_number=1,
+                      gtol=1.0e-5,
+                      alpha=0.0,
+                      lr_decay=True,
+                      num_of_step=200,
+                      multiplicator=0.70):
+    """ Solve using stochastic gradent descent
+
+    Arguments:
+    ----------
+   Qfunc : function
+       function for computing loss function and gradient
+   x0    : list
+       list of model parameters
+   stepsize : float
+       learning rate. Kept fixed  during the  optimization
+  maxiters  : int
+     maximum number of iterations
+  batch_number : int
+       number of batches to devide  parameter space
+  alpha  : float
+      regularization parameter
+  lr_decay : bool, default True
+      defines, whether learning rate decay is used
+  num_of_step : int, default 200
+      step, at which decay is introduced
+  multiplicator : float default 0.70
+      defines, how step decreases at iteration num_of_step
+
+    """
+    log_file = open("optimization_log.txt", "wt")
+    log_file.write("Starting stochastic gradient descent optimization \n")
+    log_file.write("Parameters of optimization: \n")
+    log_file.write("stepsize = {}, \n maxiters = {}, \n batch_number = {} \n".format(
+        stepsize, maxiters, batch_number))
+    log_file.write("gtol = {}, \n alpha = {}, \n lr_decay = {} \n".format(gtol, alpha, lr_decay))
+    log_file.write("num_of_step = {}, \n multiplicator = {} \n".format(num_of_step, multiplicator))
+    x_new = np.copy(x0)
+    param_num = len(x_new)  # number of parameters to optimize
+    batch_size = param_num//batch_number  # minimum number of elements in a batch
+    for k in range(maxiters+1):
+        if k % num_of_step == 0:
+            stepsize = multiplicator*stepsize
+
+        labels = np.random.permutation(param_num)
+        for i in range(0, param_num, batch_size):
+            batch_label = labels[i:i+batch_size]
+            Q_value, gradient = Qfunc(x_new)
+            gradient[batch_label] += (2*alpha)*(x_new[batch_label]-x0[batch_label])
+            step = np.multiply(stepsize, gradient[batch_label])
+            x_new[batch_label] -= step
+        grad_norm = np.linalg.norm(gradient)
+
+        log_file.write("New Q value after update: {} \n".format(Q_value))
+        print("New Q value after update: {} \n".format(Q_value))
+        log_file.write("Norm of the gradient:   {} \n".format(grad_norm))
+        print("Norm of the gradient:   {} \n".format(grad_norm))
+        log_file.write("New valuew of the loss function: {} \n".format(Q_value + alpha*sum(np.square(
+            x_new-x0))))
+        if grad_norm < gtol:
+            log_file.write("Optimization done successfully in  {} steps \n".format(k))
+            break
+
+        print("Iteration {} done".format(k))
+        log_file.write("Iteration {} done \n".format(k))
+        if k == maxiters:
+            print("Number of interations exceeded. The last x is recorded")
+            log_file.write("Number of interations exceeded. The last x is recorded \n")
+            np.savetxt("epsilons_checkpoint.txt", x_new)
+            raise FailedToOptimizeException("Number of iteration exceeded", {'iteration': maxiters})
+    log_file.close()
+    print(x_new)
+    return(x_new)
+
+
+def solve_sgd_fast(Qfunc, x0,
+                   stepsize=0.001,
+                   maxiters=60,
+                   batch_number=1,
+                   gtol=1.0e-5,
+                   alpha=0.0,
+                   lr_decay=True,
+                   num_of_step=200,
+                   multiplicator=0.70):
     """ Solve using stochastic gradent descent.
     Q function should support calculation of gradient for a subset of
     parameters
@@ -496,26 +597,27 @@ def solve_sgd_fast(Qfunc, x0,
       defines, how step decreases at iteration num_of_step
 
     """
-    log_file = open("optimization_log.txt","wt")
+    log_file = open("optimization_log.txt", "wt")
     log_file.write("Starting stochastic gradient descent optimization \n")
     log_file.write("Parameters of optimization: \n")
-    log_file.write("stepsize = {}, \n maxiters = {}, \n batch_number = {} \n".format(stepsize,maxiters, batch_number))
-    log_file.write("gtol = {}, \n alpha = {}, \n lr_decay = {} \n".format(gtol,alpha, lr_decay))
-    log_file.write("num_of_step = {}, \n multiplicator = {} \n".format(num_of_step,multiplicator))
+    log_file.write("stepsize = {}, \n maxiters = {}, \n batch_number = {} \n".format(
+        stepsize, maxiters, batch_number))
+    log_file.write("gtol = {}, \n alpha = {}, \n lr_decay = {} \n".format(gtol, alpha, lr_decay))
+    log_file.write("num_of_step = {}, \n multiplicator = {} \n".format(num_of_step, multiplicator))
     x_new = np.copy(x0)
-    param_num = len(x_new) # number of parameters to optimize
-    batch_size = param_num//batch_number # minimum number of elements in a batch
+    param_num = len(x_new)  # number of parameters to optimize
+    batch_size = param_num//batch_number  # minimum number of elements in a batch
     for k in range(maxiters+1):
-        labels = np.random.permutation(param_num) # Generates list of elements. Indexed from 0.
-        if k%num_of_step==0:
+        labels = np.random.permutation(param_num)  # Generates list of elements. Indexed from 0.
+        if k % num_of_step == 0:
             stepsize = multiplicator*stepsize
-        for i in range(0,param_num,batch_size):  #loop over batches.
-            #iterations within one epoch. Q-function should be able to take
+        for i in range(0, param_num, batch_size):  # loop over batches.
+            # iterations within one epoch. Q-function should be able to take
             # Full set of parameters, labels, and return Q-function value and
             # gradients with respect two
             batch_label = labels[i:i+batch_size]
-            Q_value,batch_grad = Qfunc(x_new,grad_parameters = batch_label)
-            batch_grad += (2*alpha)*(x_new[batch_label]-x0[batch_label])  #Correct the gradient
+            Q_value, batch_grad = Qfunc(x_new, grad_parameters=batch_label)
+            batch_grad += (2*alpha)*(x_new[batch_label]-x0[batch_label])  # Correct the gradient
             step = stepsize*batch_grad
             x_new[batch_label] -= step
         grad_norm = np.linalg.norm(gradient)
@@ -523,8 +625,8 @@ def solve_sgd_fast(Qfunc, x0,
         print("New Q value after update: {} \n".format(Q_value))
         log_file.write("Norm of the gradient:   {} \n".format(grad_norm))
         print("Norm of the gradient:   {} \n".format(grad_norm))
-        log_file.write("New valuew of the loss function: {} \n".format(Q_value + alpha*sum(np.square(\
-x_new-x0))))
+        log_file.write("New valuew of the loss function: {} \n".format(Q_value + alpha*sum(np.square(
+            x_new-x0))))
         if grad_norm < gtol:
             log_file.write("Optimization done successfully in  {} steps \n".format(k))
             break
@@ -534,16 +636,15 @@ x_new-x0))))
         if k == maxiters:
             print("Number of interations exceeded. The last x is recorded")
             log_file.write("Number of interations exceeded. The last x is recorded \n")
-            np.savetxt("epsilons_checkpoint.txt",x_new)
-            raise FailedToOptimizeException("Number of iteration exceeded",{'iteration': maxiters})
+            np.savetxt("epsilons_checkpoint.txt", x_new)
+            raise FailedToOptimizeException("Number of iteration exceeded", {'iteration': maxiters})
     log_file.close()
     print(x_new)
     return(x_new)
 
 
-
 #### dictionary of all the functions ####
-function_dictionary = {"simplex":solve_simplex}
+function_dictionary = {"simplex": solve_simplex}
 function_dictionary["simplex_global"] = solve_simplex_global
 function_dictionary["anneal"] = solve_annealing
 function_dictionary["cg"] = solve_cg
