@@ -232,7 +232,7 @@ class ddG_linear(Observable):
     def prepare_observables(self, optimize=True, epsilon=None):
         """
         Method prepares observable for optimization by
-        calculating prefactor and counting number of microstates for a
+        calculating prefactor.
         """
         if optimize:
             self._compute_reweight_prefactor(epsilon)
