@@ -232,7 +232,7 @@ class ddG_linear(Observable):
     def prepare_observables(self, optimize=True, epsilon=None):
         """
         Method prepares observable for optimization by
-        calculating prefactor.
+        calculating prefactor and counting number of microstates for a
         """
         if optimize:
             self._compute_reweight_prefactor(epsilon)
@@ -346,7 +346,11 @@ class ddG_linear(Observable):
 
         return dG
 
-    def compute_delta_delta_G(self, epsilons, compute_derivative=False, reweighted=True, grad_parameters=None):
+    def compute_delta_delta_G(self,
+                              epsilons,
+                              compute_derivative=False,
+                              reweighted=True,
+                              grad_parameters=None):
         """
         The function computes a delta_delta_G of mutation for a particular macrostate.
         Parameters
