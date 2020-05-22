@@ -277,7 +277,7 @@ class TestDDGEstimator(object):
         Compute delta_delta_G and corresponding derivatives
         """
 
-        test_files_folder = 'test_data/ddG_estimate'
+        test_files_folder = 'test_data/1UBQ_sample_data'
         trajfile = '{}/sample_traj.xtc'.format(test_files_folder)
         topfile = '{}/ref.pdb'.format(test_files_folder)
         fraction = np.loadtxt('{}/fraction.txt'.format(test_files_folder))[:, 2]
@@ -311,7 +311,7 @@ class TestDDGEstimator(object):
         Compute delta_delta_G and corresponding derivatives
         """
 
-        test_files_folder = 'test_data/ddG_estimate'
+        test_files_folder = 'test_data/1UBQ_sample_data'
         trajfile = '{}/sample_traj.xtc'.format(test_files_folder)
         topfile = '{}/ref.pdb'.format(test_files_folder)
         fraction = np.loadtxt('{}/fraction.txt'.format(test_files_folder))[:, 2]
