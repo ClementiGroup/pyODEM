@@ -271,76 +271,71 @@ def _reference_ddG_implementation(trajfile, topfile, stationary_distribution):
                        beta_delta_delta_G_derivative_pair_1_32,
                        beta_delta_delta_G_derivative_pair_2_33])
 
+class TestDDGEstimator(object):
+    def test_compute_delta_delta_G(self):
+        """
+        Compute delta_delta_G and corresponding derivatives
+        """
 
-def test_compute_delta_delta_G():
-    """
-    Compute delta_delta_G and corresponding derivatives
-    """
+        test_files_folder = 'test_data/ddG_estimate'
+        trajfile = '{}/sample_traj.xtc'.format(test_files_folder)
+        topfile = '{}/ref.pdb'.format(test_files_folder)
+        fraction = np.loadtxt('{}/fraction.txt'.format(test_files_folder))[:, 2]
+        stationary_distribution = np.loadtxt('{}/stationary_distribution.txt'.format(test_files_folder))
+        macrostates = np.loadtxt('{}/macrostates.txt'.format(test_files_folder))
+        dtrajs = np.loadtxt('{}/dtrajs.txt'.format(test_files_folder), dtype=int)
+        model_name = '{}/ubq.ini'.format(test_files_folder)
+        reference = _reference_ddG_implementation(trajfile, topfile, stationary_distribution)
+        print(reference)
 
-    test_files_folder = 'test_data/ddG_estimate'
-    trajfile = '{}/sample_traj.xtc'.format(test_files_folder)
-    topfile = '{}/ref.pdb'.format(test_files_folder)
-    fraction = np.loadtxt('{}/fraction.txt'.format(test_files_folder))[:, 2]
-    stationary_distribution = np.loadtxt('{}/stationary_distribution.txt'.format(test_files_folder))
-    macrostates = np.loadtxt('{}/macrostates.txt'.format(test_files_folder))
-    dtrajs = np.loadtxt('{}/dtrajs.txt'.format(test_files_folder), dtype=int)
-    model_name = '{}/ubq.ini'.format(test_files_folder)
-    reference = _reference_ddG_implementation(trajfile, topfile, stationary_distribution)
-    print(reference)
+        pmodel, data_formatted = pyODEM.model_loaders.load_protein(dtrajs,
+                                                                   trajfile,
+                                                                   model_name,
+                                                                   observable_object=None,
+                                                                   obs_data=None)
+        pmodel.set_temperature(130)  # Hardcoded temperature of the test set
+        obs = ddG_est_new.ddG(pmodel, data_formatted, macrostates, fraction,
+                              dtrajs, stationary_distribution, debug=False)
+        obs.prepare_observables(optimize=True, epsilon=pmodel.get_epsilons())
+        results = obs.compute_delta_delta_G(pmodel.get_epsilons(), compute_derivative=True)
+        print(results)
 
-    pmodel, data_formatted = pyODEM.model_loaders.load_protein(dtrajs,
-                                                               trajfile,
-                                                               model_name,
-                                                               observable_object=None,
-                                                               obs_data=None)
-    pmodel.set_temperature(130)  # Hardcoded temperature of the test set
-    obs = ddG_est_new.ddG(pmodel, data_formatted, macrostates, fraction,
-                          dtrajs, stationary_distribution, debug=False)
-    obs.prepare_observables(optimize=True, epsilon=pmodel.get_epsilons())
-    results = obs.compute_delta_delta_G(pmodel.get_epsilons(), compute_derivative=True)
-    print(results)
-
-    assert np.abs(reference[0]-results[0]) < 1.0e-7, "beta_DDG deviates from the reference!"
-    for ndx in range(len(reference[1])):
-        assert np.abs(reference[1][ndx]-results[1][ndx]
-                      ) < 1.0e-7, "Derivative number {} deviates from the reference!".format(ndx)
-
-
-def test_compute_delta_delta_G_linear():
-    """
-    Compute delta_delta_G and corresponding derivatives
-    """
-
-    test_files_folder = 'test_data/ddG_estimate'
-    trajfile = '{}/sample_traj.xtc'.format(test_files_folder)
-    topfile = '{}/ref.pdb'.format(test_files_folder)
-    fraction = np.loadtxt('{}/fraction.txt'.format(test_files_folder))[:, 2]
-    stationary_distribution = np.loadtxt('{}/stationary_distribution.txt'.format(test_files_folder))
-    macrostates = np.loadtxt('{}/macrostates.txt'.format(test_files_folder))
-    dtrajs = np.loadtxt('{}/dtrajs.txt'.format(test_files_folder), dtype=int)
-    model_name = '{}/ubq.ini'.format(test_files_folder)
-    reference = _reference_ddG_implementation(trajfile, topfile, stationary_distribution)
-    print(reference)
-
-    pmodel, data_formatted = pyODEM.model_loaders.load_protein(dtrajs,
-                                                               trajfile,
-                                                               model_name,
-                                                               observable_object=None,
-                                                               obs_data=None)
-    pmodel.set_temperature(130)  # Hardcoded temperature of the test set
-    Q_energy_terms = ddG_est_linear.compute_Q(pmodel, data_formatted)
-    obs = ddG_est_linear.ddG_linear(pmodel, Q_energy_terms, macrostates,
-                                    fraction, dtrajs, stationary_distribution, debug=False)
-    obs.prepare_observables(optimize=True, epsilon=pmodel.get_epsilons())
-    results = obs.compute_delta_delta_G(pmodel.get_epsilons(), compute_derivative=True)
-    print(results)
-
-    assert np.abs(reference[0]-results[0]) < 1.0e-7, "beta_DDG deviates from the reference!"
-    for ndx in range(len(reference[1])):
-        assert np.abs(reference[1][ndx]-results[1][ndx]
-                      ) < 1.0e-7, "Derivative number {} deviates from the reference!".format(ndx)
+        assert np.abs(reference[0]-results[0]) < 1.0e-7, "beta_DDG deviates from the reference!"
+        for ndx in range(len(reference[1])):
+            assert np.abs(reference[1][ndx]-results[1][ndx]
+                          ) < 1.0e-7, "Derivative number {} deviates from the reference!".format(ndx)
 
 
-if __name__ == '__main__':
-    test_compute_delta_delta_G()
-    test_compute_delta_delta_G_linear()
+    def test_compute_delta_delta_G_linear(self):
+        """
+        Compute delta_delta_G and corresponding derivatives
+        """
+
+        test_files_folder = 'test_data/ddG_estimate'
+        trajfile = '{}/sample_traj.xtc'.format(test_files_folder)
+        topfile = '{}/ref.pdb'.format(test_files_folder)
+        fraction = np.loadtxt('{}/fraction.txt'.format(test_files_folder))[:, 2]
+        stationary_distribution = np.loadtxt('{}/stationary_distribution.txt'.format(test_files_folder))
+        macrostates = np.loadtxt('{}/macrostates.txt'.format(test_files_folder))
+        dtrajs = np.loadtxt('{}/dtrajs.txt'.format(test_files_folder), dtype=int)
+        model_name = '{}/ubq.ini'.format(test_files_folder)
+        reference = _reference_ddG_implementation(trajfile, topfile, stationary_distribution)
+        print(reference)
+
+        pmodel, data_formatted = pyODEM.model_loaders.load_protein(dtrajs,
+                                                                   trajfile,
+                                                                   model_name,
+                                                                   observable_object=None,
+                                                                   obs_data=None)
+        pmodel.set_temperature(130)  # Hardcoded temperature of the test set
+        Q_energy_terms = ddG_est_linear.compute_Q(pmodel, data_formatted)
+        obs = ddG_est_linear.ddG_linear(pmodel, Q_energy_terms, macrostates,
+                                        fraction, dtrajs, stationary_distribution, debug=False)
+        obs.prepare_observables(optimize=True, epsilon=pmodel.get_epsilons())
+        results = obs.compute_delta_delta_G(pmodel.get_epsilons(), compute_derivative=True)
+        print(results)
+
+        assert np.abs(reference[0]-results[0]) < 1.0e-7, "beta_DDG deviates from the reference!"
+        for ndx in range(len(reference[1])):
+            assert np.abs(reference[1][ndx]-results[1][ndx]
+                          ) < 1.0e-7, "Derivative number {} deviates from the reference!".format(ndx)
