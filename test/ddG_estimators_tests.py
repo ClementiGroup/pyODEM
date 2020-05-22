@@ -1,6 +1,7 @@
 """
 The script contains a set of tests for ddG_estimator module.
 """
+import pytest
 import numpy as np
 import mdtraj as md
 import pyODEM
@@ -276,7 +277,7 @@ def test_compute_delta_delta_G():
     Compute delta_delta_G and corresponding derivatives
     """
 
-    test_files_folder = 'test_data'
+    test_files_folder = 'test_data/ddG_estimate'
     trajfile = '{}/sample_traj.xtc'.format(test_files_folder)
     topfile = '{}/ref.pdb'.format(test_files_folder)
     fraction = np.loadtxt('{}/fraction.txt'.format(test_files_folder))[:, 2]
@@ -310,7 +311,7 @@ def test_compute_delta_delta_G_linear():
     Compute delta_delta_G and corresponding derivatives
     """
 
-    test_files_folder = 'test_data'
+    test_files_folder = 'test_data/ddG_estimate'
     trajfile = '{}/sample_traj.xtc'.format(test_files_folder)
     topfile = '{}/ref.pdb'.format(test_files_folder)
     fraction = np.loadtxt('{}/fraction.txt'.format(test_files_folder))[:, 2]
