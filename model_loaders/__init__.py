@@ -34,7 +34,8 @@ from .proteins import ProteinMultiTemperature
 from .proteins import ProteinNonLinear
 from .proteins import ProteinAwsem
 from .proteins import ProteinNonBonded
-from.custom_protein import CustomProtein
+from .custom_protein import CustomProtein
+from .custom_protein_dihedral import CustomProteinDihedral
 
 #load all the helper functions
 from .helper_functions import load_protein

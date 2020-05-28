@@ -1,0 +1,5 @@
+#    pairs         param         potential_type      other_params
+     1      28             0           LJ12GAUSSIAN     0.266000  0.820535  0.050000
+     1      30             1           LJ12GAUSSIAN     0.266000  0.550463  0.050000
+     1      32             2           LJ12GAUSSIAN     0.266000  0.536207  0.050000
+     2      33             3           LJ12GAUSSIAN     0.387518  0.578442  0.050000
