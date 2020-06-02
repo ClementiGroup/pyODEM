@@ -183,7 +183,7 @@ class CustomProteinDihedral(ModelLoader):
         # First, need to precompute the part of the hamiltonian, that does not
         # depend on model parameters.
         #derivatives = -1*self.beta*(np.cos(data*self.n-self.phi0) + 1)
-        derivatives = (np.cos(data*self.n-self.phi0) + 1)
+        derivatives = (np.cos(np.array(data)*self.n-self.phi0) + 1)
 
         def hepsilon(epsilons):
             """
