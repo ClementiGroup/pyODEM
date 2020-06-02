@@ -184,7 +184,6 @@ class CustomProteinDihedral(ModelLoader):
         # depend on model parameters.
         #derivatives = -1*self.beta*(np.cos(data*self.n-self.phi0) + 1)
         derivatives = (np.cos(np.array(data)*self.n-self.phi0) + 1)
-
         def hepsilon(epsilons):
             """
             Computes Hamiltonian for each frame of the trajectory.
@@ -216,6 +215,6 @@ class CustomProteinDihedral(ModelLoader):
                         for frame i with respect to variable parameter of dihedral
                         angle j, multiplied by -beta
             """
-            return derivatives
+            return derivatives.T
 
         return hepsilon, dhepsilon
