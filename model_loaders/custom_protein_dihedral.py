@@ -92,6 +92,31 @@ class CustomProteinDihedral(ModelLoader):
         self.n_dihedrals = counter
         input_data.close()
 
+
+    def write_parameters_to_file(self,file_name):
+        """
+        Method writes all the parameters od dihedral interactions to the file file name
+                The file is organized in the format:
+                atom1  atom2  atom3  atom4  param_ndx  Force_Type  n  phi0
+        """
+        out_file = open(file_name,'wt')
+        out_file.write('#  atom1   atom2   atom3   atom4   param_ndx        Force_Type        n    phi0 \n')
+        counter = 0
+        for atoms, n, phi0 in zip(self.particles,self.n,self.phi0):
+            out_file.write('   {:>5d}   {:>5d}   {:>5d}   {:>5d}   {:>4d}      {:20s}     {}    {} \n'.format
+                                (atoms[0]+1,
+                                 atoms[1]+1,
+                                 atoms[2]+1,
+                                 atoms[3]+1,
+                                 counter,
+                                 'PeriodicTorsionForce',
+                                 n,
+                                 phi0)
+                                )
+            counter += 1
+        out_file.close()
+        return
+
     def load_data(self, traj):
         """
         Calculate dihedral angles
