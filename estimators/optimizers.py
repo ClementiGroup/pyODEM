@@ -653,4 +653,4 @@ function_dictionary["custom"] = solve_annealing_custom
 function_dictionary["newton"] = solve_newton_step_custom
 function_dictionary["bfgs"] = solve_bfgs
 function_dictionary["one"] = solve_one_step
-function_dictionary["sgd"] = solve_sgd_custom
+function_dictionary["sgd"] = solve_sgd_custom2
