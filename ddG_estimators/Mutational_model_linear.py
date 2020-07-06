@@ -454,7 +454,7 @@ class Mutant():
     """
     def __init__(self,
                  name,
-                 fractioin,
+                 fraction,
                  compute_ddG_U2F=False,
                  experiment_ddG_U2F=None,
                  experiment_error_ddG_U2F=None,
