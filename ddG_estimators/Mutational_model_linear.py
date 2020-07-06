@@ -365,32 +365,32 @@ class Mutational_Model_Linear():
                                        fraction,
                                        mask,
                                        compute_derivative=False):
-    """
-    Function computes terms of dG and \partial dG \partial \epsilon:
-    ensemble average for exp(-beta*delta H) and
-    for exp(-beta*delta H)*Q
-    """
-    mean_exp_delta_H = []
-    if compute_derivative:
-        mean_products = []
-    for microstate in microstates:
-        Q_microstate = self.Q[microstate]
-        microstate_delta_H = np.dot(corrected_epsilons, Q_microstate[mask])
-        microstate_exp_delta_H = np.exp(microstate_delta_H)
-        mean_microstate_exp_delta_H = np.mean(microstate_exp_delta_H)
-        mean_exp_delta_H.append(mean_microstate_exp_delta_H)
+        """
+        Function computes terms of dG and \partial dG \partial \epsilon:
+        ensemble average for exp(-beta*delta H) and
+        for exp(-beta*delta H)*Q
+        """
+        mean_exp_delta_H = []
         if compute_derivative:
-            product = np.multiply(Q_microstate, microstate_exp_delta_H)
-            mean_product = np.mean(product, axis=1)
-            mean_products.append(mean_product)
-    mean_exp_delta_H = np.array(mean_exp_delta_H)
-    aver_exp_delta_H = np.dot(distribution_slice, mean_exp_delta_H)/distribution_normalization
-    if compute_derivative:
-        mean_product = np.array(mean_product)
-        aver_product = np.dot(distribution_slice, mean_products)/distribution_normalization
-        return aver_exp_delta_H, None
+            mean_products = []
+        for microstate in microstates:
+            Q_microstate = self.Q[microstate]
+            microstate_delta_H = np.dot(corrected_epsilons, Q_microstate[mask])
+            microstate_exp_delta_H = np.exp(microstate_delta_H)
+            mean_microstate_exp_delta_H = np.mean(microstate_exp_delta_H)
+            mean_exp_delta_H.append(mean_microstate_exp_delta_H)
+            if compute_derivative:
+                product = np.multiply(Q_microstate, microstate_exp_delta_H)
+                mean_product = np.mean(product, axis=1)
+                mean_products.append(mean_product)
+        mean_exp_delta_H = np.array(mean_exp_delta_H)
+        aver_exp_delta_H = np.dot(distribution_slice, mean_exp_delta_H)/distribution_normalization
+        if compute_derivative:
+            mean_product = np.array(mean_product)
+            aver_product = np.dot(distribution_slice, mean_products)/distribution_normalization
+            return aver_exp_delta_H, None
 
-    return aver_exp_delta_H, aver_product
+        return aver_exp_delta_H, aver_product
 
 
 
