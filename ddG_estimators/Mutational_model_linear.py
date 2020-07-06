@@ -256,7 +256,7 @@ class Mutational_Model_Linear():
         distribution_unfolded_slice = distribution[self.unfolded_states]
         distribution_unfolded_normalization = np.sum(distribution_unfolded_slice)
         distribution_transition_slice = distribution[self.transition_states]
-        distribution_transition_normaliation = np.sum(distribution_transition_slice)
+        distribution_transition_normalization = np.sum(distribution_transition_slice)
 
         # Calculate the last term in the equation for derivatives
         if compute_derivative:
