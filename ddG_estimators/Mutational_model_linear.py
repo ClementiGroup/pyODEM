@@ -108,7 +108,7 @@ class Mutational_Model_Linear():
 
     def add_mutant(self,
                    name,
-                   fractioin,
+                   fraction,
                    compute_ddG_U2F=True,
                    experiment_ddG_U2F=None,
                    experiment_error_ddG_U2F=None,
@@ -119,8 +119,8 @@ class Mutational_Model_Linear():
         Add another mutant to experiment model.
         See description of the parameters in docs for Mutant class
         """
-        new_mutant = Mutant(name=name,
-                            fraction=fraction,
+        new_mutant = Mutant(name,
+                            fraction,
                             compute_ddG_U2F=compute_ddG_U2F,
                             experiment_ddG_U2F=experiment_ddG_U2F,
                             experiment_error_ddG_U2F=experiment_error_ddG_U2F,
