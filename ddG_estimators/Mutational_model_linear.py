@@ -97,7 +97,7 @@ class Mutational_Model_Linear():
         """
         Initializer. Holds everything that is required for calculations
         """
-        self.munant_list = []
+        self.mutant_list = []
         self.distribution = distribution
         self.rescale_temperature = False
         self.folded_states = self._get_microstates(0, dtrajs, partition)
