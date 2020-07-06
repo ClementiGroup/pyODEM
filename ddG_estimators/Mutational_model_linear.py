@@ -103,7 +103,7 @@ class Mutational_Model_Linear():
         self.folded_states = self._get_microstates(0, dtrajs, partition)
         self.unfolded_states = self._get_microstates(1, dtrajs, partition)
         self.transition_states = self._get_microstates(2,dtrajs,partition)
-        self.Q = compute_Q(protein_model, data)
+        self.Q = self.compute_Q(protein_model, data)
         return
 
     def add_mutant(self,
