@@ -468,12 +468,12 @@ class Mutant():
         # Negative fraction of delated contacts (Negative for calculation simplification)
         self.mask = self._get_mask()
         self.deleted_negative = fraction[self.mask] - 1
-        self.compute_ddG_T2U =  compute_ddG_T2U
-        self.compute_ddG_F2U = compute_ddG_F2U
-        self.experiment_ddG_T2U = experiment_ddG_T2U
-        self.experiment_ddG_F2U = experiment_ddG_F2U
-        self.experiment_error_ddG_T2U = experiment_error_ddG_T2U
-        self.experiment_error_ddG_F2U = experiment_error_ddG_F2U
+        self.compute_ddG_U2T =  compute_ddG_U2T
+        self.compute_ddG_U2F = compute_ddG_U2F
+        self.experiment_ddG_U2T = experiment_ddG_U2T
+        self.experiment_ddG_U2F = experiment_ddG_U2F
+        self.experiment_error_ddG_U2T = experiment_error_ddG_U2T
+        self.experiment_error_ddG_U2T = experiment_error_ddG_U2F
         return
 
     def _get_mask(self):
