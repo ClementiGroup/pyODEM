@@ -128,7 +128,7 @@ class Mutational_Model_Linear():
                             experiment_ddG_U2T=experiment_ddG_U2T,
                             experiment_error_ddG_U2T=experiment_error_ddG_U2T
                             )
-        self.mutants.append(new_mutant)
+        self.mutant_list.append(new_mutant)
         return
 
     def _get_microstates(self, index, dtrajs, partition):
