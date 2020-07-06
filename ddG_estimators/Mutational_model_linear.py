@@ -308,8 +308,8 @@ class Mutational_Model_Linear():
                                                                  aver_Q_values_unfolded)
                     ddG_U2F_derivative = np.subtract(derivative_folded,derivative_unfolded)
                     if self.rescale_temperature:
-                    ddG_U2F_derivative *= self.scaling_factor
-               ddG_U2F_derivative_list.append(ddG_U2F_derivative)
+                        ddG_U2F_derivative *= self.scaling_factor
+                    ddG_U2F_derivative_list.append(ddG_U2F_derivative)
             if mutant.compute_ddG_U2F and mutant.comute_ddG_U2T:
                 # If both ddG nots and ddG dagger should be computed,
                 # need to add data for transition state
@@ -336,10 +336,6 @@ class Mutational_Model_Linear():
                         ddG_U2T_derivative *= self.scaling_factor
                     ddG_U2F_derivative_list.append(ddG_U2F_derivative)
         return ddG_U2F_list, ddG_U2T_list, ddG_U2F_derivative_list, ddG_U2T_derivative_list
-
-
-
-
 
 
     def compute_average_Q(self,
@@ -487,142 +483,6 @@ class Mutant():
         """
         mask = np.transpose(np.argwhere(self.fraction < 0.99999999))[0]
         return mask
-
-
-class ddG_linear(Observable):
-    """
-    The class holds all the methods, that are required to compute and manipulate
-    mutational delta delta G value. It works when Hamiltonian linearly depends on
-    parameters.
-    The class inherits from pyODEM observable
-    object. It is optimized to simultaneously perform calculations for
-    all the mutants.
-    Linear function
-    """
-
-
-    def compute_delta_G(self,
-                        macrostate,
-                        corrected_epsilons,
-                        distribution,
-                        compute_derivative=False):
-        """
-        The function computes delta_G and corresponding derivative for
-         a particular ensemble.
-
-         Parameters
-         ----------
-
-         macrostate : str {'folded' or 'unfolded'}
-         A name of ensemble, for which calculations will be performed.
-
-         corrected_epsilons : 1D numpy  array
-
-         Model parameters, multiplied by NEGATIVE fraction of contacts,
-          that were deleted upon mutation
-
-          distribution :  1D numpy array
-          equilibrium distribution to use for calculation. If reweighting is
-          required, the distribution put here should already be reweighted.
-
-          compute_derivative : bool
-          If True, derivative is returend.
-
-          Returns
-          -------
-
-         dG : float
-         delta_G upon mutation for a particular ensemble
-
-         derivative : 1D numpy arrray
-         derivative of delta_G with respect to model parameters
-
-        """
-
-        microstate_sets = {'folded': self.folded_states, 'unfolded': self.unfolded_states}
-
-        microstates = microstate_sets[macrostate]
-        distribution_slice = distribution[microstates]
-        mean_exp_delta_H = []
-        if compute_derivative:
-            mean_Q_values = []
-            mean_products = []
-        for microstate in microstates:
-            Q_microstate = self.Q[microstate]
-            microstate_delta_H = np.dot(corrected_epsilons, Q_microstate[self.mask])
-            microstate_exp_delta_H = np.exp(microstate_delta_H)
-            mean_microstate_exp_delta_H = np.mean(microstate_exp_delta_H)
-            mean_exp_delta_H.append(mean_microstate_exp_delta_H)
-            if compute_derivative:
-                mean_Q = np.mean(Q_microstate, axis=1)
-                mean_Q_values.append(mean_Q)
-                product = np.multiply(Q_microstate, microstate_exp_delta_H)
-                mean_product = np.mean(product, axis=1)
-                mean_products.append(mean_product)
-        mean_exp_delta_H = np.array(mean_exp_delta_H)
-        normalization = np.sum(distribution_slice)
-        aver = np.dot(distribution_slice, mean_exp_delta_H)/normalization
-        dG = -np.log(aver)
-        if compute_derivative:
-            mean_product = np.array(mean_product)
-            mean_Q_values = np.array(mean_Q_values)
-            aver_product = np.dot(distribution_slice, mean_products)/normalization
-            aver_Q_values = np.dot(distribution_slice, mean_Q_values)/normalization
-            derivative = np.add(-1*np.divide(np.multiply(self.fraction,
-                                                         aver_product), aver), aver_Q_values)
-            return dG, derivative
-
-        return dG
-
-    def compute_delta_delta_G(self,
-                              epsilons,
-                              compute_derivative=False,
-                              reweighted=True,
-                              grad_parameters=None):
-        """
-        The function computes a delta_delta_G of mutation for a particular macrostate.
-        Parameters
-        -----------
-
-        compute_derivative: bool
-                             If true, the function returns also derivative of
-                             deltaG
-        epsilon: array of array-like object of float
-                             Contains  parameters of the model
-
-        reweighted:
-        """
-        # Find all the  microstates, that correspond to a particular microstate
-        if reweighted:
-            self._reweight_microstates(epsilons)
-            distribution = self.distribution_reweighted
-        else:
-            distribution = self.distribution
-
-        # exponent exp(-beta*delta_H) for folded state.
-        corrected_epsilons = np.multiply(epsilons[self.mask], self.deleted_negative)
-        # All the analysis  required for folded microstates. Done in one
-        # place to reduce unnecessary repeating loops.
-        if compute_derivative:
-            folded_DG, folded_derivative = self.compute_delta_G(macrostate='folded', corrected_epsilons=corrected_epsilons,
-                                                                distribution=distribution, compute_derivative=compute_derivative)
-            unfolded_DG, unfolded_derivative = self.compute_delta_G(macrostate='unfolded', corrected_epsilons=corrected_epsilons,
-                                                                    distribution=distribution, compute_derivative=compute_derivative)
-            delta_delta_G = folded_DG - unfolded_DG
-            derivative = np.subtract(folded_derivative, unfolded_derivative)
-            if self.rescale_temperature:
-                delta_delta_G *= self.scaling_facror
-                derivative *= self.scaling_facror
-            return delta_delta_G, derivative
-        else:
-            folded_DG = self.compute_delta_G(macrostate='folded', corrected_epsilons=corrected_epsilons,
-                                             distribution=distribution, compute_derivative=compute_derivative)
-            unfolded_DG = self.compute_delta_G(macrostate='unfolded', corrected_epsilons=corrected_epsilons,
-                                               distribution=distribution, compute_derivative=compute_derivative)
-            delta_delta_G = folded_DG - unfolded_DG
-            if self.rescale_temperature:
-                delta_delta_G *= self.scaling_facror
-            return delta_delta_G
 
     def compute_observation(self, epsilons):
         """
