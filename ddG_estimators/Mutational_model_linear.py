@@ -275,7 +275,7 @@ class Mutational_Model_Linear():
         ddG_U2T_derivative_list = []
 
         for mutant in self.mutant_list:
-            corrected_epsilons = np.multiply(epsilons[self.mask], mutant.deleted_negative)
+            corrected_epsilons = np.multiply(epsilons[mutant.mask], mutant.deleted_negative)
             if mutant.compute_ddG_U2F:
                 aver_exp_delta_H_folded, aver_product_folded = self.compute_mutant_dependent_terms(
                                                    self.folded_states,
