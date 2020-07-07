@@ -337,7 +337,7 @@ class Mutational_Model_Linear():
                     ddG_U2T_derivative = np.subtract(derivative_transition,derivative_unfolded)
                     if self.rescale_temperature:
                         ddG_U2T_derivative *= self.scaling_factor
-                    ddG_U2F_derivative_list.append(ddG_U2F_derivative)
+                    ddG_U2T_derivative_list.append(ddG_U2T_derivative)
         return ddG_U2F_list, ddG_U2T_list, ddG_U2F_derivative_list, ddG_U2T_derivative_list
 
 
