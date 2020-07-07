@@ -316,7 +316,7 @@ class Mutational_Model_Linear():
                 # If both ddG nots and ddG dagger should be computed,
                 # need to add data for transition state
                 aver_exp_delta_H_transition, aver_product_transition = self.compute_mutant_dependent_terms(
-                                                   self.folded_states,
+                                                   self.transition_states,
                                                    distribution_transition_slice,
                                                    distribution_transition_normalization,
                                                    corrected_epsilons,
@@ -392,7 +392,7 @@ class Mutational_Model_Linear():
         if compute_derivative:
             mean_product = np.array(mean_product)
             aver_product = np.dot(distribution_slice, mean_products)/distribution_normalization
-            return aver_exp_delta_H, aver_poduct
+            return aver_exp_delta_H, aver_product
 
         return aver_exp_delta_H, None
 
