@@ -349,7 +349,7 @@ class Mutational_Model_Linear():
         """
         mean_Q_values = []
         # Calculating average value of Q for each microstate
-        for microstate in microstates:
+        for microstate in macrostate:
             Q_microstate = self.Q[microstate]
             mean_Q = np.mean(Q_microstate, axis=1)
             mean_Q_values.append(mean_Q)
@@ -373,7 +373,7 @@ class Mutational_Model_Linear():
         mean_exp_delta_H = []
         if compute_derivative:
             mean_products = []
-        for microstate in microstates:
+        for microstate in macrostate:
             Q_microstate = self.Q[microstate]
             microstate_delta_H = np.dot(corrected_epsilons, Q_microstate[mask])
             microstate_exp_delta_H = np.exp(microstate_delta_H)
