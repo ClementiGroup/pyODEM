@@ -281,6 +281,7 @@ class Mutational_Model_Linear():
                                                    self.folded_states,
                                                    distribution_folded_slice,
                                                    distribution_folded_normalization,
+                                                   corrected_epsilons,
                                                    mutant.fraction,
                                                    mutant.mask,
                                                    compute_derivative=compute_derivative)
@@ -288,6 +289,7 @@ class Mutational_Model_Linear():
                                                   self.unfolded_states,
                                                   distribution_unfolded_slice,
                                                   distribution_unfolded_normalization,
+                                                  corrected_epsilons,
                                                   mutant.fraction,
                                                   mutant.mask,
                                                   compute_derivative=compute_derivative)
@@ -317,6 +319,7 @@ class Mutational_Model_Linear():
                                                    self.folded_states,
                                                    distribution_transition_slice,
                                                    distribution_transition_normalization,
+                                                   corrected_epsilons,
                                                    mutant.fraction,
                                                    mutant.mask,
                                                    compute_derivative=compute_derivative)
@@ -362,6 +365,7 @@ class Mutational_Model_Linear():
                                        macrostate,
                                        distribution_slice,
                                        distribution_normalization,
+                                       corrected_epsilons,
                                        fraction,
                                        mask,
                                        compute_derivative=False):
