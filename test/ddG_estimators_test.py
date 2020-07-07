@@ -379,6 +379,7 @@ class TestDDGEstimator(object):
             print(results)
 
             assert np.abs(reference[0]-results[0]) < 1.0e-7, "beta_DDG deviates from the reference!"
+            assert len(reference[1]) == len(results[1]), "Reference and resulting derivative have different number of values"
             for ndx in range(len(reference[1])):
                 assert np.abs(reference[1][ndx]-results[1][ndx]
                               ) < 1.0e-7, "Derivative number {} deviates from the reference!".format(ndx)
