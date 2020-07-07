@@ -491,7 +491,11 @@ class Mutant():
     def compute_observation(self, epsilons):
         """
         The function returns observed values of delta_delta_G and
-         corresponding derivatives
+         corresponding derivatives in format that is understandable by
+         pyODEM, i.e., all the values first, and then all the derivatives
         """
 
-        return self._compute_delta_delta_G(epsilons, compute_derivative=True)
+        result = self._compute_delta_delta_G(epsilons, compute_derivative=True)
+        values = result[0] + result[2]
+        derivatives = result[1] + result[3]
+        return values, derivatives
