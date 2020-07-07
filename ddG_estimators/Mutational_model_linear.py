@@ -312,7 +312,7 @@ class Mutational_Model_Linear():
                     if self.rescale_temperature:
                         ddG_U2F_derivative *= self.scaling_factor
                     ddG_U2F_derivative_list.append(ddG_U2F_derivative)
-            if mutant.compute_ddG_U2F and mutant.comute_ddG_U2T:
+            if mutant.compute_ddG_U2F and mutant.compute_ddG_U2T:
                 # If both ddG nots and ddG dagger should be computed,
                 # need to add data for transition state
                 aver_exp_delta_H_transition, aver_product_transition = self.compute_mutant_dependent_terms(
