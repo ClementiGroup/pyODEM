@@ -373,7 +373,7 @@ class TestDDGEstimator(object):
             obs.add_mutant("Test",
                fraction,
                compute_ddG_U2F=True,
-               compute_ddG_U2T=False)
+               compute_ddG_U2T=True)
             results = obs.compute_delta_delta_G(epsilons=pmodel.get_epsilons(),
                                    compute_derivative=True)
             print(results)
