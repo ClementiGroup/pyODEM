@@ -220,7 +220,7 @@ class Mutational_Model_Linear():
         """
 
         self.rescale_temperature = True
-        self.scaling_facror = float(folding_temperature)/float(experiment_temperature)
+        self.scaling_factor = float(folding_temperature)/float(experiment_temperature)
         return
 
     def compute_delta_delta_G(self,
@@ -297,7 +297,7 @@ class Mutational_Model_Linear():
                 dG_unfolded = -np.log(aver_exp_delta_H_unfolded)
                 ddG_U2F = dG_folded - dG_unfolded
                 if self.rescale_temperature:
-                    ddG_U2F *= self.scaling_facror
+                    ddG_U2F *= self.scaling_factor
                 ddG_U2F_list.append(ddG_U2F)
                 if compute_derivative:
                     derivative_folded = np.add(-1*np.divide(np.multiply(mutant.fraction,
@@ -326,7 +326,7 @@ class Mutational_Model_Linear():
                 dG_transition = -np.log(aver_exp_delta_H_transition)
                 ddG_U2T = dG_transition - dG_unfolded
                 if self.rescale_temperature:
-                    ddG_U2T *= self.scaling_facror
+                    ddG_U2T *= self.scaling_factor
                 ddG_U2T_list.append(ddG_U2T)
 
                 if compute_derivative:
