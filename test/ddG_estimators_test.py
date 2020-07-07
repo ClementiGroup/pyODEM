@@ -7,7 +7,9 @@ import mdtraj as md
 import pyODEM
 ddG_est_new = pyODEM.ddG_estimators.ddG_estimate
 ddG_est_linear = pyODEM.ddG_estimators.ddG_estimate_linear
+mutational_model = pyODEM.ddG_estimators.Mutational_model_linear
 ml = pyODEM.model_loaders
+
 
 
 def _reference_ddG_implementation(trajfile, topfile, stationary_distribution):
@@ -339,3 +341,44 @@ class TestDDGEstimator(object):
         for ndx in range(len(reference[1])):
             assert np.abs(reference[1][ndx]-results[1][ndx]
                           ) < 1.0e-7, "Derivative number {} deviates from the reference!".format(ndx)
+
+        def test_Mutational_model_linear(self):
+            """
+            Compute delta_delta_G and corresponding derivatives
+            """
+
+            test_files_folder = 'test_data/1UBQ_sample_data'
+            trajfile = '{}/sample_traj.xtc'.format(test_files_folder)
+            topfile = '{}/ref.pdb'.format(test_files_folder)
+            fraction = np.loadtxt('{}/fraction.txt'.format(test_files_folder))[:, 2]
+            stationary_distribution = np.loadtxt('{}/stationary_distribution.txt'.format(test_files_folder))
+            macrostates = np.loadtxt('{}/macrostates.txt'.format(test_files_folder))
+            dtrajs = np.loadtxt('{}/dtrajs.txt'.format(test_files_folder), dtype=int)
+            model_name = '{}/ubq.ini'.format(test_files_folder)
+            reference = _reference_ddG_implementation(trajfile, topfile, stationary_distribution)
+            print(reference)
+
+            pmodel, data_formatted = pyODEM.model_loaders.load_protein(dtrajs,
+                                                                       trajfile,
+                                                                       model_name,
+                                                                       observable_object=None,
+                                                                       obs_data=None)
+            pmodel.set_temperature(130)  # Hardcoded temperature of the test set
+            obs = mutational_model.Mutational_Model_Linear(protein_model=pmodel,
+                                               partition=partition,
+                                               dtrajs=dtrajs,
+                                               distribution=stationary_distribution,
+                                               data=data_formatted)
+            obs.prepare_observables(optimize=True, epsilon=pmodel.get_epsilons())
+            obs.add_mutant("Test",
+               fraction,
+               compute_ddG_U2F=True,
+               compute_ddG_U2T=False)
+            results = obs.compute_delta_delta_G(epsilons=pmodel.get_epsilons(),
+                                   compute_derivative=True)
+            print(results)
+
+            assert np.abs(reference[0]-results[0]) < 1.0e-7, "beta_DDG deviates from the reference!"
+            for ndx in range(len(reference[1])):
+                assert np.abs(reference[1][ndx]-results[1][ndx]
+                              ) < 1.0e-7, "Derivative number {} deviates from the reference!".format(ndx)
