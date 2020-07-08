@@ -496,6 +496,6 @@ class Mutant():
         """
 
         result = self._compute_delta_delta_G(epsilons, compute_derivative=True)
-        values = result[0] + result[2]
-        derivatives = result[1] + result[3]
+        values =  np.atleast_1d(np.array(result[0] + result[2]))
+        derivatives = np.atleast_2d(np.array(result[1] + result[3]))
         return values, derivatives
