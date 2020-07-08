@@ -68,7 +68,7 @@ class Likelihood():
         errors = np.atleast_1d(np.array(error)*scale)
         self.std_list.append(errors)
 
-        self.observable_object_list.append(observable)
+        self.observable_object_list.append(observable_object)
         self.num_of_observable_objects += 1
         assert self.num_of_observable_objects == len(self.observed_value_list)
         assert self.num_of_observable_objexts == len(self.std_list)
