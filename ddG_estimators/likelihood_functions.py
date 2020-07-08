@@ -62,7 +62,7 @@ class Likelihood():
                             experimental errors, that correspond to experimental
                             values in observed_values
         """
-        type_consistent_observed_value = numpy.atleast_1d(np.array(observed_values))
+        type_consistent_observed_value = np.atleast_1d(np.array(observed_values))
         self.observed_value_list.append(type_consistent_observed_value)
 
         errors = np.atleast_1d(np.array(error)*scale)
