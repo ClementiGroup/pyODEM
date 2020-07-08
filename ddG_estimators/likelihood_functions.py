@@ -124,5 +124,5 @@ class Likelihood():
             assert len(observed_values) == len(calculated_values), "Length of experimental and calculated observable values do not match"
             z_score = self._compute_z_score(calculated_values,std,observed_values)
             negative_lnQ +=  0.5*np.sum(np.square(z_score))
-            derivative_negative_lnQ +=  np.multiply(np.divide(z_score,std),calculated_derivatives)
+            derivative_negative_lnQ += np.sum(np.multiply(np.divide(z_score,std),calculated_derivatives),axis=1)
         return negative_lnQ, derivative_negative_lnQ
