@@ -94,7 +94,7 @@ class Likelihood():
         Z-score, dimensionality the same as for input arrays
 
         """
-        z_score = np.divide(np_subtract(calculated_value,observed_value),std)
+        z_score = np.divide(np.subtract(calculated_value,observed_value),std)
         return z_score
 
     def compute_ln_gauss(self,epsilons,grad_parameters=None):
