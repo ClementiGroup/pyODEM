@@ -122,7 +122,7 @@ class Likelihood():
             std = self.std_list[observable_ndx]
             calculated_values, calculated_derivatives = self.observable_object_list[observable_ndx].compute_observation(epsilons)
             assert len(observed_values) == len(calculated_values), "Length of experimental and calculated observable values do not match"
-            z_score = self.compute_z_score(calculated_values,std,observed_values)
+            z_score = self._compute_z_score(calculated_values,std,observed_values)
             negative_lnQ +=  0.5*np.sum(np.square(z_score))
             derivative_negative_lnQ +=  np.multiply(np.divide(z_score,std),derivative)
         return negative_lnQ, derivative_negative_lnQ
