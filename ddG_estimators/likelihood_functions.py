@@ -71,8 +71,8 @@ class Likelihood():
         self.observable_object_list.append(observable_object)
         self.num_of_observable_objects += 1
         assert self.num_of_observable_objects == len(self.observed_value_list)
-        assert self.num_of_observable_objexts == len(self.std_list)
-        assert self.num_of_observable_objexts == len(self.observable_object_list)
+        assert self.num_of_observable_objects == len(self.std_list)
+        assert self.num_of_observable_objects == len(self.observable_object_list)
         return
 
     def _compute_z_score(self,calculated_value,std,observed_value):
