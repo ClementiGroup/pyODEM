@@ -6,15 +6,40 @@ though it uses some of the helper functions.
 """
 import numpy as np
 
-class Q_function():
+class Likelihood():
     """
-    Class collects all the observables and create Q function and corresponding
-    derivatives.
+    Collects all the observables and corresponding derivatives and create
+    Likelihood
+
+    Attributes:
+    -----------
+    observable_object_list : list of objects
+                            Each object represents 1 observable/group of
+                            observables. Each object should have a method
+                            `compute_observation`.
+
+    observed_value_list : list of numpy arrays.
+                         Each numpy array can be 0d or 1d and represents experimental
+                         values for the observables, computed by the corresponding
+                         observable object
+    std_list : list of numpy arrays
+               Each numpy array can be 0d or 1d and represents experimental
+               errors, that correcpond observables
+
+    num_of_observable_objects : int
+                              Length of observable_object list.
+                              Should be equal to length of std_list and
+                              length of observed_value_list
+
+
+    Methods:
+
+    Class shoud hold all the methods
     """
 
     def __init__(self):
         """
-        Initializaiton of Q_function
+        Initializaiton of the likelihood function
         """
         self.observed_value_list = []
         self.std_list = []
@@ -27,45 +52,81 @@ class Q_function():
 
         Parameters
         ----------
-
-        fraction : 1d numpy.ndarray of floats
-                    Contains fraction of contacts, that remains after mutation
-
+        observable_object : object
+                          Observable object, that is able to calculate
+                          observable and their derivatives
+        observed_values : float, list of floats or 1d-numpy array,
+                           experimental values, that correspond to ones
+                           calculated by observable object
+        error : float, list of floats or 1d-numpy array.
+                            experimental errors, that correspond to experimental
+                            values in observed_values
         """
+        type_consistent_observed_value = numpy.atleast_1d(np.array(observed_values))
+        self.observed_value_list.append(type_consistent_observed_value)
 
-        self.observed_value_list.append(np.array(observed_values))
-        self.std_list.append(np.array(error)*scale)
+        errors = np.atleast_1d(np.array(error)*scale)
+        self.std_list.append(errors)
+
         self.observable_object_list.append(observable)
         self.num_of_observable_objects += 1
+        assert self.num_of_observable_objects == len(self.observed_value_list)
+        assert self.num_of_observable_objexts == len(self.std_list)
+        assert self.num_of_observable_objexts == len(self.observable_object_list)
+        return
 
     def _compute_z_score(self,calculated_value,std,observed_value):
         """
-        Compute z-score for a massive
-        """
-        return (calculated_value-observed_value)/std
+        Compute z-score
 
-    def compute_log_Q(self,epsilons,grad_parameters=None):
+        Parameters
+        -----------
+        calculated_value : numpy ndarray, dtype=float
+                           A sample value
+        std              : numpy ndarray,  dtype=float
+                          Standard deviation
+        observed_value : numpy ndarray, dtype=float
+                         Expectation value
+        Demensionality of all the input parameters should be the same
+        Returns
+        --------
+        z-score : numpy ndarray
+        Z-score, dimensionality the same as for input arrays
+
         """
+        z_score = np.divide(np_subtract(calculated_value,observed_value),std)
+        return z_score
+
+    def compute_ln_gauss(self,epsilons,grad_parameters=None):
+        """
+
         Method copmutes -logQ and d(-logQ)/d(epsilon).
-        At this point, only logarithmic function is implemented
+        For calculations, it is expected that all the values are numpy arrays
+
         Parameters
         ----------
         epsilons : 1D  numpy array of floats
          set of model parameters
         grad_parameters
-        numpy array of integer indexes. Each index
+        numpy array of integer indexes. For which derivative should
+        be computed.
         """
         negative_lnQ = 0
         if grad_parameters is None:
             derivative_negative_lnQ = np.zeros(epsilons.shape[0])
         else:
-             derivative_negative_lnQ = np.zeros(grad_parameters.shape[0])
+            derivative_negative_lnQ = np.zeros(grad_parameters.shape[0])
 
         for observable_ndx in range(self.num_of_observable_objects):
             observed_values = self.observed_value_list[observable_ndx]
             std = self.std_list[observable_ndx]
-            value, derivative = self.ddG_observables[observable_ndx].compute_delta_delta_G(epsilons,compute_derivative=True,grad_parameters=grad_parameters)
-            z_score = self._compute_z_score(value,std, observed_value)
-            negative_lnQ +=  0.5*(z_score)**2
-            derivative_negative_lnQ +=  np.multiply(z_score/std,derivative)
+            calculated_values, calculated_derivatives = self.observable_object_list[observable_ndx].compute_observation(epsilons)
+            assert len(observed_values) == len(calculated_values), "Length of experimental and calculated observable values do not match"
+            z_score = self.compute_z_score(value,std,)
+            for ndx in len(observed_values):
+                value = calculated_values[ndx]
+
+                z_score = self._compute_z_score(value,std, observed_value)
+                negative_lnQ +=  0.5*(z_score)**2
+                derivative_negative_lnQ +=  np.multiply(z_score/std,derivative)
         return negative_lnQ, derivative_negative_lnQ
