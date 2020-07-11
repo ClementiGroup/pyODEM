@@ -403,7 +403,7 @@ class Mutational_Model_Linear():
          pyODEM, i.e., all the values first, and then all the derivatives
         """
 
-        result = self._compute_delta_delta_G(epsilons, compute_derivative=True)
+        result = self.compute_delta_delta_G(epsilons, compute_derivative=True)
         values =  np.atleast_1d(np.array(result[0] + result[2]))
         derivatives = np.atleast_2d(np.array(result[1] + result[3]))
         return values, derivatives
