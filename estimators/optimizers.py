@@ -401,22 +401,20 @@ def check_bounds(eps, bounds):
 
     return bad
 
+def solve_batch_gd(Qfunc, x0,
+                   stepsize=0.001,
+                   maxiters=60,
+                   lr_decay=True,
+                   num_of_step=200,
+                   multiplicator=0.70,
+                   alpha=0.0):
 
-def solve_sgd_custom(Qfunc, x0,
-                     stepsize=0.001,
-                     maxiters=60,
-                     batch_number=1,
-                     gtol=1.0e-5,
-                     alpha=0.0,
-                     lr_decay=True,
-                     num_of_step=200,
-                     multiplicator=0.70):
-    """ Solve using stochastic gradent descent
+    """ Solve using batch gradent descent
 
     Arguments:
     ----------
    Qfunc : function
-       function for computing loss function and gradient
+       function for computing loss function and gradient.
    x0    : list
        list of model parameters
    stepsize : float
@@ -435,6 +433,7 @@ def solve_sgd_custom(Qfunc, x0,
       defines, how step decreases at iteration num_of_step
 
     """
+    # logging information about optimization parameters
     log_file = open("optimization_log.txt", "wt")
     log_file.write("Starting stochastic gradient descent optimization \n")
     log_file.write("Parameters of optimization: \n")
@@ -442,25 +441,20 @@ def solve_sgd_custom(Qfunc, x0,
         stepsize, maxiters, batch_number))
     log_file.write("gtol = {}, \n alpha = {}, \n lr_decay = {} \n".format(gtol, alpha, lr_decay))
     log_file.write("num_of_step = {}, \n multiplicator = {} \n".format(num_of_step, multiplicator))
+
+    # Make a copy of the parameters for modification
     x_new = np.copy(x0)
-    param_num = len(x_new)  # number of parameters to optimize
-    batch_size = param_num//batch_number  # minimum number of elements in a batch
+
+    batch_size = num_of_points//batch_number  # minimum number of elements in a batch
+    # calculate spli
     for k in range(maxiters+1):
+        print("Epoch: {}".format(k))
         if k % num_of_step == 0:
             stepsize = multiplicator*stepsize
-        changed_params = 0
-        Q_value, gradient = Qfunc(x_new)
-        gradient += (2*alpha)*(x_new-x0)  # Correct the gradient
-
-        labels = np.random.permutation(param_num)  # Generates list of elements
-        for i in range(0, param_num, batch_size):
-            batch_label = labels[i:i+batch_size]
-            for j in batch_label:
-                step = stepsize*gradient[j]
-                x_new[j] = x_new[j] - step
-                changed_params += 1
         Q_value, gradient = Qfunc(x_new)
         gradient += (2*alpha)*(x_new-x0)
+        step = np.multiply(stepsize, gradient)
+        x_new -= step
         grad_norm = np.linalg.norm(gradient)
         log_file.write("New Q value after update: {} \n".format(Q_value))
         print("New Q value after update: {} \n".format(Q_value))
@@ -484,11 +478,14 @@ def solve_sgd_custom(Qfunc, x0,
     return(x_new)
 
 
+
+
 def solve_sgd_custom2(Qfunc, x0,
+                      num_of_points=None,
                       stepsize=0.001,
                       maxiters=60,
                       batch_number=1,
-                      gtol=1.0e-5,
+                      gtol=1.0e-3,
                       alpha=0.0,
                       lr_decay=True,
                       num_of_step=200,
@@ -498,9 +495,11 @@ def solve_sgd_custom2(Qfunc, x0,
     Arguments:
     ----------
    Qfunc : function
-       function for computing loss function and gradient
+       function for computing loss function and gradient.
    x0    : list
        list of model parameters
+   num_of_points : int
+       number of datapoints.
    stepsize : float
        learning rate. Kept fixed  during the  optimization
   maxiters  : int
@@ -517,6 +516,17 @@ def solve_sgd_custom2(Qfunc, x0,
       defines, how step decreases at iteration num_of_step
 
     """
+    if batch_number == 1:
+        x_new = solve_batch_gd(Qfunc, x0,
+                               stepsize=stepsize,
+                               maxiters=maxiters,
+                               lr_decay=lr_decay,
+                               num_of_step=num_of_step,
+                               multiplicator=multiplicator,
+                               alpha=alpha)
+        return x_new
+
+    # logging information about optimization parameters
     log_file = open("optimization_log.txt", "wt")
     log_file.write("Starting stochastic gradient descent optimization \n")
     log_file.write("Parameters of optimization: \n")
@@ -524,29 +534,41 @@ def solve_sgd_custom2(Qfunc, x0,
         stepsize, maxiters, batch_number))
     log_file.write("gtol = {}, \n alpha = {}, \n lr_decay = {} \n".format(gtol, alpha, lr_decay))
     log_file.write("num_of_step = {}, \n multiplicator = {} \n".format(num_of_step, multiplicator))
+
+    # Make a copy of the parameters for modification
     x_new = np.copy(x0)
-    param_num = len(x_new)  # number of parameters to optimize
-    batch_size = param_num//batch_number  # minimum number of elements in a batch
+
+    batch_size = num_of_points//batch_number  # minimum number of elements in a batch
+    # calculate spli
+    Q_old = 1e6
     for k in range(maxiters+1):
+        print("Epoch: {}".format(k))
         if k % num_of_step == 0:
             stepsize = multiplicator*stepsize
 
-        labels = np.random.permutation(param_num)
-        for i in range(0, param_num, batch_size):
+        labels = np.random.permutation(num_of_points)
+        Q_total = 0.0 # Total epoch Q
+        for i in range(0, num_of_points, batch_size):
             batch_label = labels[i:i+batch_size]
-            Q_value, gradient = Qfunc(x_new)
-            gradient[batch_label] += (2*alpha)*(x_new[batch_label]-x0[batch_label])
-            step = np.multiply(stepsize, gradient[batch_label])
-            x_new[batch_label] -= step
-        grad_norm = np.linalg.norm(gradient)
+            if len(batch_label) < batch_size:
+                continue
+            print("Using data points: ", batch_label)
+            Q_value, gradient = Qfunc(x_new,batch_label)
+            Q_total += Q_value
+            gradient += (2*alpha)*(x_new-x0)
+            step = np.multiply(stepsize, gradient)
+            x_new -= step
 
-        log_file.write("New Q value after update: {} \n".format(Q_value))
-        print("New Q value after update: {} \n".format(Q_value))
-        log_file.write("Norm of the gradient:   {} \n".format(grad_norm))
-        print("Norm of the gradient:   {} \n".format(grad_norm))
+        log_file.write("Total Q value after epoch: {} \n".format(Q_total))
+        print("New Q value after update: {} \n".format(Q_total))
+        diff = np.abs(Q_old - Q_total)
+        print(diff)
+        change = diff/Q_old
+        Q_old = Q_total
+        print("Q-value change after an epoch: {}".format(change))
         log_file.write("New valuew of the loss function: {} \n".format(Q_value + alpha*sum(np.square(
             x_new-x0))))
-        if grad_norm < gtol:
+        if change < gtol:
             log_file.write("Optimization done successfully in  {} steps \n".format(k))
             break
 
