@@ -517,7 +517,7 @@ def solve_sgd_custom2(Qfunc, x0,
         x_new = solve_batch_gd(Qfunc, x0,
                                stepsize=stepsize,
                                maxiters=maxiters,
-                               gtol=gtol
+                               gtol=gtol,
                                lr_decay=lr_decay,
                                num_of_step=num_of_step,
                                multiplicator=multiplicator,
