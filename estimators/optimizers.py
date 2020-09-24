@@ -421,8 +421,6 @@ def solve_batch_gd(Qfunc, x0,
        learning rate. Kept fixed  during the  optimization
   maxiters  : int
      maximum number of iterations
-  batch_number : int
-       number of batches to devide  parameter space
   alpha  : float
       regularization parameter
   lr_decay : bool, default True
@@ -437,16 +435,14 @@ def solve_batch_gd(Qfunc, x0,
     log_file = open("optimization_log.txt", "wt")
     log_file.write("Starting stochastic gradient descent optimization \n")
     log_file.write("Parameters of optimization: \n")
-    log_file.write("stepsize = {}, \n maxiters = {}, \n batch_number = {} \n".format(
-        stepsize, maxiters, batch_number))
+    log_file.write("stepsize = {}, \n maxiters = {}, \n batch_number = 1 \n".format(
+        stepsize, maxiters))
     log_file.write("gtol = {}, \n alpha = {}, \n lr_decay = {} \n".format(gtol, alpha, lr_decay))
     log_file.write("num_of_step = {}, \n multiplicator = {} \n".format(num_of_step, multiplicator))
 
     # Make a copy of the parameters for modification
     x_new = np.copy(x0)
 
-    batch_size = num_of_points//batch_number  # minimum number of elements in a batch
-    # calculate spli
     for k in range(maxiters+1):
         print("Epoch: {}".format(k))
         if k % num_of_step == 0:
