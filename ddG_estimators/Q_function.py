@@ -19,7 +19,7 @@ class Q_function():
         self.ddG_observed_values = []
         self.ddG_std = []
         self.ddG_observables = []
-        self.num_of_ddG = 0
+        self.num_of_obs = 0
 
     def add_ddG(self,observable,observed_value,error,scale=1.0):
         """
@@ -36,12 +36,16 @@ class Q_function():
         self.ddG_observed_values.append(observed_value)
         self.ddG_std.append(error*scale)
         self.ddG_observables.append(observable)
-        self.num_of_ddG += 1
+        self.num_of_obs += 1
+
+    @property
+    def num_of_ddG(self):
+        return self.num_of_obs
 
     def _compute_z_score(self,calculated_value,std,observed_value):
         return (calculated_value-observed_value)/std
 
-    def compute_log_Q(self,epsilons,grad_parameters=None):
+    def compute_log_Q(self,epsilons,data_points=None):
         """
         Method copmutes -logQ and d(-logQ)/d(epsilon).
         At this point, only logarithmic function is implemented
@@ -49,20 +53,22 @@ class Q_function():
         ----------
         epsilons : 1D  numpy array of floats
          set of model parameters
-        grad_parameters
-        numpy array of integer indexes. Each index
+        data_points : 1D numpy array of ints
+        numpy array of indexes  Each index corresponds
         """
         negative_lnQ = 0
-        if grad_parameters is None:
-            derivative_negative_lnQ = np.zeros(epsilons.shape[0])
-        else:
-             derivative_negative_lnQ = np.zeros(grad_parameters.shape[0])
-
-        for observable_ndx in range(self.num_of_ddG):
-            observed_value = self.ddG_observed_values[observable_ndx]
-            std = self.ddG_std[observable_ndx]
-            value, derivative = self.ddG_observables[observable_ndx].compute_delta_delta_G(epsilons,compute_derivative=True,grad_parameters=grad_parameters)
-            z_score = self._compute_z_score(value,std, observed_value)
-            negative_lnQ +=  0.5*(z_score)**2
-            derivative_negative_lnQ +=  np.multiply(z_score/std,derivative)
+        derivative_negative_lnQ = np.zeros(epsilons.shape[0])
+        if data_points is None:
+            data_points = [i for i in range(self.num_of_obs)]
+        for observable_ndx in range(self.num_of_obs):
+            if observable_ndx in data_points:
+                observed_value = self.ddG_observed_values[observable_ndx]
+                #print("observable: {}".format(observable_ndx))
+                std = self.ddG_std[observable_ndx]
+                value, derivative = self.ddG_observables[observable_ndx].compute_delta_delta_G(epsilons,compute_derivative=True)
+                #print("observable_value: {}".format(value))
+                z_score = self._compute_z_score(value,std, observed_value)
+                #print("z_score: {}".format(z_score))
+                negative_lnQ +=  0.5*(z_score)**2
+                derivative_negative_lnQ +=  np.multiply(z_score/std,derivative)
         return negative_lnQ, derivative_negative_lnQ
