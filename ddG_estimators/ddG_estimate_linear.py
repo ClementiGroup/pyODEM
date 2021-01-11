@@ -350,7 +350,8 @@ class ddG_linear(Observable):
                               epsilons,
                               compute_derivative=False,
                               reweighted=True,
-                              grad_parameters=None):
+                              grad_parameters=None,
+                              debug=False):
         """
         The function computes a delta_delta_G of mutation for a particular macrostate.
         Parameters
@@ -363,6 +364,9 @@ class ddG_linear(Observable):
                              Contains  parameters of the model
 
         reweighted:
+
+        debug : bool
+        If true, delta G for folded and unfolded state are additionally returned.
         """
         # Find all the  microstates, that correspond to a particular microstate
         if reweighted:
@@ -385,7 +389,10 @@ class ddG_linear(Observable):
             if self.rescale_temperature:
                 delta_delta_G *= self.scaling_facror
                 derivative *= self.scaling_facror
-            return delta_delta_G, derivative
+            if debug:
+                return delta_delta_G, derivative, folded_DG, folded_derivative,  unfolded_DG, unfolded_derivative
+            else:
+                return delta_delta_G, derivative
         else:
             folded_DG = self.compute_delta_G(macrostate='folded', corrected_epsilons=corrected_epsilons,
                                              distribution=distribution, compute_derivative=compute_derivative)
@@ -394,7 +401,10 @@ class ddG_linear(Observable):
             delta_delta_G = folded_DG - unfolded_DG
             if self.rescale_temperature:
                 delta_delta_G *= self.scaling_facror
-            return delta_delta_G
+            if debug:
+                return delta_delta_G, folded_DG, unfolded_DG
+            else:
+                return delta_delta_G
 
     def compute_observation(self, epsilons):
         """
