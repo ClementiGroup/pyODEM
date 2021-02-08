@@ -36,6 +36,11 @@ from .proteins import ProteinAwsem
 from .proteins import ProteinNonBonded
 from .custom_protein import CustomProtein
 from .custom_protein_dihedral import CustomProteinDihedral
+from .AWSEM_model import AWSEMProtein
+from .AWSEM_model import OpenAWSEMProtein
+from .AWSEM_model import Hamiltonian
+from .AWSEM_model import  DirectInteraction
+
 
 #load all the helper functions
 from .helper_functions import load_protein
