@@ -390,7 +390,7 @@ class Mutational_Model_Linear():
         mean_exp_delta_H = np.array(mean_exp_delta_H)
         aver_exp_delta_H = np.dot(distribution_slice, mean_exp_delta_H)/distribution_normalization
         if compute_derivative:
-            mean_product = np.array(mean_product)
+            mean_products = np.array(mean_products)
             aver_product = np.dot(distribution_slice, mean_products)/distribution_normalization
             return aver_exp_delta_H, aver_product
 
