@@ -123,8 +123,66 @@ def compute_Q(model, data):
         Q.append(np.array(depsilons(epsilon)))
     return(Q)
 
+class ddG_observable(Observable):
+    """
+    Parent class for all the different ddG observables
+    """
 
-class ddG_linear(Observable):
+    def __init__():
+        self.type = 'ddG'
+
+
+    def _get_microstates(self, index, dtrajs, partition):
+        """
+        The method finds indexes of all the microstates, that correspond
+        to particular macrostate.
+
+        Parameters
+        ----------
+        index : int
+                index of macrostate
+
+        Return: set of int
+                Set of indexes of microstates
+
+        """
+        microstates = []
+        for microstate, macrostate in zip(dtrajs, partition):
+            if macrostate == index:
+                microstates.append(microstate)
+        microstates = np.array(list(set(microstates)), dtype='int')
+        return microstates
+
+
+    def set_temperature_rescaling(self, experiment_temperature, folding_temperature):
+        """
+        The method creates rescaling factor atribute, i.e ratio of folding temperature
+        and experimental temperature. It alows to normalize results simulated at folding
+        temperature to the temperature yielding the same stablity as measured in experiment
+
+        experiment_temperature: float
+                                 Temperature(K), at which mutational experiment was counducted
+        folding_temperature: float
+                                  Tagret temperature(K), usually experimental folding
+                                  temperature of protein.
+        """
+
+        self.rescale_temperature = True
+        self.scaling_factor = float(folding_temperature)/float(experiment_temperature)
+        return
+
+
+    def compute_observation(self, epsilons):
+        """
+        The function returns observed values of delta_delta_G and
+         corresponding derivatives
+        """
+
+        return self.compute_delta_delta_G(epsilons, compute_derivative=True)
+
+
+
+class ddG_linear(ddG_observable):
     """
     The class holds all the methods, that are required to compute and manipulate
     mutational delta delta G value. It works when Hamiltonian linearly depends on
@@ -182,26 +240,6 @@ class ddG_linear(Observable):
         mask = np.transpose(np.argwhere(self.fraction < 0.99999999))[0]
         return mask
 
-    def _get_microstates(self, index, dtrajs, partition):
-        """
-        The method finds indexes of all the microstates, that correspond
-        to particular macrostate.
-
-        Parameters
-        ----------
-        index : int
-                index of macrostate
-
-        Return: set of int
-                Set of indexes of microstates
-
-        """
-        microstates = []
-        for microstate, macrostate in zip(dtrajs, partition):
-            if macrostate == index:
-                microstates.append(microstate)
-        microstates = np.array(list(set(microstates)), dtype='int')
-        return microstates
 
     def _compute_H(self, epsilons):
         """
@@ -243,7 +281,6 @@ class ddG_linear(Observable):
         The function produces reweighted values for microstates based on change in epsilon
         upon optimization
         """
-
         distribution_reweighted = np.zeros(np.shape(self.distribution)[0])
         new_H = self._compute_H(epsilons_new)
         for microstate_ndx, microstate_array in enumerate(new_H):
@@ -256,22 +293,6 @@ class ddG_linear(Observable):
         self.distribution_reweighted = np.array(distribution_reweighted)
         return
 
-    def set_temperature_rescaling(self, experiment_temperature, folding_temperature):
-        """
-        The method creates rescaling factor atribute, i.e ratio of folding temperature
-        and experimental temperature. It alows to normalize results simulated at folding
-        temperature to the temperature yielding the same stablity as measured in experiment
-
-        experiment_temperature: float
-                                 Temperature(K), at which mutational experiment was counducted
-        folding_temperature: float
-                                  Tagret temperature(K), usually experimental folding
-                                  temperature of protein.
-        """
-
-        self.rescale_temperature = True
-        self.scaling_facror = float(folding_temperature)/float(experiment_temperature)
-        return
 
     def compute_delta_G(self,
                         macrostate,
@@ -350,7 +371,6 @@ class ddG_linear(Observable):
                               epsilons,
                               compute_derivative=False,
                               reweighted=True,
-                              grad_parameters=None,
                               debug=False):
         """
         The function computes a delta_delta_G of mutation for a particular macrostate.
@@ -387,8 +407,8 @@ class ddG_linear(Observable):
             delta_delta_G = folded_DG - unfolded_DG
             derivative = np.subtract(folded_derivative, unfolded_derivative)
             if self.rescale_temperature:
-                delta_delta_G *= self.scaling_facror
-                derivative *= self.scaling_facror
+                delta_delta_G *= self.scaling_factor
+                derivative *= self.scaling_factor
             if debug:
                 return delta_delta_G, derivative, folded_DG, folded_derivative,  unfolded_DG, unfolded_derivative
             else:
@@ -400,16 +420,269 @@ class ddG_linear(Observable):
                                                distribution=distribution, compute_derivative=compute_derivative)
             delta_delta_G = folded_DG - unfolded_DG
             if self.rescale_temperature:
-                delta_delta_G *= self.scaling_facror
+                delta_delta_G *= self.scaling_factor
             if debug:
                 return delta_delta_G, folded_DG, unfolded_DG
             else:
                 return delta_delta_G
 
-    def compute_observation(self, epsilons):
+
+class ddG_generic(ddG_observable):
+    """
+    Calculates ddG and derivatives. Model is agnostic of type of the Hamiltonian.
+    It takes two functions  H_wt and H_mutant. These functions should take
+    parameters and produce hamiltonian  and, if specified, derivatives with
+    respect to parameters
+    """
+    def __init__(self,
+                 H_wt=None,
+                 H_mutant=None,
+                 distribution=None,
+                 rescale_temperature=None,
+                 dtrajs=None,
+                 partition=None,
+                 debug=False):
         """
-        The function returns observed values of delta_delta_G and
-         corresponding derivatives
+        Folded state should be coded as 0, unfolded state should be coded as 1
+
+        Parameters:
+        -----------
+
+        H_wt : function, H_wt(epsilons, return_derivatives=False)
+              Function, that takes a set of parameters `epsilons`
+              and returns a 1D numpy array with a Wild type Hamiltonian value
+              for each frame. If `return_derivatives=True`, also returns a 2d
+              numpy array with shape (n_frames x n_parameters), where n_frames -
+              number of frames, n_parameters - number of parameters in epsilons
+
+        H_mutant : same as H_wt, but for a mutant.
+        The value of Hamiltonian and corresponding derivatives are returned in NEGATIVE RT units (Basically, energy
+        is returned as -beta*T).
+        It is done jost to keep consistency with earlier model loaders.
+        It is unclear to me, why it is done there that way. Probably, to classes
+        dealing with calculations agnostic of model details, like temperature.
+
+        """
+        self.H_wt = H_wt
+        self.H_mutant = H_mutant
+        self.distribution = distribution
+        self.debug = debug  # debug flag
+        self.rescale_temperature = False
+        self.folded_states = self._get_microstates(0, dtrajs, partition)
+        self.unfolded_states = self._get_microstates(1, dtrajs, partition)
+        self.partition = partition
+        self.dtrajs = dtrajs
+
+
+
+    @staticmethod
+    def _split_data_by_microstates(dtrajs, data):
+        """
+        Split a 2d or 1d array into a dictionary with keys equal to microstate
+        numbers and values equal to a 1d or 2d numpy arrays.
+        """
+        indexes = np.argsort(dtrajs)
+        sorted_dtrajs = dtrajs[indexes]
+        unique_states, unique_ndx = np.unique(sorted_dtrajs, return_index=True)
+        splitting_points = unique_ndx[1:]
+        n_dim = data.ndim
+        if n_dim == 1:
+            sorted_data = data[indexes]
+            splitted_data = np.split(sorted_data, splitting_points, axis=0)
+        elif n_dim == 2:
+            sorted_data = data[indexes, :]
+            splitted_data = np.split(sorted_data, splitting_points, axis=0)
+        else:
+            raise TypeError("Only 1D or 2D numpy arrays are allowed")
+        data_dict = dict(zip(list(unique_states), splitted_data))
+        return data_dict
+
+    def _compute_reweight_prefactor(self, epsilon_old):
+        """
+        The method computes prefactor, that does not change during optimization.
+        it is exp(-beta*H(epsilon_old))
+        """
+        H = self.H_wt(epsilon_old)
+        prefactor = np.exp(H)
+        self.prefactor = prefactor
+        return
+
+    def _reweight_microstates(self, new_H):
+        """
+        The function produces reweighted values for microstates based on change in epsilon
+        upon optimization. Calculation of new_H is removed from this function to get rid
+        of repeating calculation.
+        new_H - 1d numpy array.
+        """
+        distribution_reweighted = np.zeros(np.shape(self.distribution)[0])
+        new_exponent = np.exp(new_H)
+        change = np.divide(new_exponent, self.prefactor)
+        change_by_microstate = self._split_data_by_microstates(self.dtrajs, change)
+        mean_change_by_microstate = np.array([np.mean(value) for key, value in change_by_microstate.items()])
+        distribution_reweighted = np.multiply(self.distribution,mean_change_by_microstate)
+        distribution_reweighted = np.divide(distribution_reweighted,
+                                           np.sum(distribution_reweighted))
+        self.distribution_reweighted = distribution_reweighted
+        return
+
+    def prepare_observables(self, optimize=True, epsilon=None):
+        """
+        Method prepares observable for optimization by
+        calculating prefactor and counting number of microstates for a
+        """
+        if optimize:
+            self._compute_reweight_prefactor(epsilon)
+        return
+
+
+    def compute_delta_delta_G(self,
+                             epsilons,
+                             compute_derivative=False,
+                             reweighted=True):
         """
 
-        return self._compute_delta_delta_G(epsilons, compute_derivative=True)
+        """
+        # Suplementary dictionary
+        microstate_sets = {'folded': self.folded_states, 'unfolded': self.unfolded_states}
+
+        # Calculate Hamiltonian for the wildtype and native protein, as well as derivatives if needed.
+        if compute_derivative:
+            H_wt, H_wt_derivative = self.H_wt(epsilons, return_derivatives=True)
+            H_mutant, H_mutant_derivative = self.H_mutant(epsilons, return_derivatives=True)
+        else:
+            H_wt = self.H_wt(epsilons, return_derivatives=False)
+            H_mutant = self.H_mutant(epsilons, return_derivatives=False)
+
+        # If needed, reweight stationary distribution with new epsilons
+        if reweighted:
+            self._reweight_microstates(H_wt)
+            distribution = self.distribution_reweighted
+        else:
+            distribution = self.distribution
+
+        # Split data into macrostates and use compute ddG to get ddG for a specific ensemble.
+        # For calculation, need delta H and derivatives of WT and mutated Hamiltonian
+        delta_H = H_mutant - H_wt
+        delta_H_dict = self._split_data_by_microstates(self.dtrajs, delta_H)
+        if compute_derivative:
+            H_wt_derivative_dict = self._split_data_by_microstates(self.dtrajs, H_wt_derivative)
+            H_mutant_derivative_dict = self._split_data_by_microstates(self.dtrajs, H_mutant_derivative)
+
+        # Give data to compute_delta_G method. This method is supposed to be used internally
+        # only
+        if compute_derivative:
+            folded_DG, folded_derivative = self.compute_delta_G(delta_H_dict,
+                                                           H_wt_derivative_dict=H_wt_derivative_dict,
+                                                           H_mutant_derivative_dict=H_mutant_derivative_dict,
+                                                           distribution=distribution,
+                                                           macrostate='folded',
+                                                           compute_derivative=True)
+            unfolded_DG, unfolded_derivative = self.compute_delta_G(delta_H_dict,
+                                                                    H_wt_derivative_dict=H_wt_derivative_dict,
+                                                                    H_mutant_derivative_dict=H_mutant_derivative_dict,
+                                                                    distribution=distribution,
+                                                                    macrostate='unfolded',
+                                                                    compute_derivative=True)
+            delta_delta_G = folded_DG - unfolded_DG
+            derivative = np.subtract(folded_derivative, unfolded_derivative)
+            if self.rescale_temperature:
+                delta_delta_G *= self.scaling_factor
+                derivative *= self.scaling_factor
+            if self.debug:
+                return delta_delta_G, derivative, folded_DG, folded_derivative,  unfolded_DG, unfolded_derivative
+            else:
+                return delta_delta_G, derivative
+        else:
+            folded_DG = self.compute_delta_G(delta_H_dict,
+                                             H_wt_derivative_dict=None,
+                                             H_mutant_derivative_dict=None,
+                                             distribution=distribution,
+                                             macrostate='folded',
+                                             compute_derivative=False)
+            unfolded_DG = self.compute_delta_G(delta_H_dict,
+                                               H_wt_derivative_dict=None,
+                                               H_mutant_derivative_dict=None,
+                                               distribution=distribution,
+                                               macrostate='unfolded',
+                                               compute_derivative=False)
+            delta_delta_G = folded_DG - unfolded_DG
+            if self.rescale_temperature:
+                delta_delta_G *= self.scaling_factor
+            if self.debug:
+                return delta_delta_G, folded_DG, unfolded_DG
+            else:
+                return delta_delta_G
+
+
+    def compute_delta_G(self,
+                       delta_H_dict,
+                       H_wt_derivative_dict=None,
+                       H_mutant_derivative_dict=None,
+                       distribution=None,
+                       macrostate=None,
+                      compute_derivative=False):
+        """
+        The function computes delta_delta_G and corresponding derivative for
+         a particular ensemble. First, need to
+
+         Parameters
+         ----------
+
+         macrostate : str {'folded' or 'unfolded'}
+         A name of ensemble, for which calculations will be performed.
+
+         corrected_epsilons : 1D numpy  array
+
+         Model parameters, multiplied by NEGATIVE fraction of contacts,
+          that were deleted upon mutation
+
+          distribution :  1D numpy array
+          equilibrium distribution to use for calculation. If reweighting is
+          required, the distribution put here should already be reweighted.
+
+          compute_derivative : bool
+          If True, derivative is returend.
+
+          Returns
+          -------
+
+         dG : float
+         delta_G upon mutation for a particular ensemble
+
+         derivative : 1D numpy arrray
+         derivative of delta_G with respect to model parameters
+
+        """
+
+        microstate_sets = {'folded': self.folded_states, 'unfolded': self.unfolded_states}
+
+        microstates = microstate_sets[macrostate]
+        distribution_slice = distribution[microstates]
+        mean_exp_delta_H = []
+        if compute_derivative:
+            mean_H_wt_derives_values = []
+            mean_products = []
+        for microstate in microstates:
+            microstate_delta_H = delta_H_dict[microstate]
+            microstate_exp_delta_H = np.exp(microstate_delta_H)
+            mean_microstate_exp_delta_H = np.mean(microstate_exp_delta_H)
+            mean_exp_delta_H.append(mean_microstate_exp_delta_H)
+            if compute_derivative:
+                mean_H_wt_derivative = np.mean(H_wt_derivative_dict[microstate], axis=0)
+                mean_H_wt_derives_values.append(mean_H_wt_derivative)
+                microstate_H_mutant_derivative = H_mutant_derivative_dict[microstate]
+                product = np.multiply(microstate_H_mutant_derivative,  np.expand_dims(microstate_exp_delta_H, axis=1))
+                mean_product = np.mean(product, axis=0)
+                mean_products.append(mean_product)
+        mean_exp_delta_H = np.array(mean_exp_delta_H)
+        normalization = np.sum(distribution_slice)
+        aver = np.dot(distribution_slice, mean_exp_delta_H)/normalization
+        dG = -np.log(aver)
+        if compute_derivative:
+            mean_product = np.array(mean_product)
+            mean_H_wt_derives_values = np.array(mean_H_wt_derives_values)
+            aver_product = np.dot(distribution_slice, mean_products)/normalization
+            aver_H_wt_derives_values = np.dot(distribution_slice, mean_H_wt_derives_values)/normalization
+            derivative = np.add(-1*np.divide(aver_product, aver), aver_H_wt_derives_values)
+            return dG, derivative
+        return dG
