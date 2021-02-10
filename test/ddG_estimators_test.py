@@ -26,7 +26,7 @@ def _reference_ddG_implementation(trajfile, topfile, stationary_distribution):
     def compute_delta_H(r0, factor, epsilon, distances, sigma=0.05):
         energies = []
         for distance in distances:
-            energy = (1-factor)*np.exp(-1*(distance-r0)**2/(2*(sigma**2)))
+            energy = epsilon*(1-factor)*np.exp(-1*(distance-r0)**2/(2*(sigma**2)))
             energies.append(energy)
         return energies
 
@@ -342,44 +342,157 @@ class TestDDGEstimator(object):
             assert np.abs(reference[1][ndx]-results[1][ndx]
                           ) < 1.0e-7, "Derivative number {} deviates from the reference!".format(ndx)
 
-        def test_Mutational_model_linear(self):
+    def test_Mutational_model_linear(self):
+        """
+        Compute delta_delta_G and corresponding derivatives
+        """
+
+        test_files_folder = 'test_data/1UBQ_sample_data'
+        trajfile = '{}/sample_traj.xtc'.format(test_files_folder)
+        topfile = '{}/ref.pdb'.format(test_files_folder)
+        fraction = np.loadtxt('{}/fraction.txt'.format(test_files_folder))[:, 2]
+        stationary_distribution = np.loadtxt('{}/stationary_distribution.txt'.format(test_files_folder))
+        macrostates = np.loadtxt('{}/macrostates.txt'.format(test_files_folder))
+        dtrajs = np.loadtxt('{}/dtrajs.txt'.format(test_files_folder), dtype=int)
+        model_name = '{}/ubq.ini'.format(test_files_folder)
+        reference = _reference_ddG_implementation(trajfile, topfile, stationary_distribution)
+        print(reference)
+
+        pmodel, data_formatted = pyODEM.model_loaders.load_protein(dtrajs,
+                                                                   trajfile,
+                                                                   model_name,
+                                                                   observable_object=None,
+                                                                   obs_data=None)
+        pmodel.set_temperature(130)  # Hardcoded temperature of the test set
+        obs = mutational_model.Mutational_Model_Linear(protein_model=pmodel,
+                                           partition=macrostates,
+                                           dtrajs=dtrajs,
+                                           distribution=stationary_distribution,
+                                           data=data_formatted)
+        obs.prepare_observables(optimize=True, epsilon=pmodel.get_epsilons())
+        obs.add_mutant("Test",
+           fraction,
+           compute_ddG_U2F=True,
+           compute_ddG_U2T=True)
+        results = obs.compute_delta_delta_G(epsilons=pmodel.get_epsilons(),
+                               compute_derivative=True)
+        print(results)
+
+        assert np.abs(reference[0]-results[0]) < 1.0e-7, "beta_DDG deviates from the reference!"
+        assert len(reference[1]) == results[1][0].shape[0], "Reference and resulting derivative have different number of values"
+        for ndx in range(len(reference[1])):
+            assert np.abs(reference[1][ndx]-results[1][0][ndx]
+                          ) < 1.0e-7, "Derivative number {} deviates from the reference!".format(ndx)
+
+
+
+    def test_ddG_generic(self):
+        test_files_folder = 'test_data/1UBQ_sample_data'
+        trajfile = '{}/sample_traj.xtc'.format(test_files_folder)
+        topfile = '{}/ref.pdb'.format(test_files_folder)
+        fraction = np.loadtxt('{}/fraction.txt'.format(test_files_folder))[:, 2]
+        stationary_distribution = np.loadtxt('{}/stationary_distribution.txt'.format(test_files_folder))
+        macrostates = np.loadtxt('{}/macrostates.txt'.format(test_files_folder))
+        dtrajs = np.loadtxt('{}/dtrajs.txt'.format(test_files_folder), dtype=int)
+        model_name = '{}/ubq.ini'.format(test_files_folder)
+        reference = _reference_ddG_implementation(trajfile, topfile, stationary_distribution)
+        pmodel, data_formatted = pyODEM.model_loaders.load_protein(dtrajs,
+                                                                   trajfile,
+                                                                   model_name,
+                                                                   observable_object=None,
+                                                                   obs_data=None)
+
+        data = data_formatted
+        pmodel.set_temperature(130)  # Hardcoded temperature of the test set
+
+        def prepare_energy_function(pmodel, data, fraction):
             """
-            Compute delta_delta_G and corresponding derivatives
+            Here, prepare an energy function in a format used by
+            ddG_generic class. Need to unwrap it back to 2d array
             """
+            Q = []
+            # Need to use a random set of parameters. For safety, make all parameters
+            # equal to 1
+            epsilon = pmodel.get_epsilons()
+            epsilon = np.ones(len(epsilon))
+            for dictionary in data:
+                state = dictionary['index']
+                values = np.array(dictionary['data'])
+                _, depsilons = pmodel.get_potentials_epsilon(values)
+                q_microstate = np.array(depsilons(epsilon)).T
+                Q.append(q_microstate)
+            derivative_array = np.concatenate(Q, axis=0)
 
-            test_files_folder = 'test_data/1UBQ_sample_data'
-            trajfile = '{}/sample_traj.xtc'.format(test_files_folder)
-            topfile = '{}/ref.pdb'.format(test_files_folder)
-            fraction = np.loadtxt('{}/fraction.txt'.format(test_files_folder))[:, 2]
-            stationary_distribution = np.loadtxt('{}/stationary_distribution.txt'.format(test_files_folder))
-            macrostates = np.loadtxt('{}/macrostates.txt'.format(test_files_folder))
-            dtrajs = np.loadtxt('{}/dtrajs.txt'.format(test_files_folder), dtype=int)
-            model_name = '{}/ubq.ini'.format(test_files_folder)
-            reference = _reference_ddG_implementation(trajfile, topfile, stationary_distribution)
-            print(reference)
+            def H_wt(epsilon, return_derivatives=False):
+                energy = np.sum(derivative_array, axis=1)
+                if return_derivatives:
+                    return energy, derivative_array
+                else:
+                    return energy
 
-            pmodel, data_formatted = pyODEM.model_loaders.load_protein(dtrajs,
-                                                                       trajfile,
-                                                                       model_name,
-                                                                       observable_object=None,
-                                                                       obs_data=None)
-            pmodel.set_temperature(130)  # Hardcoded temperature of the test set
-            obs = mutational_model.Mutational_Model_Linear(protein_model=pmodel,
-                                               partition=partition,
-                                               dtrajs=dtrajs,
-                                               distribution=stationary_distribution,
-                                               data=data_formatted)
-            obs.prepare_observables(optimize=True, epsilon=pmodel.get_epsilons())
-            obs.add_mutant("Test",
-               fraction,
-               compute_ddG_U2F=True,
-               compute_ddG_U2T=True)
-            results = obs.compute_delta_delta_G(epsilons=pmodel.get_epsilons(),
-                                   compute_derivative=True)
-            print(results)
+            def H_mutated(epsilon, return_derivatives=False):
+                corrected_epsilon = np.multiply(fraction, epsilon)
+                mutant_derivative = np.multiply(derivative_array, fraction)
+                energy =  np.sum(np.multiply(derivative_array,corrected_epsilon), axis=1)
+                if return_derivatives:
+                    return energy, mutant_derivative
+                else:
+                    return energy
+            return H_wt, H_mutated
 
-            assert np.abs(reference[0]-results[0]) < 1.0e-7, "beta_DDG deviates from the reference!"
-            assert len(reference[1]) == len(results[1]), "Reference and resulting derivative have different number of values"
-            for ndx in range(len(reference[1])):
-                assert np.abs(reference[1][ndx]-results[1][ndx]
-                              ) < 1.0e-7, "Derivative number {} deviates from the reference!".format(ndx)
+        H_wt, H_mutated = prepare_energy_function(pmodel, data, fraction)
+        epsilons = np.ones((4))
+        ddG = ddG_est_linear.ddG_generic(H_wt,
+                                         H_mutated,
+                                         stationary_distribution,
+                                         rescale_temperature=False,
+                                         dtrajs=dtrajs,
+                                         partition=macrostates)
+        ddG.prepare_observables(optimize=True, epsilon=epsilons)
+        results = ddG.compute_observation(epsilons)
+        print(results)
+        print(reference)
+        assert np.abs(reference[0]-results[0]) < 1.0e-7, "beta_DDG deviates from the reference!"
+        assert len(reference[1]) == results[1].shape[0], "Reference and resulting derivative have different number of values"
+        for ndx in range(len(reference[1])):
+            assert np.abs(reference[1][ndx]-results[1][ndx]
+                         ) < 1.0e-7, "Derivative number {} deviates from the reference!".format(ndx)
+
+
+    def  test_split_data_by_microstates(self):
+        dtrajs = np.array([1, 3, 3, 2, 2, 0, 2, 0], dtype=int)
+        data_1d = np.array([1, 3, 3, 2, 2, 0, 2, 0], dtype=int)
+        data_2d = np.array([ [1, 1, 1],
+                            [3, 3, 3],
+                            [3, 3, 3],
+                            [2, 2, 2],
+                            [2, 2, 2],
+                            [0, 0, 0],
+                            [2, 2, 2],
+                            [0, 0, 0]
+                              ], dtype=int)
+        print(data_2d.shape)
+
+        reference_1d = {0: np.array([0, 0]),
+                        1: np.array([1]),
+                        2: np.array([2,2,2]),
+                        3: np.array([3,3])}
+        reference_2d = {0: np.array([[0,0,0],[0,0,0]]),
+                        1: np.array([[1,1,1]]),
+                        2: np.array([[2,2,2],[2,2,2],[2,2,2]]),
+                        3: np.array([[3,3,3],[3,3,3]]),
+                        }
+        split_1d = ddG_est_linear.ddG_generic._split_data_by_microstates(dtrajs, data_1d)
+        split_2d = ddG_est_linear.ddG_generic._split_data_by_microstates(dtrajs, data_2d)
+        # Check that number of elements in both dictionaries is correct.
+        assert len(reference_1d) == len(split_1d)
+        assert len(reference_2d) == len(split_2d)
+        for key in split_1d:
+            assert np.equal(split_1d[key], reference_1d[key]).all
+        for key in split_2d:
+            assert np.equal(split_2d[key], reference_2d[key]).all
+
+test = TestDDGEstimator()
+
+test.test_ddG_generic()
+test. test_split_data_by_microstates()
