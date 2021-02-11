@@ -3,6 +3,7 @@ import mdtraj as md
 import os
 import sys
 import importlib.util
+import pyODEM
 from pyODEM.model_loaders import ModelLoader
 
 #### Set of imports required for opwnawsemProtein modeling
@@ -80,7 +81,8 @@ class OpenAWSEMProtein():
 
 class AWSEMProtein(ModelLoader):
     """
-    Class calculates nonbonded interactions for AWSEM model.
+    Class calculates nonbonded interactions for AWSEM model. Is constructed
+    such that it can deal with mutations.
     """
     def __init__(self, topology=None, parameter_location='.'):
         """ Initialize the Customized Protein model, override superclass
@@ -96,19 +98,21 @@ class AWSEMProtein(ModelLoader):
         self.model = type('temp', (object,), {})()
         self.epsilons = []
         self.beta = 1.0
-        self.temperature = 1.0 / (self.beta*self.GAS_CONSTANT_KJ_MOL)
+        self.temperature = 1.0/(self.beta*self.GAS_CONSTANT_KJ_MOL)
         self.R_MIN_I = 0.45 # nm
         self.R_MAX_I = 0.65 # nm
         self.ETA = 50 # nm^-1
-        self.topology = topology # Md traj topology object
         self.parameter_location = parameter_location # parameter location
+        self.terms = []
 
         if topology is not None:
-            self.topology = topology
+            self.set_topology(topology)
 
     def set_topology(self,topology):
         self.topology = topology
+        self.n_residues = topology.n_residues
         return
+
 
     @staticmethod
     def get_tanh_well(r, eta, r_min, r_max):
@@ -170,12 +174,12 @@ class AWSEMProtein(ModelLoader):
         """
         assert self.R_MIN_I > 0.1, "R min should not be too small, danger of nonzero potential of interaction atom with itself"
         n_frames = traj.n_frames
-        n_res = traj.top.n_residues
-
+        n_residues = traj.top.n_residues
+        self.n_frames = n_frames
         #Get pairs of atoms, for which distance, and, subsequently, density will be computed
         atom_list = self._get_C_beta()
         n_atoms = len(atom_list)
-        assert n_res == n_atoms, "Number of atom does not match number of residues."
+        assert n_residues == n_atoms, "Number of atom does not match number of residues."
         atom_pairs = self._get_atom_pairs(atom_list)
         self._compute_pairwise_distances(traj)
         self.tanh_well_I  = self.get_tanh_well(self.distances,
@@ -187,8 +191,8 @@ class AWSEMProtein(ModelLoader):
         # local density
         local_density_all = []
         for frame_well in self.tanh_well_I:
-            tanh_well_2d = np.zeros((n_res,n_res))
-            tanh_well_2d[np.triu_indices(n_res, k = 1)] = frame_well
+            tanh_well_2d = np.zeros((n_residues,n_residues))
+            tanh_well_2d[np.triu_indices(n_residues, k = 1)] = frame_well
             assert np.all(np.diag(tanh_well_2d)) == 0
             tanh_well_2d = tanh_well_2d + tanh_well_2d.T
             local_density = np.sum(tanh_well_2d, axis=0),
@@ -221,10 +225,14 @@ class AWSEMProtein(ModelLoader):
         Add direct interactions to the Hamiltonian. Method is supposed to be
         used inside get_potentials_epsilon.
         """
-        direct_interaction = ml.DirectInteraction(self.sequence)
+        direct_interaction = DirectInteraction(self.n_residues)
         direct_interaction.load_paramters(f'{self.parameter_location}/gamma.dat')
-        derivs, unique_params = direct_interaction.calculate_derivatives(self.tanh_well_I)
-        unique_params_types = direct_interaction.unique_pair_types
+        direct_interaction.precompute_data(input=self.tanh_well_I,
+                                           input_type='tanh_well')
+
+        self.terms.append(direct_interaction)
+        self.n_params += direct_interaction.get_n_params()
+        return
 
     def add_mediated_interactions(self):
         """
@@ -241,44 +249,84 @@ class AWSEMProtein(ModelLoader):
         """
         pass
 
+    def setup_Hamiltonian(self, terms=['direct']):
+        """
+        Add all the required terms, as specified in the term
+        list
+        """
+        self.terms = []
+        self.n_params = 0
+        method_dict = {'direct' : self.add_direct_interactions,
+                     'mediated' : self.add_mediated_interactions,
+                     'burrial' : self.add_burrial_interactions }
+        for type in terms:
+            method_dict[type]()
+
+
 
     def get_potentials_epsilon(self,
-                               data,
-                               terms=['direct', 'mediated', 'burrial']):
-      """
-      Generate two functions, that can calculate Hamiltonian and Hamiltonian
-      derivatives.
+                               sequence):
+        """
+        Generate two functions, that can calculate Hamiltonian and Hamiltonian
+        derivatives.
+        Grand assumption: DERIVATIVES DO NOT DEPEND ON PARAMETERS
+                          H = sum_i (epsilon* dH/d(epsilon))
 
-      Parameters
-      ----------
-      data :
 
-      Returns
-      -------
-      hepsilon : function
+        Parameters
+        ----------
+
+        Returns
+        -------
+        hepsilon : function
                  function takes model parameters and calculates -beta*H for each frame.
                  See details in the function description
 
-      dhepsilon : function
+        dhepsilon : function
                  function takes model parameters and calculates  derivative of
                  See details in the function description
 
 
 
-      """
-      function_dict = {'direct' : add_direct_interactions,
-                       'mediated' : add_mediated_interactions,
-                       'burrial' : add_burrial_interactions }
-      for type, function in function_dict.items():
-          params, derivatives = self.function()
+        """
+        derivatives = np.zeros((self.n_frames, self.n_params))
 
 
-      # Do conversion to -beta*H
+        # Creation of a list and subsequent concatenation
+        # of small arrays into a bigger one is not memory efficient.
+        # In this case, at some point both the list and concatenated
+        # array will exist in the memory, doubling requirements
+        pointer = 0
+        for term in self.terms:
+          derivatives_term = term.calculate_derivatives(sequence)
+          derivatives_term_shape = derivatives.shape
+          assert derivatives_term_shape[0] == self.n_frames
+          n_params = term.get_n_params()
+          assert derivatives_term_shape[1] == n_params
+          derivatives[:,pointer:pointer+n_params] = derivatives_term
+          pointer += n_params
 
-      def dhepsilon(params):
+        # Do conversion to -beta*H
+        derivatives = -1.0*self.beta*derivatives
+
+
+        def dhepsilon(params):
           return(derivatives)
 
+        def hepsilon(params):
+          H = np.sum(np.multiply(derivatives, params), axis=1)
+          return H
 
+        return hepsilon, dhepsilon
+
+
+    def get_epsilons(self):
+        parameter_list = []
+        for term in self.terms:
+            params = term.get_parameters()
+            parameter_list.append(params)
+        param_array = np.concatenate(parameter_list)
+        return param_array
 
 
 class Hamiltonian():
@@ -354,26 +402,24 @@ class DirectInteraction(Hamiltonian):
     Is responsible for direct interaction potential.
     """
     def __init__(self,
-                 sequence,
+                 n_residues,
                  lambda_direct=4.184,
                  r_min_I=0.45,
                  r_max_I=0.65,
                  eta=50,
                  separation=9):
+
         self.lambda_direct = lambda_direct
         self.r_min_I = r_min_I
         self.r_max_I = r_max_I
         self.eta = eta
-        self.sequence = sequence
-
         # Here, determine a mask wich defines,
         # which indexes are neded for calculation
-        n_res = len(sequence)
         counter = 0
         mask_indexes = []
         residue_pairs = []
-        for i in range(n_res-1):
-            for j in range(i+1, n_res):
+        for i in range(n_residues-1):
+            for j in range(i+1, n_residues):
                 if j-i > separation:
                     mask_indexes.append(counter)
                     residue_pairs.append([i,j])
@@ -401,83 +447,81 @@ class DirectInteraction(Hamiltonian):
                                                               self. r_min_I,
                                                               self.r_max_I)
         elif input_type == 'tanh_well':
-                if input_type == 'distances':
-                    q_direct = -self.lambda_direct*masked_input
+            q_direct = -self.lambda_direct*masked_input
+
+        self.q = q_direct
         return q_direct
 
 
     def load_paramters(self, parameter_file):
         """
-        Load parameters and store them in a form that is
-        convinient for parameter retrival
+        Load parameters and determine their  corresponding types
 
         """
-        data = np.loadtxt(parameter_file)
-        gamma_direct = data[:210]
-        gamma_direct_2d = np.zeros((20,20))
-        count = 0
-        for i in range(20):
-            for j in range(i, 20):
-                gamma_direct_2d[i][j] = gamma_direct[count][0]
-                gamma_direct_2d[j][i] = gamma_direct[count][0]
-                count += 1
 
-        self.gamma = gamma_direct_2d
-        return 0
-
-    def get_all_parameters(self, sequence):
-        """
-        Go over the pairs and do the following:
-        1) Create an array of parameters for each Qi parameters.
-        2) Create an array, that contains an index of corresponding parameter
-           for eqch of the Q values
-        """
-        # Correspondence between one-letter code and index in datafiles
         gamma_se_map_1_letter = {   'A': 0,  'R': 1,  'N': 2,  'D': 3,  'C': 4,
                                     'Q': 5,  'E': 6,  'G': 7,  'H': 8,  'I': 9,
                                     'L': 10, 'K': 11, 'M': 12, 'F': 13, 'P': 14,
                                     'S': 15, 'T': 16, 'W': 17, 'Y': 18, 'V': 19}
-        pair_types = []
-        params_list = []
-        for pair in self.residue_pairs:
-            res_1 = sequence[pair[0]]
-            res_2 = sequence[pair[1]]
-            res_1_ndx = gamma_se_map_1_letter[res_1]
-            res_2_ndx = gamma_se_map_1_letter[res_2]
-            params_list.append(self.gamma[res_1_ndx, res_2_ndx])
-            pair_type = [res_1, res_2]
-            pair_type.sort()
-            pair_type_str = f'{pair_type[0]}{pair_type[1]}'
-            pair_types.append(pair_type_str)
-        self.params_all = np.array(params_list)
-        self.pair_types = np.array(pair_types)
-        return np.array(params_list), pair_types
 
-    def calculate_derivatives(self, input, input_type='distances'):
+        ndx_2_letter = {value : key for key, value in gamma_se_map_1_letter.items() }
+        types = []
+        data = np.loadtxt(parameter_file)
+        gamma_direct = data[:210,0]
+        self.gamma = gamma_direct
+
+
+        for i in range(20):
+            for j in range(i, 20):
+                type=frozenset([ndx_2_letter[i],ndx_2_letter[j]])
+                types.append(type)
+        self.types = types
+        return 0
+
+
+    def map_types_to_pairs(self, sequence):
+        """
+        Create a mapping between types of parameters and residue pairs, that
+        contribute to the H. As an outcome, creates a dictionary. Keys of the
+        dictionary - frozen sets representing all the pair types. Values - list of integers -
+        indexes of pairs in self.pairs, that corresponds to the key type
+        """
+
+        type_to_pair = { type: [] for type in self.types} # just 210 types
+        for ndx, pair in enumerate(self.residue_pairs):
+
+            pair_type = frozenset([sequence[pair[0]], sequence[pair[1]]])
+            type_to_pair[pair_type].append(ndx)
+        return type_to_pair
+
+
+    def precompute_data(self, input, input_type):
+        """
+        Calculate values, that are used repeatedly for different calculations
+        """
+        self.q = self._calculate_Q(input, input_type=input_type)
+
+
+    def calculate_derivatives(self, sequence, input=None, input_type='distances'):
         """
         Calculate derivatives with respect of parameters
         of each type
         """
-        # First, calculate q_values and sort them by pair types
-        try:
-            ndx = np.argsort(self.pair_types)
-        except AttributeError:
-            print("Should use get_all_parameters first")
+        if not hasattr(self, 'q'):
+            self.q = self._calculate_Q(input, input_type=input_type)
 
-        q = self._calculate_Q(input, input_type=input_type)
-        ndx = np.argsort(self.pair_types)
-        q =  q[:, ndx]
-        self.pair_types = self.pair_types[ndx]
-        self.params_all = self.params_all[ndx]
-        self.sorted = True
+        #Getting mapping
+        types_to_pair = self.map_types_to_pairs(sequence)
+        derivatives = []  # At the end, derivatives should be a matrix
+        for pair_type in self.types:
+            fragment = np.sum(self.q[:, types_to_pair[pair_type]], axis=1)
+            derivatives.append(fragment)
+        derivatives = np.array(derivatives).T
+        return(derivatives)
 
-        #Getting unique values
-        unique_ndx = np.unique(self.pair_types, return_index=True)[1]
-        unique_params = self.params_all[unique_ndx]
-        unique_pair_types = self.pair_types[unique_ndx]
-        self.unique_pair_types = unique_pair_types
+    def get_parameters(self):
+        return self.gamma
 
-        splitted_q = np.split(q, unique_ndx[1:], axis=1)
-        derivs = np.array([np.sum(i, axis=1) for i in splitted_q]).T
 
-        return derivs, unique_params
+    def get_n_params(self):
+        return len(self.gamma)
