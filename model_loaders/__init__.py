@@ -40,7 +40,7 @@ from .AWSEM_model import AWSEMProtein
 from .AWSEM_model import OpenAWSEMProtein
 from .AWSEM_model import Hamiltonian
 from .AWSEM_model import  DirectInteraction
-
+from .AWSEM_model import MediatedInteraction
 
 #load all the helper functions
 from .helper_functions import load_protein
