@@ -193,9 +193,14 @@ class AWSEMProtein(ModelLoader):
         for frame_well in self.tanh_well_I:
             tanh_well_2d = np.zeros((n_residues,n_residues))
             tanh_well_2d[np.triu_indices(n_residues, k = 1)] = frame_well
-            assert np.all(np.diag(tanh_well_2d)) == 0
+            for res_ndx in range(self.n_residues-1):
+                tanh_well_2d[res_ndx, res_ndx + 1]  = 0.0
+                #tanh_well_2d[res_ndx, res_ndx + 2]  = 0.0
+                #tanh_well_2d[res_ndx, res_ndx]  = 0.0 # can safely remove this line
+            assert np.all(np.diag(tanh_well_2d) == 0)
             tanh_well_2d = tanh_well_2d + tanh_well_2d.T
-            local_density = np.sum(tanh_well_2d, axis=0),
+            local_density = np.sum(tanh_well_2d, axis=0)
+            #local_density = 4.0*np.ones(local_density.shape)
             local_density_all.append(local_density)
         self.local_density = np.array(local_density_all)
         return self.local_density
@@ -525,3 +530,170 @@ class DirectInteraction(Hamiltonian):
 
     def get_n_params(self):
         return len(self.gamma)
+
+
+
+class MediatedInteraction(Hamiltonian):
+    """
+    Is responsible for direct interaction potential.
+    """
+    def __init__(self,
+                 n_residues,
+                 lambda_mediated=4.184,
+                 rho_0 = 2.6,
+                 r_min_II=0.65,
+                 r_max_II=0.95,
+                 eta_sigma =7.0,
+                 eta=50,
+                 separation=9,
+                 density_separation=2):
+
+        self.lambda_mediated = lambda_mediated
+        self.r_min_II = r_min_II
+        self.r_max_II = r_max_II
+        self.eta_sigma = eta_sigma
+        self.eta = eta
+        self.rho_0 = rho_0
+        # Here, determine a mask wich defines,
+        # which indexes are neded for calculation
+        counter = 0
+        mask_indexes = []
+        residue_pairs = []
+        for i in range(n_residues-1):
+            for j in range(i+1, n_residues):
+                if j-i > separation:
+                    mask_indexes.append(counter)
+                    residue_pairs.append([i,j])
+                counter += 1
+        self.mask = np.array(mask_indexes, dtype=int)
+        self.residue_pairs = residue_pairs
+
+
+    def _calculate_sigma(self, densities):
+        """
+        Function computes sigma water and sigma protein
+        (Equation 12 from AWSEM_MD support info)
+
+        rho : 2D numpy array of floats
+        size NxM, N - number of frames, M - number of particles.
+        Contains local density for each Calpha bead in each
+        frame
+        """
+        n_frames = densities.shape[0]
+        n_pairs = len(self.residue_pairs)
+        sigma_water = np.zeros((n_frames, n_pairs))
+        multiplier  = 1 - np.tanh(self.eta_sigma*(densities-self.rho_0))
+        for ndx, pair in enumerate(self.residue_pairs):
+            sigma_water_fragment = 0.25*np.multiply(multiplier[:,pair[0]],multiplier[:,pair[1]])
+            sigma_water[:,ndx] = sigma_water_fragment
+        sigma_prot = 1 - sigma_water
+        return sigma_water, sigma_prot
+
+
+    def _calculate_Q(self,
+                    distances,
+                    densities
+                    ):
+        """
+        Calculate Q values for the mediated potential.
+
+        Arguments:
+
+        distances, densities : numpy array
+        Input distances
+        """
+        masked_distances = distances[:, self.mask]
+
+        # 1) Calculate tanh well II
+        tanh_II = self.get_tanh_well(masked_distances,
+                                self.eta,
+                                self.r_min_II,
+                                self.r_max_II)
+        # 2) Calculate sigma ij (water). (eq 12 in the SI)
+        # Put 0.25 and 0.75 for debugging purpose
+        sigma_water, sigma_prot = self._calculate_sigma(densities)
+        q_water = -1.0*self.lambda_mediated*tanh_II*sigma_water
+        q_prot = -1.0*self.lambda_mediated*tanh_II*sigma_prot
+        self.q_water = q_water
+        self.q_prot = q_prot
+        return self.q_water, self.q_prot
+
+
+    def load_paramters(self, parameter_file):
+        """
+        Load parameters and determine their  corresponding types
+
+        """
+
+        gamma_se_map_1_letter = {   'A': 0,  'R': 1,  'N': 2,  'D': 3,  'C': 4,
+                                    'Q': 5,  'E': 6,  'G': 7,  'H': 8,  'I': 9,
+                                    'L': 10, 'K': 11, 'M': 12, 'F': 13, 'P': 14,
+                                    'S': 15, 'T': 16, 'W': 17, 'Y': 18, 'V': 19}
+
+        ndx_2_letter = {value : key for key, value in gamma_se_map_1_letter.items() }
+        types = []
+        data = np.loadtxt(parameter_file)
+        self.gamma_mediated_water  = data[210:,1]
+        self.gamma_mediated_prot = data[210:,0]
+
+        for i in range(20):
+            for j in range(i, 20):
+                type=frozenset([ndx_2_letter[i],ndx_2_letter[j]])
+                types.append(type)
+        self.types = types
+        return 0
+
+
+    def map_types_to_pairs(self, sequence):
+        """
+        Create a mapping between types of parameters and residue pairs, that
+        contribute to the H. As an outcome, creates a dictionary. Keys of the
+        dictionary - frozen sets representing all the pair types. Values - list of integers -
+        indexes of pairs in self.pairs, that corresponds to the key type
+        """
+
+        type_to_pair = { type: [] for type in self.types} # just 210 types
+        for ndx, pair in enumerate(self.residue_pairs):
+
+            pair_type = frozenset([sequence[pair[0]], sequence[pair[1]]])
+            type_to_pair[pair_type].append(ndx)
+        return type_to_pair
+
+
+    def precompute_data(self, distances, densities):
+        """
+        Calculate values, that are used repeatedly for different calculations
+        """
+        self._calculate_Q(distances, densities)
+
+
+    def calculate_derivatives(self, sequence, distances, densities):
+        """
+        Calculate derivatives with respect of parameters
+        of each type
+        """
+        if not (hasattr(self, 'q_water') and hasattr(self, 'q_prot')):
+            self._calculate_Q(distances, densities)
+
+        #Getting mapping
+        types_to_pair = self.map_types_to_pairs(sequence)
+        n_params_water = len(self.gamma_mediated_water)
+        n_params_prot = len(self.gamma_mediated_prot)
+        n_params = n_params_water + n_params_prot
+        n_frames = len(self.q_water)
+        derivatives = np.zeros((n_frames, n_params))
+        # Dirivatives will contain first block for water-mediated contacts
+        # than a block for protein-mediated contacts
+        for ndx, pair_type in enumerate(self.types):
+            fragment_water = np.sum(self.q_water[:, types_to_pair[pair_type]], axis=1)
+            derivatives[:,ndx] = fragment_water
+            fragment_prot = np.sum(self.q_prot[:, types_to_pair[pair_type]], axis=1)
+            derivatives[:,ndx+n_params_water] = fragment_prot
+        return(derivatives)
+
+    def get_parameters(self):
+        return np.concatenate([self.gamma_mediated_water, self.gamma_mediated_prot])
+
+
+    def get_n_params(self):
+        return   len(self.gamma_mediated_water) + len(self.gamma_mediated_prot)
