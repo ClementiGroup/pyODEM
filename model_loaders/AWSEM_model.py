@@ -195,12 +195,9 @@ class AWSEMProtein(ModelLoader):
             tanh_well_2d[np.triu_indices(n_residues, k = 1)] = frame_well
             for res_ndx in range(self.n_residues-1):
                 tanh_well_2d[res_ndx, res_ndx + 1]  = 0.0
-                #tanh_well_2d[res_ndx, res_ndx + 2]  = 0.0
-                #tanh_well_2d[res_ndx, res_ndx]  = 0.0 # can safely remove this line
             assert np.all(np.diag(tanh_well_2d) == 0)
             tanh_well_2d = tanh_well_2d + tanh_well_2d.T
             local_density = np.sum(tanh_well_2d, axis=0)
-            #local_density = 4.0*np.ones(local_density.shape)
             local_density_all.append(local_density)
         self.local_density = np.array(local_density_all)
         return self.local_density
@@ -244,15 +241,27 @@ class AWSEMProtein(ModelLoader):
         Add mediated interactions to the Hamiltonian. Is supposed to be
         used inside get_potentials_epsilon.
         """
-        pass
+        mediated_interaction = MediatedInteraction(self.n_residues)
+        mediated_interaction.load_paramters(f'{self.parameter_location}/gamma.dat')
+        mediated_interaction.precompute_data(distances=self.distances,
+                                             densities=self.local_density)
 
+        self.terms.append(mediated_interaction)
+        self.n_params += mediated_interaction.get_n_params()
+        return
 
     def add_burrial_interactions(self):
         """
-        Add mediated interactions to the Hamiltonian. Is supposed to be
+        Add burial interactions to the Hamiltonian. Is supposed to be
         used inside get_potentials_epsilon.
         """
-        pass
+        burial_interaction = BurialInteraction(self.n_residues)
+        burial_interaction.load_paramters(f'{self.parameter_location}/burial_gamma.dat')
+        burial_interaction.precompute_data(densities=self.local_density)
+
+        self.terms.append(burial_interaction)
+        self.n_params += burial_interaction.get_n_params()
+        return
 
     def setup_Hamiltonian(self, terms=['direct']):
         """
@@ -263,7 +272,7 @@ class AWSEMProtein(ModelLoader):
         self.n_params = 0
         method_dict = {'direct' : self.add_direct_interactions,
                      'mediated' : self.add_mediated_interactions,
-                     'burrial' : self.add_burrial_interactions }
+                     'burial' : self.add_burrial_interactions }
         for type in terms:
             method_dict[type]()
 
@@ -307,7 +316,7 @@ class AWSEMProtein(ModelLoader):
           derivatives_term_shape = derivatives.shape
           assert derivatives_term_shape[0] == self.n_frames
           n_params = term.get_n_params()
-          assert derivatives_term_shape[1] == n_params
+          assert derivatives_term_shape[1] == self.n_params
           derivatives[:,pointer:pointer+n_params] = derivatives_term
           pointer += n_params
 
@@ -533,6 +542,129 @@ class DirectInteraction(Hamiltonian):
 
 
 
+class BurialInteraction(Hamiltonian):
+    """
+    Is responsible for direct interaction potential.
+    """
+    def __init__(self,
+                 n_residues,
+                 lambda_burial=4.184, # will yeild energy in kJ/mol
+                 eta_burial=4.0,
+                 rho_I_limits = [0.0, 3.0],
+                 rho_II_limits = [3.0, 6.0],
+                 rho_III_limits = [6.0, 9.0]
+                 ):
+
+        self.lambda_burial = lambda_burial
+        self.eta_burial = eta_burial
+        self.rho_I_limits = rho_I_limits
+        self.rho_II_limits = rho_II_limits
+        self.rho_III_limits = rho_III_limits
+
+
+
+    def _burial_q(self, densities, rho_limits):
+        """
+        Calculate part, that does not depend on parameter
+        for a particular range of q_values
+        """
+        rho_min, rho_max = rho_limits
+        term =  np.tanh(self.eta_burial*(densities-rho_min))
+        term += np.tanh(self.eta_burial*(rho_max - densities))
+
+        return -0.5*self.lambda_burial*term
+
+
+
+    def _calculate_Q(self,
+                    densities
+                    ):
+        """
+        Calculate Q values for burial potential.
+
+        Arguments:
+
+        distances, densities : numpy array
+        Input distances
+        """
+        self.q_I = self._burial_q(densities, self.rho_I_limits)
+        self.q_II = self._burial_q(densities, self.rho_II_limits)
+        self.q_III = self._burial_q(densities, self.rho_III_limits)
+
+        return self.q_I, self.q_II, self.q_III
+
+
+    def load_paramters(self, parameter_file):
+        """
+        Load parameters and determine their  corresponding types
+
+        """
+        data = np.loadtxt(parameter_file)
+        gamma_se_map_1_letter = {   'A': 0,  'R': 1,  'N': 2,  'D': 3,  'C': 4,
+                                    'Q': 5,  'E': 6,  'G': 7,  'H': 8,  'I': 9,
+                                    'L': 10, 'K': 11, 'M': 12, 'F': 13, 'P': 14,
+                                    'S': 15, 'T': 16, 'W': 17, 'Y': 18, 'V': 19}
+
+        ndx_2_letter = {value : key for key, value in gamma_se_map_1_letter.items() }
+        self.gamma  = np.loadtxt(parameter_file)
+        self.types = [ndx_2_letter[i] for i in range(20)]
+        return 0
+
+
+    def map_types_to_residues(self, sequence):
+        """
+        Create a mapping between types of parameters and aminoacid residue, that
+        contribute to the H. As an outcome, creates a dictionary. Keys of the
+        dictionary - 1-letter  aminoacid type.  Values - list of integers -
+        indexes of residues that corresponds to the key type
+        """
+
+        type_to_res = { type: [] for type in self.types} # just 210 types
+        for ndx, residue in enumerate(sequence):
+            type_to_res[residue].append(ndx)
+        return type_to_res
+
+
+    def precompute_data(self, densities):
+        """
+        Calculate values, that are used repeatedly for different calculations
+        """
+        self._calculate_Q(densities)
+
+
+    def calculate_derivatives(self, sequence, densities=None):
+        """
+        Calculate derivatives with respect of parameters
+        of each type
+        """
+        if not (hasattr(self, 'q_I') and hasattr(self, 'q_II')  and hasattr(self, 'q_III')):
+            self._calculate_Q(densities)
+
+        #Getting mapping
+        types_to_res = self.map_types_to_residues(sequence)
+        n_params_per_type = len(self.gamma)
+        n_params = 3*n_params_per_type
+        n_frames = len(self.q_I)
+        derivatives = np.zeros((n_frames, n_params))
+        # Dirivatives will contain 3 blocks: for 1, 2, 3 density conditions
+        # than a block for protein-mediated contacts
+        for ndx, res_type in enumerate(self.types):
+            fragment_I = np.sum(self.q_I[:, types_to_res[res_type]], axis=1)
+            fragment_II = np.sum(self.q_II[:, types_to_res[res_type]], axis=1)
+            fragment_III = np.sum(self.q_III[:, types_to_res[res_type]], axis=1)
+            derivatives[:,ndx] = fragment_I
+            derivatives[:,ndx+n_params_per_type] = fragment_II
+            derivatives[:,ndx+2*n_params_per_type] = fragment_III
+        return(derivatives)
+
+    def get_parameters(self):
+        return self.gamma.flatten('F')
+
+
+    def get_n_params(self):
+        return  3*self.gamma.shape[0]
+
+
 class MediatedInteraction(Hamiltonian):
     """
     Is responsible for direct interaction potential.
@@ -667,7 +799,7 @@ class MediatedInteraction(Hamiltonian):
         self._calculate_Q(distances, densities)
 
 
-    def calculate_derivatives(self, sequence, distances, densities):
+    def calculate_derivatives(self, sequence, distances=None, densities=None):
         """
         Calculate derivatives with respect of parameters
         of each type
