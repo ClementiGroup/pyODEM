@@ -41,6 +41,7 @@ from .AWSEM_model import OpenAWSEMProtein
 from .AWSEM_model import Hamiltonian
 from .AWSEM_model import  DirectInteraction
 from .AWSEM_model import MediatedInteraction
+from .AWSEM_model import BurialInteraction
 
 #load all the helper functions
 from .helper_functions import load_protein
