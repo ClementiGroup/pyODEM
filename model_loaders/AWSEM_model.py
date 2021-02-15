@@ -349,6 +349,8 @@ class AWSEMProtein(ModelLoader):
         parameter_list = []
         for term in self.terms:
             params = term.get_parameters()
+            print(type(params))
+            print(params)
             parameter_list.append(params)
         param_array = np.concatenate(parameter_list)
         return param_array
