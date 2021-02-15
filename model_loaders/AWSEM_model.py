@@ -333,6 +333,17 @@ class AWSEMProtein(ModelLoader):
 
         return hepsilon, dhepsilon
 
+    def get_H_func(self, sequence):
+        hepsilon, dhepsilon = self.get_potentials_epsilon(sequence)
+
+        def H_func(params, return_derivatives=False):
+            if return_derivatives:
+                return hepsilon(params), dhepsilon(params)
+            else:
+                return hepsilon(params)
+        return H_func
+
+
 
     def get_epsilons(self):
         parameter_list = []
