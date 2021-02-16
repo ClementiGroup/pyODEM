@@ -497,15 +497,6 @@ class ddG_generic(ddG_observable):
         data_dict = dict(zip(list(unique_states), splitted_data))
         return data_dict
 
-    def _compute_reweight_prefactor(self, epsilon_old):
-        """
-        The method computes prefactor, that does not change during optimization.
-        it is exp(-beta*H(epsilon_old))
-        """
-        H = self.H_wt(epsilon_old)
-        prefactor = np.exp(H)
-        self.prefactor = prefactor
-        return
 
     def _reweight_microstates(self, new_H):
         """
@@ -515,8 +506,8 @@ class ddG_generic(ddG_observable):
         new_H - 1d numpy array.
         """
         distribution_reweighted = np.zeros(np.shape(self.distribution)[0])
-        new_exponent = np.exp(new_H)
-        change = np.divide(new_exponent, self.prefactor)
+        old_H = self.old_H
+        change = np.exp(new_H-old_H)
         change_by_microstate = self._split_data_by_microstates(self.dtrajs, change)
         mean_change_by_microstate = np.array([np.mean(value) for key, value in change_by_microstate.items()])
         distribution_reweighted = np.multiply(self.distribution,mean_change_by_microstate)
@@ -531,7 +522,7 @@ class ddG_generic(ddG_observable):
         calculating prefactor and counting number of microstates for a
         """
         if optimize:
-            self._compute_reweight_prefactor(epsilon)
+            self.old_H = self.H_wt(epsilon)
         return
 
 
