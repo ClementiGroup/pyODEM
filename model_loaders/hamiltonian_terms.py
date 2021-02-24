@@ -589,7 +589,7 @@ class SBMNonbondedInteraction(Hamiltonian):
         self._calculate_Q(distances)
 
 
-    def calculate_derivatives(self, distances=None, mutant_fraction=None):
+    def calculate_derivatives(self, distances=None, fraction=None):
         """
         Calculate derivatives with respect of parameters
         of each type.
@@ -599,7 +599,7 @@ class SBMNonbondedInteraction(Hamiltonian):
         if mutant_fraction is None:
             derivatives = self.q
         else:
-            derivatives = np.multiply(self.q, mutant_fraction)
+            derivatives = np.multiply(self.q, fraction)
             print("Multiplication done")
         return derivatives
 
