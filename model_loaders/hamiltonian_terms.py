@@ -600,6 +600,7 @@ class SBMNonbondedInteraction(Hamiltonian):
             derivatives = self.q
         else:
             derivatives = np.multiply(self.q, mutant_fraction)
+            print("Multiplication done")
         return derivatives
 
 
