@@ -38,10 +38,14 @@ from .custom_protein import CustomProtein
 from .custom_protein_dihedral import CustomProteinDihedral
 from .AWSEM_model import AWSEMProtein
 from .AWSEM_model import OpenAWSEMProtein
-from .AWSEM_model import Hamiltonian
-from .AWSEM_model import  DirectInteraction
-from .AWSEM_model import MediatedInteraction
-from .AWSEM_model import BurialInteraction
+from .hybrid_model import HybridProtein
+
+# Load Hamiltonian terms
+from .hamiltonian_terms import Hamiltonian
+from .hamiltonian_terms import AWSEMDirectInteraction
+from .hamiltonian_terms import AWSEMMediatedInteraction
+from .hamiltonian_terms import AWSEMBurialInteraction
+from .hamiltonian_terms import  SBMNonbondedInteraction
 
 #load all the helper functions
 from .helper_functions import load_protein
