@@ -596,7 +596,7 @@ class SBMNonbondedInteraction(Hamiltonian):
         """
         if not (hasattr(self, 'q')):
             self._calculate_Q(distances)
-        if mutant_fraction is None:
+        if fraction is None:
             derivatives = self.q
         else:
             derivatives = np.multiply(self.q, fraction)
