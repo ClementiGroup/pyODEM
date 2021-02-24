@@ -282,7 +282,7 @@ class HybridProtein(ModelLoader):
           if term.type in ['awsem_burial', 'awsem_mediated', 'awsem_direct' ]:
               derivatives_term = term.calculate_derivatives(kwargs['sequence'])
           elif term.type in ['sbm_nonbonded']:
-              derivatives_term = term.calculate_derivatives(kwargs['fraction'])
+              derivatives_term = term.calculate_derivatives(fraction=kwargs['fraction'])
           else:
               raise ValueError
 
