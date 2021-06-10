@@ -3,7 +3,7 @@ import pyODEM
 import numpy as np
 import mdtraj as md
 
-DATA_PATH = 'test_data/1UBQ_sample_data'
+DATA_PATH = 'test_data/CA_CB_sample_data'
 
 @pytest.fixture
 def load_dihedral_model():
