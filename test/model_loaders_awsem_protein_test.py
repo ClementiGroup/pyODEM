@@ -14,12 +14,11 @@ sys.path.append(OPENAWSEM_LOCATION)
 try:
     have_openmmawsem = True
     from openmmawsem  import *
+    from helperFunctions.myFunctions import *
 except:
     have_openmmawsem = False
     print("OPENAWSEM PACKAGE WAS NOT FOUND. SOME OF")
 
-
-from helperFunctions.myFunctions import *
 
 
 DATA_PATH = 'test_data/awsem_sample_data'
