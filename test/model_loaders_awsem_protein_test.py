@@ -10,7 +10,15 @@ ml = pyODEM.model_loaders
 OPENAWSEM_LOCATION = os.environ["OPENAWSEM_LOCATION"]
 sys.path.append(OPENAWSEM_LOCATION)
 
-from openmmawsem  import *
+
+try:
+    have_openmmawsem = True
+    from openmmawsem  import *
+except:
+    have_openmmawsem = False
+    print("OPENAWSEM PACKAGE WAS NOT FOUND. SOME OF")
+
+
 from helperFunctions.myFunctions import *
 
 
@@ -45,6 +53,8 @@ class TestAWSEMProtein():
     """
 
     def test_direct_contacts(self):
+        if  not have_openmmawsem:
+            assert 1==2,  'package openmmawsem needs to be available to perform this test'
         traj = md.load(f'{DATA_PATH}/movie.pdb')
         topology = traj.top
         openawsem_protein = ml.OpenAWSEMProtein()
@@ -70,6 +80,8 @@ class TestAWSEMProtein():
     def test_mediated_contacts(self):
         traj = md.load(f'{DATA_PATH}/movie.pdb')
         topology = traj.top
+        if  not have_openmmawsem:
+            assert 1==2,  'package openmmawsem needs to be available to perform this test'
         openawsem_protein = ml.OpenAWSEMProtein()
         openawsem_protein.prepare_system(
                            f'{DATA_PATH}/1pgb_openmmawsem.pdb',
@@ -95,6 +107,8 @@ class TestAWSEMProtein():
     def test_burial_contacts(self):
         traj = md.load(f'{DATA_PATH}/movie.pdb')
         topology = traj.top
+        if  not have_openmmawsem:
+            assert 1==2,  'package openmmawsem needs to be available to perform this test'
         openawsem_protein = ml.OpenAWSEMProtein()
         openawsem_protein.prepare_system(
                            f'{DATA_PATH}/1pgb_openmmawsem.pdb',
@@ -143,6 +157,8 @@ class TestAWSEMProtein():
 
 
     def test_get_potentials_epsilon(self):
+        if  not have_openmmawsem:
+            assert 1==2,  'package openmmawsem needs to be available to perform this test'
         traj = md.load(f'{DATA_PATH}/movie.pdb')
         topology = traj.top
         openawsem_protein = ml.OpenAWSEMProtein()
