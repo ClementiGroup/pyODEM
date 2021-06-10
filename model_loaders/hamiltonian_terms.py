@@ -610,3 +610,140 @@ class SBMNonbondedInteraction(Hamiltonian):
 
     def get_n_params(self):
         return   len(self.params)
+
+
+# Create another class, that inherits from  SBMNonbondedInteraction, as it
+# uses the same form for function. The difference is in handling parameters
+# and functional types.
+class SBMNonbondedInteractionsByResidue(SBMNonbondedInteraction):
+    """
+    Class handles energy calculations for a Hamiltonian, defined by
+    the following rules:
+    1) One interaction strength parameter is defined for each pair of aminoacid
+    2) Two options available for determening functional form of the interaction.
+       auto: functional form is determined automatically, LJ12GAUSSIAN  for positive interaction
+       parameters and  LJ12GAUSSIANTANH for negative interaction parameters.
+       from_file: functional form is fixed and recorded in the file
+    """
+    def __init__(self, func_type ='from_file'):
+
+        self.func_type = func_type
+        self.type = 'SBM nonbonded, residue-specific'
+
+
+    def load_topology(self, topology_file=):
+        """
+        Need to know
+        """
+
+
+    def load_parameter_description_full(self, file):
+        """
+        Load parameters descriptions and types.
+        Should create list of pairs, lists of
+        params.
+        """
+        description = np.genfromtxt(file,
+                                    dtype=None,
+                                    unpack=True,
+                                    encoding=None,
+                                    names=['atom_i', 'atom_j', 'ndx', 'type', 'sigma', 'r0', 'sigma_tg'])
+        self.pairs = [frozenset((i[0]-1, i[1]-1)) for i in zip(description['atom_i'], description['atom_j'])]
+        self.pair_types = description['type']
+        self.sigma = description['sigma']
+        self.r0 = description['r0']
+        self.sigma_tg = description['sigma_tg']
+        return
+
+    def load_parameter_description(self, file=None):
+        """
+        Here an appropriate form of parameter description is performed
+        """
+
+    def calculate_lj12gaussian(self, distance, r0, sigma_g):
+         return -1.0*np.exp(-(distance - r0)**2/(2*sigma_g**2))
+
+    def calculate_lj12gaussiantanh(self, distance, r0, sigma_t):
+        return 0.5*(np.tanh((r0-distance + sigma_t)/sigma_t) + 1)
+
+
+    def _calculate_Q(self,
+                    distances,
+                    ):
+        """
+        Calculate Q values for the mediated potential.
+        Get distances. Should take descriptions and
+        calculate q.
+
+        Arguments:
+
+        distances, densities : numpy array
+        Input
+        """
+        type_dict = {'LJ12GAUSSIAN' : self.calculate_lj12gaussian,
+                     'LJ12GAUSSIANTANH' : self.calculate_lj12gaussiantanh}
+        masked_distances = distances[:, self.mask]
+        q = np.zeros(masked_distances.shape)
+
+        for ndx, type in enumerate(self.pair_types):
+            distance = masked_distances[:, ndx]
+            r0 = self.r0[ndx]
+            sigma_tg = self.sigma_tg[ndx]
+            q[:, ndx] = type_dict[type](distance, r0, sigma_tg)
+
+        self.q = q
+
+        return self.q
+
+
+        def load_paramters(self, parameter_file):
+            """
+            Load parameters and determine their  corresponding types
+
+            """
+
+            gamma_se_map_1_letter = {   'A': 0,  'R': 1,  'N': 2,  'D': 3,  'C': 4,
+                                        'Q': 5,  'E': 6,  'G': 7,  'H': 8,  'I': 9,
+                                        'L': 10, 'K': 11, 'M': 12, 'F': 13, 'P': 14,
+                                        'S': 15, 'T': 16, 'W': 17, 'Y': 18, 'V': 19}
+
+            ndx_2_letter = {value : key for key, value in gamma_se_map_1_letter.items() }
+            types = []
+            epsilons = np.loadtxt(parameter_file)
+            for i in range(20):
+                for j in range(i, 20):
+                    type=frozenset([ndx_2_letter[i],ndx_2_letter[j]])
+                    types.append(type)
+            self.types = types
+            return 0
+
+
+
+    def precompute_data(self, distances):
+        """
+        Calculate values, that are used repeatedly for different calculations
+        """
+        self._calculate_Q(distances)
+
+
+    def calculate_derivatives(self, distances=None, fraction=None):
+        """
+        Calculate derivatives with respect of parameters
+        of each type.
+        """
+        if not (hasattr(self, 'q')):
+            self._calculate_Q(distances)
+        if fraction is None:
+            derivatives = self.q
+        else:
+            derivatives = np.multiply(self.q, fraction)
+            print("Multiplication done")
+        return derivatives
+
+
+    def get_parameters(self):
+        return self.params
+
+
+    def get_n_params(self):
+        return   len(self.params)
