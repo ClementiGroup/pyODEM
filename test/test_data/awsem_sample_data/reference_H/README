@@ -1,0 +1,4 @@
+Folder contains reference energy values needed for testing awsem model.
+The test data were generated using AWSEM, the code can be found in this folder.
+To make AWSEM implementaion and current implementation consistent, Cutoff value was
+set to 300 nm while generating data.
