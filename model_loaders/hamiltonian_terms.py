@@ -801,9 +801,7 @@ class SBMNonbondedInteractionsByResidue(SBMNonbondedInteraction):
             self.epsilons = parameters
         if self.func_type == 'auto':
             self.get_function_by_parameter(self.epsilons)
-
-
-        return epsilons
+        return self.epsilons
 
     def unwrap_parameters(self):
         """
