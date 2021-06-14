@@ -749,7 +749,7 @@ class SBMNonbondedInteractionsByResidue(SBMNonbondedInteraction):
             print("Function types are read from file")
             self.pair_types = description['type']
         elif self.func_type == 'auto':
-            self.pair_types == None
+            self.pair_types = None
             print("Functional types will be assigned upon loading model parameters")
         return
 
