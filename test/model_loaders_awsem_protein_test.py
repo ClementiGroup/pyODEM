@@ -52,21 +52,11 @@ class TestAWSEMProtein():
     """
 
     def test_direct_contacts(self):
-        if  not have_openmmawsem:
-            assert 1==2,  'package openmmawsem needs to be available to perform this test'
         traj = md.load(f'{DATA_PATH}/movie.pdb')
         topology = traj.top
-        openawsem_protein = ml.OpenAWSEMProtein()
-        openawsem_protein.prepare_system(
-                           f'{DATA_PATH}/1pgb_openmmawsem.pdb',
-                           os.path.abspath(f'{DATA_PATH}/params_direct_only/.'),
-                           [contact_term],
-                           sequence,
-                           chains='A')
-        H_ref = openawsem_protein.calculate_H_for_trajectory(traj)
+        H_ref = np.loadtxt(f'{DATA_PATH}/reference_H/H_direct.txt')
         my_protein = ml.AWSEMProtein(topology)
         my_protein.load_data(traj)
-        #my_protein._compute_pairwise_distances(traj)
         direct_interaction = ml.AWSEMDirectInteraction(len(sequence))
         direct_interaction.load_paramters(f'{DATA_PATH}/params_direct_only/gamma.dat')
         derivs = direct_interaction.calculate_derivatives(sequence,
@@ -79,17 +69,7 @@ class TestAWSEMProtein():
     def test_mediated_contacts(self):
         traj = md.load(f'{DATA_PATH}/movie.pdb')
         topology = traj.top
-        if  not have_openmmawsem:
-            assert 1==2,  'package openmmawsem needs to be available to perform this test'
-        openawsem_protein = ml.OpenAWSEMProtein()
-        openawsem_protein.prepare_system(
-                           f'{DATA_PATH}/1pgb_openmmawsem.pdb',
-                           os.path.abspath(f'{DATA_PATH}/params_mediated_only/.'),
-                           [contact_term],
-                           sequence,
-                           chains='A')
-        #openawsem_protein.oa.
-        H_ref = openawsem_protein.calculate_H_for_trajectory(traj)
+        H_ref = np.loadtxt(f'{DATA_PATH}/reference_H/H_mediated.txt')
         my_protein = ml.AWSEMProtein(topology)
         my_protein.load_data(traj)
         mediated_interaction = ml.AWSEMMediatedInteraction(len(sequence))
@@ -106,16 +86,7 @@ class TestAWSEMProtein():
     def test_burial_contacts(self):
         traj = md.load(f'{DATA_PATH}/movie.pdb')
         topology = traj.top
-        if  not have_openmmawsem:
-            assert 1==2,  'package openmmawsem needs to be available to perform this test'
-        openawsem_protein = ml.OpenAWSEMProtein()
-        openawsem_protein.prepare_system(
-                           f'{DATA_PATH}/1pgb_openmmawsem.pdb',
-                           os.path.abspath(f'{DATA_PATH}/params_burial_only/.'),
-                           [contact_term],
-                           sequence,
-                           chains='A')
-        H_ref = openawsem_protein.calculate_H_for_trajectory(traj)
+        H_ref = np.loadtxt(f'{DATA_PATH}/reference_H/H_burial.txt')
         my_protein = ml.AWSEMProtein(topology)
         my_protein.load_data(traj)
         mediated_interaction = ml.AWSEMBurialInteraction(len(sequence))
@@ -156,18 +127,9 @@ class TestAWSEMProtein():
 
 
     def test_get_potentials_epsilon(self):
-        if  not have_openmmawsem:
-            assert 1==2,  'package openmmawsem needs to be available to perform this test'
         traj = md.load(f'{DATA_PATH}/movie.pdb')
         topology = traj.top
-        openawsem_protein = ml.OpenAWSEMProtein()
-        openawsem_protein.prepare_system(
-                           f'{DATA_PATH}/1pgb_openmmawsem.pdb',
-                           os.path.abspath(f'{DATA_PATH}/params_all/.'),
-                           [contact_term],
-                           sequence,
-                           chains='A')
-        H_ref = openawsem_protein.calculate_H_for_trajectory(traj)
+        H_ref = np.loadtxt(f'{DATA_PATH}/reference_H/H_total_nonbonded.txt')
         my_protein = ml.AWSEMProtein(topology, parameter_location=f'{DATA_PATH}/params_all/.')
         my_protein.load_data(traj)
         my_protein.setup_Hamiltonian(terms=['direct','mediated','burial'])
@@ -206,4 +168,4 @@ class TestAWSEMProtein():
         return
 
 test = TestAWSEMProtein()
-test.test_get_potentials_epsilon_hybrid()
+test.test_mediated_contacts()
