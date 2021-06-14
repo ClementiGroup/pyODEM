@@ -10,11 +10,19 @@ from .hamiltonian_terms import AWSEMMediatedInteraction as MediatedInteraction
 from .hamiltonian_terms import AWSEMBurialInteraction as BurialInteraction
 #### Set of imports required for opwnawsemProtein modeling
 import simtk.unit as u
-OPENAWSEM_LOCATION = os.environ["OPENAWSEM_LOCATION"]
-sys.path.append(OPENAWSEM_LOCATION)
 
-from openmmawsem  import *
-from helperFunctions.myFunctions import *
+try:
+    OPENAWSEM_LOCATION = os.environ["OPENAWSEM_LOCATION"]
+    sys.path.append(OPENAWSEM_LOCATION)
+except:
+    print("OPENAWSEM LOCATION is not specified. class OpenAWSEMProtein will be anavailable")
+
+try:
+    from openmmawsem  import *
+    from helperFunctions.myFunctions import *
+except:
+    print ("Packege openmmawsem was not found. Class OpenAWSEMProtein will be is anavailable")
+
 
 
 class OpenAWSEMProtein():
