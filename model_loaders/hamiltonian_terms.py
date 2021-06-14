@@ -817,7 +817,7 @@ class SBMNonbondedInteractionsByResidue(SBMNonbondedInteraction):
             residue_2 = self.top.atom(pair[1]).residue.index
             pair_type = frozenset([sequence[residue_1], sequence[residue_2]])
             param_ndx = self.types_to_param_ndx[pair_type]
-            param = parameters[param_ndx]
+            param = compact_parameters[param_ndx]
             expanded_params.append(param)
         expanded_params = np.array(expanded_params)
         return expanded_params
