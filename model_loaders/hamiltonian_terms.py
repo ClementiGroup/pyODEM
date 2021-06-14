@@ -783,7 +783,7 @@ class SBMNonbondedInteractionsByResidue(SBMNonbondedInteraction):
             self.q = self._calculate_Q(distances)
 
         #Getting mapping
-        types_to_pair = self.map_types_to_pairs(sequence)
+        types_to_pair = self.map_types_to_pairs()
         derivatives = []  # At the end, derivatives should be a matrix
         for pair_type in self.types:
             fragment = np.sum(self.q[:, types_to_pair[pair_type]], axis=1)
