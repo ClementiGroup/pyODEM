@@ -797,7 +797,7 @@ class SBMNonbondedInteractionsByResidue(SBMNonbondedInteraction):
         parameters can be a string - path to a file with parames,
         or a 1d numpy array
         """
-        if type(parameter_file) == str:
+        if type(parameters) == str:
             epsilons = np.loadtxt(parameters)
         else:
             epsilons = parameters
