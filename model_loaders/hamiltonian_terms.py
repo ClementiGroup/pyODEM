@@ -646,6 +646,22 @@ class SBMNonbondedInteractionsByResidue(SBMNonbondedInteraction):
         self.type = 'SBM nonbonded, residue-specific'
         if topology_file is not None:
             self.load_topology(topology_file)
+
+
+        # Create parameter types dictionary
+
+        gamma_se_map_1_letter = {   'A': 0,  'R': 1,  'N': 2,  'D': 3,  'C': 4,
+                                    'Q': 5,  'E': 6,  'G': 7,  'H': 8,  'I': 9,
+                                    'L': 10, 'K': 11, 'M': 12, 'F': 13, 'P': 14,
+                                    'S': 15, 'T': 16, 'W': 17, 'Y': 18, 'V': 19}
+
+        ndx_2_letter = {value : key for key, value in gamma_se_map_1_letter.items() }
+        types = []
+        for i in range(20):
+            for j in range(i, 20):
+                type=frozenset([ndx_2_letter[i],ndx_2_letter[j]])
+                types.append(type)
+        self.types = types
         return
 
 
@@ -747,21 +763,8 @@ class SBMNonbondedInteractionsByResidue(SBMNonbondedInteraction):
         Load parameters and determine their  corresponding types
 
         """
-
-        gamma_se_map_1_letter = {   'A': 0,  'R': 1,  'N': 2,  'D': 3,  'C': 4,
-                                    'Q': 5,  'E': 6,  'G': 7,  'H': 8,  'I': 9,
-                                    'L': 10, 'K': 11, 'M': 12, 'F': 13, 'P': 14,
-                                    'S': 15, 'T': 16, 'W': 17, 'Y': 18, 'V': 19}
-
-        ndx_2_letter = {value : key for key, value in gamma_se_map_1_letter.items() }
-        types = []
         epsilons = np.loadtxt(parameter_file)
-        for i in range(20):
-            for j in range(i, 20):
-                type=frozenset([ndx_2_letter[i],ndx_2_letter[j]])
-                types.append(type)
-        self.types = types
-        return 0
+        return epsilons
 
 
 
