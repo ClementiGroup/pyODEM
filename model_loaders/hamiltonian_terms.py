@@ -791,12 +791,16 @@ class SBMNonbondedInteractionsByResidue(SBMNonbondedInteraction):
         return self.q
 
 
-    def load_parameters(self, parameter_file):
+    def load_parameters(self, parameters):
         """
         Load parameters and determine their  corresponding types
-
+        parameters can be a string - path to a file with parames,
+        or a 1d numpy array
         """
-        epsilons = np.loadtxt(parameter_file)
+        if type(parameter_file) == str:
+            epsilons = np.loadtxt(parameters)
+        else:
+            epsilons = parameters
         if self.func_type == 'auto':
             self.get_function_by_parameter(epsilons)
 
