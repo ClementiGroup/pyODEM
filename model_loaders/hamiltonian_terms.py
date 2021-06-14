@@ -657,11 +657,16 @@ class SBMNonbondedInteractionsByResidue(SBMNonbondedInteraction):
 
         ndx_2_letter = {value : key for key, value in gamma_se_map_1_letter.items() }
         types = []
+        counter = 0
+        types_to_param_ndx = {} # maps pair type to parameter index
         for i in range(20):
             for j in range(i, 20):
                 type=frozenset([ndx_2_letter[i],ndx_2_letter[j]])
                 types.append(type)
+                types_to_param_ndx[type] = counter
+                counter += 1
         self.types = types
+        self.types_to_param_ndx = types_to_param_ndx
         return
 
 
@@ -701,6 +706,29 @@ class SBMNonbondedInteractionsByResidue(SBMNonbondedInteraction):
             type_to_pair[pair_type].append(ndx)
         return type_to_pair
 
+    def get_function_by_parameter(self, parameters):
+        """
+        Function takes an array of parameters and assigns function type
+        based on parameter values.
+        """
+
+        pair_types = []
+        sequence = self.top.to_fasta()[0]
+        for ndx, pair in enumerate(self.pairs):
+            residue_1 = self.top.atom(pair[0]).residue.index
+            residue_2 = self.top.atom(pair[1]).residue.index
+            pair_type = frozenset([sequence[residue_1], sequence[residue_2]])
+            param_ndx = types_to_param_ndx[pair_type]
+            param = parameters[param_ndx]
+            if param >= 0:
+                pair_types.append('LJ12GAUSSIAN')
+            elif param < 0:
+                pair_types.append('LJ12GAUSSIANTANH')
+            self.pair_types = pair_types
+
+
+
+
 
     def load_parameter_description_full(self, file):
         """
@@ -714,10 +742,15 @@ class SBMNonbondedInteractionsByResidue(SBMNonbondedInteraction):
                                     encoding=None,
                                     names=['atom_i', 'atom_j', 'ndx', 'type', 'sigma', 'r0', 'sigma_tg'])
         self.pairs = [[i[0]-1, i[1]-1] for i in zip(description['atom_i'], description['atom_j'])]
-        self.pair_types = description['type']
         self.sigma = description['sigma']
         self.r0 = description['r0']
         self.sigma_tg = description['sigma_tg']
+        if self.func_type == 'from_file':
+            print("Function types are read from file")
+            self.pair_types = description['type']
+        elif self.func_type == 'auto':
+            self.pair_types == None
+            print("Functional types will be assigned upon loading model parameters")
         return
 
 
@@ -764,6 +797,10 @@ class SBMNonbondedInteractionsByResidue(SBMNonbondedInteraction):
 
         """
         epsilons = np.loadtxt(parameter_file)
+        if self.func_type == 'auto':
+            self.get_function_by_parameter(epsilons)
+
+
         return epsilons
 
 
