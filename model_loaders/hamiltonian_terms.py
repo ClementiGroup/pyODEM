@@ -728,8 +728,6 @@ class SBMNonbondedInteractionsByResidue(SBMNonbondedInteraction):
 
 
 
-
-
     def load_parameter_description_full(self, file):
         """
         Load parameters descriptions and types.
@@ -798,14 +796,35 @@ class SBMNonbondedInteractionsByResidue(SBMNonbondedInteraction):
         or a 1d numpy array
         """
         if type(parameters) == str:
-            epsilons = np.loadtxt(parameters)
+            self.epsilons = np.loadtxt(parameters)
         else:
-            epsilons = parameters
+            self.epsilons = parameters
         if self.func_type == 'auto':
             self.get_function_by_parameter(epsilons)
 
 
         return epsilons
+
+    def unwrap_parameters(self):
+        """
+        Method takes parameters in the contact form, and unwraps them,
+        i.e., creates a numpy array of length n, where n - number of pairs
+        in the system.
+        """
+        compact_parameters = self.epsilons
+        expanded_params = []
+        sequence = self.top.to_fasta()[0]
+        for ndx, pair in enumerate(self.pairs):
+            residue_1 = self.top.atom(pair[0]).residue.index
+            residue_2 = self.top.atom(pair[1]).residue.index
+            pair_type = frozenset([sequence[residue_1], sequence[residue_2]])
+            param_ndx = self.types_to_param_ndx[pair_type]
+            param = parameters[param_ndx]
+            expanded_params.append(param)
+        expanded_params = np.array(expanded_params)
+        return expanded_params
+
+
 
 
 
