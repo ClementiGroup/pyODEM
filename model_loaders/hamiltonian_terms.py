@@ -718,7 +718,7 @@ class SBMNonbondedInteractionsByResidue(SBMNonbondedInteraction):
             residue_1 = self.top.atom(pair[0]).residue.index
             residue_2 = self.top.atom(pair[1]).residue.index
             pair_type = frozenset([sequence[residue_1], sequence[residue_2]])
-            param_ndx = types_to_param_ndx[pair_type]
+            param_ndx = self.types_to_param_ndx[pair_type]
             param = parameters[param_ndx]
             if param >= 0:
                 pair_types.append('LJ12GAUSSIAN')
