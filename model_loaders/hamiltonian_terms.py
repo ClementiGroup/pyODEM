@@ -2,6 +2,7 @@
 Classes for calculationg different energy terms
 """
 import numpy as np
+import mdtraj as md
 
 
 class Hamiltonian():
@@ -617,24 +618,72 @@ class SBMNonbondedInteraction(Hamiltonian):
 # and functional types.
 class SBMNonbondedInteractionsByResidue(SBMNonbondedInteraction):
     """
-    Class handles energy calculations for a Hamiltonian, defined by
-    the following rules:
-    1) One interaction strength parameter is defined for each pair of aminoacid
-    2) Two options available for determening functional form of the interaction.
-       auto: functional form is determined automatically, LJ12GAUSSIAN  for positive interaction
-       parameters and  LJ12GAUSSIANTANH for negative interaction parameters.
-       from_file: functional form is fixed and recorded in the file
+     Class holds energy calculations for SBM nonbonded ineractions,
+     where parameters for each pair of residues are selected based on aminoacid
+     identity.
     """
-    def __init__(self, func_type ='from_file'):
 
+
+    def __init__(self, func_type ='from_file', topology_file=None):
+        """
+        Initialize SBMNonbondedInteractionsByResidue object.
+
+        Parameters:
+        -----------
+
+        func_type : str, {'from_file', 'auto'}, default 'from_file'
+                 Parameter defines, how functional type will be chosen for each
+                 of the parameters
+                 'from_file' : functional types are specified in a description file
+                 'auto' : functional types are specified based on parameters values
+
+        topology_file : str, default None
+                 mdtraj topology file. Should be coarse-grained, with indexes matching
+                 parameter file
+
+        """
         self.func_type = func_type
         self.type = 'SBM nonbonded, residue-specific'
+        if topology_file is not None:
+            self.load_topology(topology_file)
+        return
 
 
-    def load_topology(self, topology_file=):
+    def load_topology(self, topology_file):
         """
-        Need to know
+        Load topology so that number of residues can be identified.
+
+        Parameters:
+
+        topology_file : str, default None
+                 mdtraj topology file. Should be coarse-grained, with indexes matching
+                 parameter file
+
         """
+        self.top = md.load(topology_file).top
+        return
+
+
+    def map_types_to_pairs(self):
+        """
+        Create a mapping between types of parameters and residue pairs, that
+        contribute to the H. As an outcome, creates a dictionary. Keys of the
+        dictionary - frozen sets representing all the pair types. Values - list of integers -
+        indexes of pairs in self.pairs, that corresponds to the key type
+        # NOTE: only works with one chain proteins.
+        """
+
+        sequence = self.top.to_fasta()[0]
+        print("Types are assigned based on the following sequence:")
+        print(sequence)
+        type_to_pair = { type: [] for type in self.types} # just 210 types
+        # Self.pairs contain atom numbers. Need to convert them to residue number
+        for ndx, pair in enumerate(self.pairs):
+            residue_1 = self.top.atom(pair[0]).residue.index
+            residue_2 = self.top.atom(pair[1]).residue.index
+            pair_type = frozenset([sequence[residue_1], sequence[residue_2]])
+            type_to_pair[pair_type].append(ndx)
+        return type_to_pair
 
 
     def load_parameter_description_full(self, file):
@@ -648,23 +697,21 @@ class SBMNonbondedInteractionsByResidue(SBMNonbondedInteraction):
                                     unpack=True,
                                     encoding=None,
                                     names=['atom_i', 'atom_j', 'ndx', 'type', 'sigma', 'r0', 'sigma_tg'])
-        self.pairs = [frozenset((i[0]-1, i[1]-1)) for i in zip(description['atom_i'], description['atom_j'])]
+        self.pairs = [[i[0]-1, i[1]-1] for i in zip(description['atom_i'], description['atom_j'])]
         self.pair_types = description['type']
         self.sigma = description['sigma']
         self.r0 = description['r0']
         self.sigma_tg = description['sigma_tg']
         return
 
-    def load_parameter_description(self, file=None):
+
+    def load_parameter_description(self, file=None, mode='full'):
         """
         Here an appropriate form of parameter description is performed
         """
-
-    def calculate_lj12gaussian(self, distance, r0, sigma_g):
-         return -1.0*np.exp(-(distance - r0)**2/(2*sigma_g**2))
-
-    def calculate_lj12gaussiantanh(self, distance, r0, sigma_t):
-        return 0.5*(np.tanh((r0-distance + sigma_t)/sigma_t) + 1)
+        method_dict = {'full': self.load_parameter_description_full}
+        method_dict[mode](file)
+        return
 
 
     def _calculate_Q(self,
@@ -673,20 +720,19 @@ class SBMNonbondedInteractionsByResidue(SBMNonbondedInteraction):
         """
         Calculate Q values for the mediated potential.
         Get distances. Should take descriptions and
-        calculate q.
+        calculate q. Assume, distances are already prepared
 
         Arguments:
 
-        distances, densities : numpy array
+        distances : numpy array, n framees x m pairs
         Input
         """
         type_dict = {'LJ12GAUSSIAN' : self.calculate_lj12gaussian,
                      'LJ12GAUSSIANTANH' : self.calculate_lj12gaussiantanh}
-        masked_distances = distances[:, self.mask]
-        q = np.zeros(masked_distances.shape)
+        q = np.zeros(distances.shape)
 
         for ndx, type in enumerate(self.pair_types):
-            distance = masked_distances[:, ndx]
+            distance = distances[:, ndx]
             r0 = self.r0[ndx]
             sigma_tg = self.sigma_tg[ndx]
             q[:, ndx] = type_dict[type](distance, r0, sigma_tg)
@@ -696,26 +742,26 @@ class SBMNonbondedInteractionsByResidue(SBMNonbondedInteraction):
         return self.q
 
 
-        def load_paramters(self, parameter_file):
-            """
-            Load parameters and determine their  corresponding types
+    def load_parameters(self, parameter_file):
+        """
+        Load parameters and determine their  corresponding types
 
-            """
+        """
 
-            gamma_se_map_1_letter = {   'A': 0,  'R': 1,  'N': 2,  'D': 3,  'C': 4,
-                                        'Q': 5,  'E': 6,  'G': 7,  'H': 8,  'I': 9,
-                                        'L': 10, 'K': 11, 'M': 12, 'F': 13, 'P': 14,
-                                        'S': 15, 'T': 16, 'W': 17, 'Y': 18, 'V': 19}
+        gamma_se_map_1_letter = {   'A': 0,  'R': 1,  'N': 2,  'D': 3,  'C': 4,
+                                    'Q': 5,  'E': 6,  'G': 7,  'H': 8,  'I': 9,
+                                    'L': 10, 'K': 11, 'M': 12, 'F': 13, 'P': 14,
+                                    'S': 15, 'T': 16, 'W': 17, 'Y': 18, 'V': 19}
 
-            ndx_2_letter = {value : key for key, value in gamma_se_map_1_letter.items() }
-            types = []
-            epsilons = np.loadtxt(parameter_file)
-            for i in range(20):
-                for j in range(i, 20):
-                    type=frozenset([ndx_2_letter[i],ndx_2_letter[j]])
-                    types.append(type)
-            self.types = types
-            return 0
+        ndx_2_letter = {value : key for key, value in gamma_se_map_1_letter.items() }
+        types = []
+        epsilons = np.loadtxt(parameter_file)
+        for i in range(20):
+            for j in range(i, 20):
+                type=frozenset([ndx_2_letter[i],ndx_2_letter[j]])
+                types.append(type)
+        self.types = types
+        return 0
 
 
 
@@ -726,19 +772,28 @@ class SBMNonbondedInteractionsByResidue(SBMNonbondedInteraction):
         self._calculate_Q(distances)
 
 
-    def calculate_derivatives(self, distances=None, fraction=None):
+    def calculate_derivatives(self, input=None):
         """
         Calculate derivatives with respect of parameters
-        of each type.
+        of each type. In this case, as input we use distances formatted
+
         """
-        if not (hasattr(self, 'q')):
-            self._calculate_Q(distances)
-        if fraction is None:
-            derivatives = self.q
-        else:
-            derivatives = np.multiply(self.q, fraction)
-            print("Multiplication done")
-        return derivatives
+        sequence = self.top.to_fasta()[0]
+        if not hasattr(self, 'q'):
+            self.q = self._calculate_Q(distances)
+
+        #Getting mapping
+        types_to_pair = self.map_types_to_pairs(sequence)
+        derivatives = []  # At the end, derivatives should be a matrix
+        for pair_type in self.types:
+            fragment = np.sum(self.q[:, types_to_pair[pair_type]], axis=1)
+            derivatives.append(fragment)
+        derivatives = np.array(derivatives).T
+        return(derivatives)
+
+    def calculated_energy(self, derivatives=None):
+        if derivatives is None:
+            derivatives = calculate_derivatives
 
 
     def get_parameters(self):
