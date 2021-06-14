@@ -800,7 +800,7 @@ class SBMNonbondedInteractionsByResidue(SBMNonbondedInteraction):
         else:
             self.epsilons = parameters
         if self.func_type == 'auto':
-            self.get_function_by_parameter(epsilons)
+            self.get_function_by_parameter(self.epsilons)
 
 
         return epsilons
