@@ -844,7 +844,7 @@ class SBMNonbondedInteractionsByResidue(SBMNonbondedInteraction):
                      'LJ12GAUSSIANTANH' : self.calculate_lj12gaussiantanh}
         q_lj12gaussian = np.zeros(distances.shape)
         q_lj12gaussiantanh = np.zeros(distances.shape)
-        for ndx, type in enumerate(self.pair_types):
+        for ndx, type in enumerate(self.pairs):
             distance = distances[:, ndx]
             r0 = self.r0[ndx]
             sigma_tg = self.sigma_tg[ndx]
