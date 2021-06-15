@@ -823,14 +823,38 @@ class SBMNonbondedInteractionsByResidue(SBMNonbondedInteraction):
         return expanded_params
 
 
-
-
-
-    def precompute_data(self, distances):
+    def precompute_data(self, distances, precompute_all=False):
         """
         Calculate values, that are used repeatedly for different calculations
         """
-        self._calculate_Q(distances)
+        if not precompute_all:
+            self._calculate_Q(distances)
+        else:
+            self.precompute_all(distances)
+        return
+
+    def precompute_all(self, distances):
+        """
+        Method precomputes both LJ12GAUSSIAN and  'LJ12GAUSSIANTANH' for all the
+        pairs. Can be usefull to speed up energy calculations when functional type
+        is chosen on the fly.
+        """
+        type_dict = {'LJ12GAUSSIAN' : self.calculate_lj12gaussian,
+                     'LJ12GAUSSIANTANH' : self.calculate_lj12gaussiantanh}
+        q_lj12gaussian = np.zeros(distances.shape)
+        q_lj12gaussiantanh = np.zeros(distances.shape)
+        for ndx, type in enumerate(self.pair_types):
+            distance = distances[:, ndx]
+            r0 = self.r0[ndx]
+            sigma_tg = self.sigma_tg[ndx]
+            q_lj12gaussian[:, ndx] = self.calculate_lj12gaussian(distance, r0, sigma_tg)
+            q_lj12gaussiantanh[:, ndx] = self.calculate_lj12gaussiantanh(distance, r0, sigma_tg)
+
+        self.q_lj12gaussian = q_lj12gaussian
+        self.q_lj12gaussiantanh = q_lj12gaussiantanh
+        self.all_set = True # Flag showing that all possible functions for all possible functions
+
+        return  self.q_lj12gaussian, self.q_lj12gaussiantanh
 
 
     def calculate_derivatives(self, input=None):
@@ -840,17 +864,29 @@ class SBMNonbondedInteractionsByResidue(SBMNonbondedInteraction):
 
         """
         sequence = self.top.to_fasta()[0]
-        if not hasattr(self, 'q'):
-            self.q = self._calculate_Q(distances)
+        if not self.all_set:
+            if not hasattr(self, 'q'):
+                self.q = self._calculate_Q(distances)
 
-        #Getting mapping
-        types_to_pair = self.map_types_to_pairs()
-        derivatives = []  # At the end, derivatives should be a matrix
-        for pair_type in self.types:
-            fragment = np.sum(self.q[:, types_to_pair[pair_type]], axis=1)
-            derivatives.append(fragment)
-        derivatives = np.array(derivatives).T
-        return(derivatives)
+        elif self.all_set:
+            q = np.zeros(self.q_lj12gaussian.shape)
+            for ndx, type in enumerate(self.pair_types):
+                if type == 'LJ12GAUSSIAN':
+                    q[:, ndx] = q_lj12gaussian[:, ndx]
+                elif type == 'LJ12GAUSSIANTANH':
+                    q[:, ndx] = q_lj12gaussiantanh[:, ndx]
+            self.q = q
+
+            #Getting mapping
+            types_to_pair = self.map_types_to_pairs()
+            derivatives = []  # At the end, derivatives should be a matrix
+            for pair_type in self.types:
+                fragment = np.sum(self.q[:, types_to_pair[pair_type]], axis=1)
+                derivatives.append(fragment)
+            derivatives = np.array(derivatives).T
+            return(derivatives)
+
+
 
     def calculated_energy(self, derivatives=None):
         if derivatives is None:
