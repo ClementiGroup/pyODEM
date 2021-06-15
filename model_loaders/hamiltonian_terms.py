@@ -696,8 +696,8 @@ class SBMNonbondedInteractionsByResidue(SBMNonbondedInteraction):
         """
 
         sequence = self.top.to_fasta()[0]
-        print("Types are assigned based on the following sequence:")
-        print(sequence)
+        #print("Types are assigned based on the following sequence:")
+        #print(sequence)
         type_to_pair = { type: [] for type in self.types} # just 210 types
         # Self.pairs contain atom numbers. Need to convert them to residue number
         for ndx, pair in enumerate(self.pairs):
