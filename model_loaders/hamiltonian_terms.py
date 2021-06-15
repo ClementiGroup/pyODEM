@@ -873,9 +873,9 @@ class SBMNonbondedInteractionsByResidue(SBMNonbondedInteraction):
             q = np.zeros(self.q_lj12gaussian.shape)
             for ndx, type in enumerate(self.pair_types):
                 if type == 'LJ12GAUSSIAN':
-                    q[:, ndx] = q_lj12gaussian[:, ndx]
+                    q[:, ndx] = self.q_lj12gaussian[:, ndx]
                 elif type == 'LJ12GAUSSIANTANH':
-                    q[:, ndx] = q_lj12gaussiantanh[:, ndx]
+                    q[:, ndx] = self.q_lj12gaussiantanh[:, ndx]
             self.q = q
 
         #Getting mapping
