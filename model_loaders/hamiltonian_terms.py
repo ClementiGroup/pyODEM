@@ -667,6 +667,7 @@ class SBMNonbondedInteractionsByResidue(SBMNonbondedInteraction):
                 counter += 1
         self.types = types
         self.types_to_param_ndx = types_to_param_ndx
+        self.all_set = False #If true, all possible functions for each pair are precomputed
         return
 
 
