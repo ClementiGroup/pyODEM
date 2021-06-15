@@ -878,14 +878,14 @@ class SBMNonbondedInteractionsByResidue(SBMNonbondedInteraction):
                     q[:, ndx] = q_lj12gaussiantanh[:, ndx]
             self.q = q
 
-            #Getting mapping
-            types_to_pair = self.map_types_to_pairs()
-            derivatives = []  # At the end, derivatives should be a matrix
-            for pair_type in self.types:
-                fragment = np.sum(self.q[:, types_to_pair[pair_type]], axis=1)
-                derivatives.append(fragment)
-            derivatives = np.array(derivatives).T
-            return(derivatives)
+        #Getting mapping
+        types_to_pair = self.map_types_to_pairs()
+        derivatives = []  # At the end, derivatives should be a matrix
+        for pair_type in self.types:
+            fragment = np.sum(self.q[:, types_to_pair[pair_type]], axis=1)
+            derivatives.append(fragment)
+        derivatives = np.array(derivatives).T
+        return(derivatives)
 
 
 
