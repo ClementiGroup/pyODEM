@@ -779,7 +779,7 @@ class SBMNonbondedInteractionsByResidue(SBMNonbondedInteraction):
         """
         exp = self.calculate_lj12gaussian(distance, r0, sigma_g)
         const =  self.calculate_rep_12(distance, sigma)*(1+exp)
-        return const
+        return 0 #const
 
 
     def calculate_constant_lj12gaussiantanh(self, distance, r0, sigma_g, sigma):
