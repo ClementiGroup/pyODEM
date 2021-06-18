@@ -543,6 +543,7 @@ class SBMNonbondedInteraction(Hamiltonian):
         return 0.5*(np.tanh((r0-distance + sigma_t)/sigma_t) + 1)
 
 
+
     def _calculate_Q(self,
                     distances,
                     ):
@@ -671,6 +672,8 @@ class SBMNonbondedInteractionsByResidue(SBMNonbondedInteraction):
         return
 
 
+
+
     def load_topology(self, topology_file):
         """
         Load topology so that number of residues can be identified.
@@ -760,6 +763,68 @@ class SBMNonbondedInteractionsByResidue(SBMNonbondedInteraction):
         method_dict = {'full': self.load_parameter_description_full}
         method_dict[mode](file)
         return
+
+
+    def calculate_rep_12(self, distance, sigma):
+        """
+        Calculate repulsive potential (sigma/r)^12
+        """
+        return (sigma/distance)**12
+
+
+    def calculate_constant_lj12gaussian(self, distance, r0, sigma_g, sigma):
+        """
+        Calculate constant term for lj12gaussian potential. For details,
+        see self.calculate_constant_term
+        """
+        exp = calculate_lj12gaussian(self, distance, r0, sigma_g)
+        const =  self.calculate_rep_12(distance, sigma)*(1+exp)
+        return const
+
+
+    def calculate_constant_lj12gaussiantanh(self, distance, r0, sigma_g, sigma):
+        """
+        Calculate constant term for lj12gaussiantanh potential. For details,
+        see self.calculate_constant_term
+        """
+        const =  self.calculate_rep_12(distance, sigma)
+        return const
+
+
+    def calculate_constant_term(self, distances):
+        """
+        for SBM, the potential term can be represented as epsilon*q + constant.
+        This method calculates the constant part. for each pair for each frame.
+        It may be necessary for some of the applications
+        """
+
+        type_dict = {'LJ12GAUSSIAN' : self.calculate_constant_lj12gaussian,
+                     'LJ12GAUSSIANTANH' : self.calculate_constant_lj12gaussiantanh}
+        constants_array = np.zeros(distances.shape)
+
+        for ndx, type in enumerate(self.pair_types):
+            distance = distances[:, ndx]
+            r0 = self.r0[ndx]
+            sigma_tg = self.sigma_tg[ndx]
+            sigma = self.sigma[ndx]
+            constants_array[:, ndx] = type_dict[type](distance, r0, sigma_tg, sigma)
+
+        return constants_array
+
+    def sum_by_contact_type(self, array):
+        """
+        Method takes  an array with shape nxm, where n is
+        number of frames in the trajectory, m is number of pairs,
+        and for each frame summs all the elements that belong to pairs
+        of the same type (eg. values for all Ala-Ala pairs are summed together)
+        """
+        types_to_pair = self.map_types_to_pairs()
+        sums = []  # At the end, sums should be a matrix
+        for pair_type in self.types:
+            fragment = np.sum(self.q[:, types_to_pair[pair_type]], axis=1)
+            sums.append(fragment)
+        sums = np.array(derivatives).T
+        return(sums)
 
 
     def _calculate_Q(self,
