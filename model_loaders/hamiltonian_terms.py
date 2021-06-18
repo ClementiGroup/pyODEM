@@ -540,7 +540,7 @@ class SBMNonbondedInteraction(Hamiltonian):
          return -1.0*np.exp(-(distance - r0)**2/(2*sigma_g**2))
 
     def calculate_lj12gaussiantanh(self, distance, r0, sigma_t):
-        return 0.5*(np.tanh((r0-distance + sigma_t)/sigma_t) + 1)
+        return -0.5*(np.tanh((r0-distance + sigma_t)/sigma_t) + 1)
 
 
 
