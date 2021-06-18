@@ -777,7 +777,7 @@ class SBMNonbondedInteractionsByResidue(SBMNonbondedInteraction):
         Calculate constant term for lj12gaussian potential. For details,
         see self.calculate_constant_term
         """
-        exp = self.calculate_lj12gaussian(self, distance, r0, sigma_g)
+        exp = self.calculate_lj12gaussian(distance, r0, sigma_g)
         const =  self.calculate_rep_12(distance, sigma)*(1+exp)
         return const
 
