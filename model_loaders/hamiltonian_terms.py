@@ -824,7 +824,7 @@ class SBMNonbondedInteractionsByResidue(SBMNonbondedInteraction):
         for pair_type in self.types:
             fragment = np.sum(self.q[:, types_to_pair[pair_type]], axis=1)
             sums.append(fragment)
-        sums = np.array(derivatives).T
+        sums = np.array(sums).T
         return(sums)
 
 
