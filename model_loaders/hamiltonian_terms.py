@@ -769,7 +769,7 @@ class SBMNonbondedInteractionsByResidue(SBMNonbondedInteraction):
         """
         Calculate repulsive potential (sigma/r)^12
         """
-        return (sigma/distance)**12
+        return np.power( np.divide(sigma,distance), 12)
 
 
     def calculate_constant_lj12gaussian(self, distance, r0, sigma_g, sigma):
