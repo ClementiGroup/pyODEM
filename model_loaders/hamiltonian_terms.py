@@ -788,7 +788,7 @@ class SBMNonbondedInteractionsByResidue(SBMNonbondedInteraction):
         see self.calculate_constant_term
         """
         const =  self.calculate_rep_12(distance, sigma)
-        return 0 #const
+        return const
 
 
     def calculate_constant_term(self, distances):
