@@ -777,7 +777,7 @@ class SBMNonbondedInteractionsByResidue(SBMNonbondedInteraction):
         Calculate constant term for lj12gaussian potential. For details,
         see self.calculate_constant_term
         """
-        exp = calculate_lj12gaussian(self, distance, r0, sigma_g)
+        exp = self.calculate_lj12gaussian(self, distance, r0, sigma_g)
         const =  self.calculate_rep_12(distance, sigma)*(1+exp)
         return const
 
@@ -817,6 +817,7 @@ class SBMNonbondedInteractionsByResidue(SBMNonbondedInteraction):
         number of frames in the trajectory, m is number of pairs,
         and for each frame summs all the elements that belong to pairs
         of the same type (eg. values for all Ala-Ala pairs are summed together)
+        Return an array
         """
         types_to_pair = self.map_types_to_pairs()
         sums = []  # At the end, sums should be a matrix
