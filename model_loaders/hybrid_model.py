@@ -9,6 +9,7 @@ from .hamiltonian_terms import AWSEMDirectInteraction as DirectInteraction
 from .hamiltonian_terms import AWSEMMediatedInteraction as MediatedInteraction
 from .hamiltonian_terms import AWSEMBurialInteraction as BurialInteraction
 from .hamiltonian_terms import SBMNonbondedInteraction
+from .hamiltonian_terms import SBMNonbondedInteractionsByResidue
 
 
 
@@ -227,6 +228,35 @@ class HybridProtein(ModelLoader):
         return
 
 
+    def add_sbm_nonbonded_residue_specific_interactions(self):
+        """
+        Add structure-based nonbonded interactions to the Hamiltonian,
+        where each pair of aminoacid types has a unique model parameter
+        """
+        sbm_residue_specific_interaction = SBMNonbondedInteractionsByResidue(self, func_type ='from_file')
+        sbm_residue_specific_intreaction.load_topology(f'{self.parameter_location}/ref.pdb')
+        sbm_residue_specific_interaction.load_parameter_description(f'{self.parameter_location}/pairwise_params', mode='full')
+        sbm_residue_specific_interaction.load_parametes(f'{self.parameter_location}/model_params')
+        # The distances that exist in HybridProtein (self.distances) are not the same that need to be used
+        # in calculations for this nonbonded interactions. Here, I will do masking externally to SBMNonbondedInteractionsByResidue.
+        # SBMNonbondedInteractionsByResidues is a generic class. It does not need to know how distances in HybridModels are organized.
+        counter=0
+        for i in range(n_residues-1):
+            for j in range(i+1, n_residues):
+                if [i,j] in sbm_residue_specific_interaction.pairs:
+                            mask_indexes.append(counter)
+                            counter += 1
+                mask = np.array(mask_indexes, dtype=int)
+
+        # Need to be sure that each  pair has correspondent mask in the distance
+        assert counter == len(sbm_residue_specific_interaction.pairs), "Not all the pairs have corresponding distance in the mask. Check atom order in pairs"
+        sbm_residue_specific_interaction.precompute_data(distances=self.distances[:, mask])
+        self.terms.append(sbm_residue_specific_interaction)
+        self.n_params += sbm_residue_specific_interaction.get_n_params()
+        return
+
+
+
 
     def setup_Hamiltonian(self, terms=['direct']):
         """
@@ -238,7 +268,8 @@ class HybridProtein(ModelLoader):
         method_dict = {'direct' : self.add_direct_interactions,
                      'mediated' : self.add_mediated_interactions,
                      'burial' : self.add_burrial_interactions,
-                     'sbm_nonbonded' : self.add_sbm_nonbonded_interactions}
+                     'sbm_nonbonded' : self.add_sbm_nonbonded_interactions,
+                     'sbm_nonbonded_residue_specific' : self.add_sbm_nonbonded_residue_specific_interactions}
         for type in terms:
             method_dict[type]()
 
@@ -283,6 +314,9 @@ class HybridProtein(ModelLoader):
               derivatives_term = term.calculate_derivatives(kwargs['sequence'])
           elif term.type in ['sbm_nonbonded']:
               derivatives_term = term.calculate_derivatives(fraction=kwargs['fraction'])
+
+          elif term.type in ['SBM nonbonded, residue-specific']:
+              derivative_term = term.calculate_derivatives(sequence=kwargs['sequence'])
           else:
               raise ValueError
 
