@@ -689,7 +689,7 @@ class SBMNonbondedInteractionsByResidue(SBMNonbondedInteraction):
         return
 
 
-    def map_types_to_pairs(self):
+    def map_types_to_pairs(self, sequence=None):
         """
         Create a mapping between types of parameters and residue pairs, that
         contribute to the H. As an outcome, creates a dictionary. Keys of the
@@ -698,7 +698,8 @@ class SBMNonbondedInteractionsByResidue(SBMNonbondedInteraction):
         # NOTE: only works with one chain proteins.
         """
 
-        sequence = self.top.to_fasta()[0]
+        if sequence == None:
+            sequence = self.top.to_fasta()[0]
         #print("Types are assigned based on the following sequence:")
         #print(sequence)
         type_to_pair = { type: [] for type in self.types} # just 210 types
@@ -811,7 +812,7 @@ class SBMNonbondedInteractionsByResidue(SBMNonbondedInteraction):
 
         return constants_array
 
-    def sum_by_contact_type(self, array):
+    def sum_by_contact_type(self, array, sequence=None):
         """
         Method takes  an array with shape nxm, where n is
         number of frames in the trajectory, m is number of pairs,
@@ -819,7 +820,7 @@ class SBMNonbondedInteractionsByResidue(SBMNonbondedInteraction):
         of the same type (eg. values for all Ala-Ala pairs are summed together)
         Return an array
         """
-        types_to_pair = self.map_types_to_pairs()
+        types_to_pair = self.map_types_to_pairs(sequence=sequence)
         sums = []  # At the end, sums should be a matrix
         for pair_type in self.types:
             fragment = np.sum(self.q[:, types_to_pair[pair_type]], axis=1)
@@ -924,13 +925,15 @@ class SBMNonbondedInteractionsByResidue(SBMNonbondedInteraction):
         return  self.q_lj12gaussian, self.q_lj12gaussiantanh
 
 
-    def calculate_derivatives(self, input=None):
+    def calculate_derivatives(self, input=None, sequence=None):
         """
         Calculate derivatives with respect of parameters
         of each type. In this case, as input we use distances formatted
 
         """
-        sequence = self.top.to_fasta()[0]
+        if sequence == None:
+            sequence = self.top.to_fasta()[0]
+
         if not self.all_set:
             if not hasattr(self, 'q'):
                 self.q = self._calculate_Q(distances)
@@ -945,7 +948,7 @@ class SBMNonbondedInteractionsByResidue(SBMNonbondedInteraction):
             self.q = q
 
         #Getting mapping
-        types_to_pair = self.map_types_to_pairs()
+        types_to_pair = self.map_types_to_pairs(sequence=sequence)
         derivatives = []  # At the end, derivatives should be a matrix
         for pair_type in self.types:
             fragment = np.sum(self.q[:, types_to_pair[pair_type]], axis=1)
