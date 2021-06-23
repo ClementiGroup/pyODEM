@@ -234,7 +234,7 @@ class HybridProtein(ModelLoader):
         where each pair of aminoacid types has a unique model parameter
         """
         sbm_residue_specific_interaction = SBMNonbondedInteractionsByResidue(func_type ='auto')
-        sbm_residue_specific_intreaction.load_topology(f'{self.parameter_location}/ref.pdb')
+        sbm_residue_specific_interaction.load_topology(f'{self.parameter_location}/ref.pdb')
         sbm_residue_specific_interaction.load_parameter_description(f'{self.parameter_location}/pairwise_params', mode='full')
         sbm_residue_specific_interaction.load_parametes(f'{self.parameter_location}/model_params')
         # The distances that exist in HybridProtein (self.distances) are not the same that need to be used
