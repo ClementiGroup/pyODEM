@@ -236,7 +236,7 @@ class HybridProtein(ModelLoader):
         sbm_residue_specific_interaction = SBMNonbondedInteractionsByResidue(func_type ='auto')
         sbm_residue_specific_interaction.load_topology(f'{self.parameter_location}/ref.pdb')
         sbm_residue_specific_interaction.load_parameter_description(f'{self.parameter_location}/pairwise_params', mode='full')
-        sbm_residue_specific_interaction.load_parametes(f'{self.parameter_location}/model_params')
+        sbm_residue_specific_interaction.load_parameters(f'{self.parameter_location}/model_params')
         # The distances that exist in HybridProtein (self.distances) are not the same that need to be used
         # in calculations for this nonbonded interactions. Here, I will do masking externally to SBMNonbondedInteractionsByResidue.
         # SBMNonbondedInteractionsByResidues is a generic class. It does not need to know how distances in HybridModels are organized.
