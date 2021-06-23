@@ -322,7 +322,7 @@ class HybridProtein(ModelLoader):
 
           elif term.type in ['SBM nonbonded, residue-specific']:
               print("Hello!")
-              derivative_term = term.calculate_derivatives(sequence=kwargs['sequence'])
+              derivatives_term = term.calculate_derivatives(sequence=kwargs['sequence'])
           else:
               raise ValueError
 
