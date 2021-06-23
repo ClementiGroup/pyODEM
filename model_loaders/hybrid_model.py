@@ -234,6 +234,7 @@ class HybridProtein(ModelLoader):
         where each pair of aminoacid types has a unique model parameter
         """
         sbm_residue_specific_interaction = SBMNonbondedInteractionsByResidue(func_type ='auto')
+        print(sbm_residue_specific_interaction.type)
         sbm_residue_specific_interaction.load_topology(f'{self.parameter_location}/ref.pdb')
         sbm_residue_specific_interaction.load_parameter_description(f'{self.parameter_location}/pairwise_params', mode='full')
         sbm_residue_specific_interaction.load_parameters(f'{self.parameter_location}/model_params')
@@ -265,6 +266,7 @@ class HybridProtein(ModelLoader):
         Add all the required terms, as specified in the term
         list
         """
+        print("Setting up Hamiltonian")
         self.terms = []
         self.n_params = 0
         method_dict = {'direct' : self.add_direct_interactions,
@@ -274,6 +276,7 @@ class HybridProtein(ModelLoader):
                      'sbm_nonbonded_residue_specific' : self.add_sbm_nonbonded_residue_specific_interactions}
         for type in terms:
             method_dict[type]()
+
 
 
 
