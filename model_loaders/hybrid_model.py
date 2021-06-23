@@ -241,6 +241,7 @@ class HybridProtein(ModelLoader):
         # in calculations for this nonbonded interactions. Here, I will do masking externally to SBMNonbondedInteractionsByResidue.
         # SBMNonbondedInteractionsByResidues is a generic class. It does not need to know how distances in HybridModels are organized.
         counter=0
+        n_residues = sbm_residue_specific_interaction.top.n_residues
         for i in range(n_residues-1):
             for j in range(i+1, n_residues):
                 if [i,j] in sbm_residue_specific_interaction.pairs:
