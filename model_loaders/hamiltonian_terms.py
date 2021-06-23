@@ -964,8 +964,8 @@ class SBMNonbondedInteractionsByResidue(SBMNonbondedInteraction):
         # NEED TO FINISH IMPLEMENTATION
 
     def get_parameters(self):
-        return self.params
+        return self.epsilons
 
 
     def get_n_params(self):
-        return   len(self.params)
+        return   len(self.epsilons)
