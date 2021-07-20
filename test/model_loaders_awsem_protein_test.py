@@ -168,4 +168,4 @@ class TestAWSEMProtein():
         return
 
 test = TestAWSEMProtein()
-test.test_mediated_contacts()
+test.test_sbm_nonbonded_contacts()
