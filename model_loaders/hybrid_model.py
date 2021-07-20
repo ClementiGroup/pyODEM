@@ -247,12 +247,14 @@ class HybridProtein(ModelLoader):
         for i in range(n_residues-1):
             for j in range(i+1, n_residues):
                 if [i,j] in sbm_residue_specific_interaction.pairs:
-                            mask_indexes.append(counter)
-                            counter += 1
+                    mask_indexes.append(counter)
+                counter += 1
                 mask = np.array(mask_indexes, dtype=int)
-
+        print("MASK")
+        print(sbm_residue_specific_interaction.pairs)
+        print(mask)
         # Need to be sure that each  pair has correspondent mask in the distance
-        assert counter == len(sbm_residue_specific_interaction.pairs), "Not all the pairs have corresponding distance in the mask. Check atom order in pairs"
+        assert len(mask) == len(sbm_residue_specific_interaction.pairs), "Not all the pairs have corresponding distance in the mask. Check atom order in pairs"
         sbm_residue_specific_interaction.precompute_data(distances=self.distances[:, mask])
         self.terms.append(sbm_residue_specific_interaction)
         self.n_params += sbm_residue_specific_interaction.get_n_params()
