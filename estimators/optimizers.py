@@ -129,6 +129,16 @@ def solve_annealing(Qfunc, x0, ntries=1000, scale=0.2, Tbarrier=200):
 
     return optimal.x
 
+
+def solve_dual_annealing(Q_func, x0, **kwargs, return_full=False):
+    """
+    Wrap scipy dual annealing routine.
+    """
+    optimal = optimize.scipy.optimize.dual_annealing(Q_func, x0=x0, **kwargs)
+    if return_full:
+        return optimal
+    else:
+       return optimal.x
 #### CUSTOM METHODS ####
 
 
