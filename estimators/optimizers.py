@@ -134,7 +134,7 @@ def solve_dual_annealing(Q_func, x0, return_full=False, **kwargs):
     """
     Wrap scipy dual annealing routine.
     """
-    optimal = optimize.scipy.optimize.dual_annealing(Q_func, x0=x0, **kwargs)
+    optimal = optimize.dual_annealing(Q_func, x0=x0, **kwargs)
     if return_full:
         return optimal
     else:
