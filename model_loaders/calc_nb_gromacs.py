@@ -11,10 +11,16 @@ import sys
 import mdtraj as md
 import numpy as np
 import math
-from pysph.base.utils import get_particle_array
-from pysph.base import utils
-from pysph.base import nnps
-from pyzoltan.core.carray import UIntArray
+try:
+    from pysph.base.utils import get_particle_array
+    from pysph.base import utils
+    from pysph.base import nnps
+except:
+    print("PYSPH IS NOT AWAILABLE")
+try:
+    from pyzoltan.core.carray import UIntArray
+except:
+    print("PYZOLTAN IS NOT AWAILABLE")
 import argparse
 from argparse import RawTextHelpFormatter
 
