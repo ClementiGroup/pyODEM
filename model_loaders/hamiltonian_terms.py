@@ -75,6 +75,7 @@ class Hamiltonian():
         Calculate H.
         """
 
+
 class AWSEMDirectInteraction(Hamiltonian):
     """
     Is responsible for direct interaction potential.
@@ -977,15 +978,9 @@ class SBMNonbondedInteractionsByResidue(SBMNonbondedInteraction):
 class TwoBodyBSpline(SBMNonbondedInteraction):
     """
     Each pairwise interaction is represented as a linear combindaion of cubic B-splines.
-    It is assumed that all the interactions are 
-    That means, that for each pair there will be `n_bf` terms, where `n_bf`
-    represents number of basis functions. We assume, that all the interactions share the same
+    We assume, that all the interactions share the same basis functions, i.e, have the
+    same number of knots and spline range
 
-
-    """ 
-
-    """
-    Is responsible for direct interaction potential.
     """
 
     def __init__(self, n_bf, spline_range, params_description_file=None):
