@@ -524,9 +524,10 @@ class SBMNonbondedInteraction(Hamiltonian):
         Should create list of pairs, lists of
         params.
         """
+        # unpack = True does not work in the new version of numpy
+        #
         description = np.genfromtxt(file,
                                     dtype=None,
-                                    unpack=True,
                                     encoding=None,
                                     names=['atom_i', 'atom_j', 'ndx', 'type', 'sigma', 'r0', 'sigma_tg'])
         self.pairs = [frozenset((i[0]-1, i[1]-1)) for i in zip(description['atom_i'], description['atom_j'])]
