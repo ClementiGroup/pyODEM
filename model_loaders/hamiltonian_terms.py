@@ -3,6 +3,9 @@ Classes for calculationg different energy terms
 """
 import numpy as np
 import mdtraj as md
+from uf3.representation.bspline import knot_sequence_from_points
+from uf3.representation.bspline import get_knot_subintervals, generate_basis_functions
+from uf3.representation.bspline import generate_uniform_knots, fit_spline_1d, evaluate_basis_functions
 
 
 class Hamiltonian():
@@ -71,7 +74,6 @@ class Hamiltonian():
         """
         Calculate H.
         """
-
 
 class AWSEMDirectInteraction(Hamiltonian):
     """
@@ -970,3 +972,95 @@ class SBMNonbondedInteractionsByResidue(SBMNonbondedInteraction):
 
     def get_n_params(self):
         return   len(self.epsilons)
+
+
+class TwoBodyBSpline(SBMNonbondedInteraction):
+    """
+    Each pairwise interaction is represented as a linear combindaion of cubic B-splines.
+    It is assumed that all the interactions are 
+    That means, that for each pair there will be `n_bf` terms, where `n_bf`
+    represents number of basis functions. We assume, that all the interactions share the same
+
+
+    """ 
+
+    """
+    Is responsible for direct interaction potential.
+    """
+
+    def __init__(self, n_bf, spline_range, params_description_file=None):
+        self.type = '2body_spline'
+        self.n_bf = n_bf
+        self.spline_range = spline_range
+        self.set_spline_basis()
+
+        if params_description_file is not None:
+            self.load_parameter_description(params_description_file)
+        return
+
+        # Will generate basis functions for the 
+    
+    def set_spline_basis(self):
+        """
+        Generate basis spline
+        """
+        knots = generate_uniform_knots(*self.spline_range, n_intervals=self.n_bf-3)
+        subintervals = get_knot_subintervals(knots)
+        self.basis_functions = generate_basis_functions(subintervals)
+        return
+
+    def load_paramters(self, parameter_file):
+        """
+        Load parameters and assert correct size of the parameter file.
+        Parameters should have dimensions  (n_pairs, n_bf)
+
+        """
+        params = np.loadtxt(parameter_file)
+        assert params.shape == (self.n_bfs, self.n_pairs)
+        # Need to reshape the dataset such that it is a 1D array, 
+        # Order all the parameters for the first 
+        self.params = params.flatten()
+        return 
+
+
+    def load_parameter_description(self, file):
+        """
+        Parameter description should contain pairs for which calculation is done,
+        type specified as "SPLINE", number of basis functions, spline range.
+        Need to check, that the spline parameters are consistent with initialization.
+        """
+        description = np.genfromtxt(file,
+                                    dtype=None,
+                                    encoding=None,
+                                    names=['atom_i', 'atom_j', 'ndx', 'type', 'n_bf', 'r_min', 'r_max'])
+        self.pairs = [frozenset((i[0]-1, i[1]-1)) for i in zip(description['atom_i'], description['atom_j'])]
+        self.n_pairs = len(self.pairs)
+        
+        # Do checks that the n_bf, r_min, r_max are the same as one used for initialization
+        assert np.all(description['n_bf']) == self.n_bf, "inconsistent number of basis functions"
+        assert np.all(description['r_min']) == self.spline_range[0], "inconsistent minimum value of the spline range"
+        assert np.all(description['r_max']) == self.spline_range[1], "inconsistent maximum value of the spline range"
+
+        return
+        
+    def _calculate_Q(self,
+                distances,
+                ):
+        """
+        Calculate Q values for the mediated potential.
+        Get distances. Should take descriptions and
+        calculate q. Here we will assume, that distances are correctly ordered
+
+        Arguments:
+
+        distances : np.array
+        """
+
+
+        # Assume, that distances do not need to be masked
+        # Size of the q dataset should be (n_framex, n_pairs*n_bf)
+        spline_basis = evaluate_basis_functions(distances, self.basis_functions, flatten=False)
+        q = np.concatenate(spline_basis, axis=1)
+        print(q.shape)
+        self.q = q
+        return self.q
