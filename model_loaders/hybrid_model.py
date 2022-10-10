@@ -260,6 +260,14 @@ class HybridProtein(ModelLoader):
         self.n_params += sbm_residue_specific_interaction.get_n_params()
         return
 
+    def add_two_body_b_spline_nonbonded_interactions(self):
+        """
+        Add structure-based nonbonded interactions to the Hamiltonian.
+        Is supposed to be  used inside get_potentials_epsilon.
+        """
+        raise NotImplementedError
+        two_body_splines = TwoBodyBSpline()
+
 
 
 
@@ -275,7 +283,8 @@ class HybridProtein(ModelLoader):
                      'mediated' : self.add_mediated_interactions,
                      'burial' : self.add_burrial_interactions,
                      'sbm_nonbonded' : self.add_sbm_nonbonded_interactions,
-                     'sbm_nonbonded_residue_specific' : self.add_sbm_nonbonded_residue_specific_interactions}
+                     'sbm_nonbonded_residue_specific' : self.add_sbm_nonbonded_residue_specific_interactions,
+                     '2body_splines' : self.add_two_body_b_spline_nonbonded_interactions}
         for type in terms:
             method_dict[type]()
 
