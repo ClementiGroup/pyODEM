@@ -1,5 +1,7 @@
 """ Initiate all the sub packages for calculating things """
 import numpy as np
+import mdtraj as md
+
 from mpi4py import MPI
 
 from . import basic_functions
