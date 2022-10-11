@@ -1032,9 +1032,9 @@ class TwoBodyBSpline(SBMNonbondedInteraction):
         self.n_pairs = len(self.pairs)
         
         # Do checks that the n_bf, r_min, r_max are the same as one used for initialization
-        assert np.all(description['n_bf']) == self.n_bf, "inconsistent number of basis functions"
-        assert np.all(description['r_min']) == self.spline_range[0], "inconsistent minimum value of the spline range"
-        assert np.all(description['r_max']) == self.spline_range[1], "inconsistent maximum value of the spline range"
+        assert np.all(description['n_bf']== self.n_bf), "inconsistent number of basis functions"
+        assert np.all(description['r_min'] == self.spline_range[0]), "inconsistent minimum value of the spline range"
+        assert np.all(description['r_max'] == self.spline_range[1]), "inconsistent maximum value of the spline range"
 
         return
         
