@@ -1011,7 +1011,7 @@ class TwoBodyBSpline(SBMNonbondedInteraction):
 
         """
         params = np.loadtxt(parameter_file)
-        assert params.shape == (self.n_bfs, self.n_pairs)
+        assert params.shape == (self.n_bf, self.n_pairs)
         # Need to reshape the dataset such that it is a 1D array, 
         # Order all the parameters for the first 
         self.params = params.flatten()
