@@ -10,7 +10,7 @@ from .hamiltonian_terms import AWSEMMediatedInteraction as MediatedInteraction
 from .hamiltonian_terms import AWSEMBurialInteraction as BurialInteraction
 from .hamiltonian_terms import SBMNonbondedInteraction
 from .hamiltonian_terms import SBMNonbondedInteractionsByResidue
-
+from .hamiltonian_terms import TwoBodyBSpline
 
 
 class HybridProtein(ModelLoader):
