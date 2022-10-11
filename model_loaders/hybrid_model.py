@@ -284,10 +284,28 @@ class HybridProtein(ModelLoader):
         Add structure-based nonbonded interactions to the Hamiltonian.
         Is supposed to be  used inside get_potentials_epsilon.
         """
-        raise NotImplementedError
-        two_body_splines = TwoBodyBSpline()
-
-
+        counter=0
+        mask_indexes = []
+        spline_interaction = TwoBodyBSpline(
+            self.n_bf, 
+            self.spline_range,
+            params_description_file=f'{self.parameter_location}/pairwise_params_spline'
+            )
+        spline_interaction.load_paramters(f'{self.parameter_location}/model_params_spline')
+        # Create a mask to select only the distances that are needed:
+        for i in range(self.n_residues-1):
+            for j in range(i+1, self.n_residues):
+                if frozenset([i,j]) in spline_interaction.pairs:
+                    mask_indexes.append(counter)
+                    counter += 1        
+        mask = np.array(mask_indexes, dtype=int) 
+        spline_interaction.precompute_data(distances=self.distances[:, mask])
+        print("Q array")
+        print(spline_interaction.q)
+        print("#"*10)
+        self.terms.append(spline_interaction)
+        self.n_params += spline_interaction.get_n_params()
+        return
 
 
     def setup_Hamiltonian(self, terms=['direct']):
