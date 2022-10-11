@@ -321,7 +321,7 @@ class HybridProtein(ModelLoader):
                      'burial' : self.add_burrial_interactions,
                      'sbm_nonbonded' : self.add_sbm_nonbonded_interactions,
                      'sbm_nonbonded_residue_specific' : self.add_sbm_nonbonded_residue_specific_interactions,
-                     '2body_splines' : self.add_two_body_b_spline_nonbonded_interactions}
+                     '2body_spline' : self.add_two_body_b_spline_nonbonded_interactions}
         for type in terms:
             method_dict[type]()
 
@@ -362,24 +362,24 @@ class HybridProtein(ModelLoader):
         # array will exist in the memory, doubling requirements
         pointer = 0
         for term in self.terms:
-          print(term.type)
-          if term.type in ['awsem_burial', 'awsem_mediated', 'awsem_direct' ]:
-              derivatives_term = term.calculate_derivatives(kwargs['sequence'])
-          elif term.type in ['sbm_nonbonded']:
-              derivatives_term = term.calculate_derivatives(fraction=kwargs['fraction'])
+            print(term.type)
+            if term.type in ['awsem_burial', 'awsem_mediated', 'awsem_direct' ]:
+                derivatives_term = term.calculate_derivatives(kwargs['sequence'])
+            elif term.type in ['sbm_nonbonded', '2body_spline']:
+                derivatives_term = term.calculate_derivatives(fraction=kwargs['fraction'])
+            
+            elif term.type in ['SBM nonbonded, residue-specific']:
+                print("Hello!")
+                derivatives_term = term.calculate_derivatives(sequence=kwargs['sequence'])
+            else:
+                raise ValueError
 
-          elif term.type in ['SBM nonbonded, residue-specific']:
-              print("Hello!")
-              derivatives_term = term.calculate_derivatives(sequence=kwargs['sequence'])
-          else:
-              raise ValueError
-
-          derivatives_term_shape = derivatives.shape
-          assert derivatives_term_shape[0] == self.n_frames
-          n_params = term.get_n_params()
-          assert derivatives_term_shape[1] == self.n_params
-          derivatives[:,pointer:pointer+n_params] = derivatives_term
-          pointer += n_params
+            derivatives_term_shape = derivatives.shape
+            assert derivatives_term_shape[0] == self.n_frames
+            n_params = term.get_n_params()
+            assert derivatives_term_shape[1] == self.n_params
+            derivatives[:,pointer:pointer+n_params] = derivatives_term
+            pointer += n_params
 
         # Do conversion to -beta*H
         derivatives = -1.0*self.beta*derivatives
