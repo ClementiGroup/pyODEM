@@ -19,7 +19,12 @@ class HybridProtein(ModelLoader):
     ODEM optimization.
 
     """
-    def __init__(self, topology=None, parameter_location='.',traj_type=None):
+    def __init__(
+        self,
+        topology=None,
+        parameter_location='.',
+        traj_type=None,
+        param_dict=None):
         """ Initialize the Customized Protein model, override superclass
 
         Arguments
@@ -28,7 +33,8 @@ class HybridProtein(ModelLoader):
         topology : mdtraj topology object.
         Topology of the system. Should use file generated with
         traj_type : {'awsem', 'sbm_ca'}
-
+        param_dict: dict
+        Dictionary of additional parameters needed to setup the Hamiltonian 
         """
         self.GAS_CONSTANT_KJ_MOL = 0.0083144621 #kJ/mol*k
         self.model = type('temp', (object,), {})()
@@ -45,10 +51,23 @@ class HybridProtein(ModelLoader):
         if topology is not None:
             self.set_topology(topology)
 
+
+        if param_dict is not None:
+            self.set_additional_params(param_dict)
+
     def set_topology(self,topology):
         self.topology = topology
         self.n_residues = topology.n_residues
         return
+
+    def set_additional_params(self, param_dict):
+        """
+        Set parameters required for specific hamiltonian terms
+        """
+        for key, value in param_dict.items():
+            setattr(self, key, value)
+        return
+
 
 
     @staticmethod
