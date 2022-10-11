@@ -1056,6 +1056,5 @@ class TwoBodyBSpline(SBMNonbondedInteraction):
         # Size of the q dataset should be (n_framex, n_pairs*n_bf)
         spline_basis = evaluate_basis_functions(distances, self.basis_functions, flatten=False)
         q = np.concatenate(spline_basis, axis=1)
-        print(q.shape)
         self.q = q
         return self.q
