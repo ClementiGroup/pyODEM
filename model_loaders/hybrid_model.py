@@ -192,6 +192,16 @@ class HybridProtein(ModelLoader):
         # select Calpha atoms if residue name is GLY and Cbeta atoms otherwise.
         return self.data
 
+    def clear_data(self, clear_distance=True, clear_local_density=True):
+        """
+        Removes data 
+        """
+        if clear_distance:
+            self.distances = None
+        if clear_density:
+            self.density = None
+        return
+
     def add_direct_interactions(self):
         """
         Add direct interactions to the Hamiltonian. Method is supposed to be
