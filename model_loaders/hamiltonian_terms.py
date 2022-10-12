@@ -1054,7 +1054,12 @@ class TwoBodyBSpline(SBMNonbondedInteraction):
 
         # Assume, that distances do not need to be masked
         # Size of the q dataset should be (n_framex, n_pairs*n_bf)
-        spline_basis = evaluate_basis_functions(distances, self.basis_functions, flatten=False)
-        q = np.concatenate(spline_basis, axis=1)
+        q = np.zeros((distances.shape[0], self.n_pairs*self.n_bf))
+        print("The derivative array has being allocated")
+        pointer = 0
+        for spline_function in self.basis_functions:
+            spline_basis = evaluate_basis_functions(distances, [spline_function], flatten=False)[0]
+            q[:, pointer:pointer+self.n_pairs] = spline_basis
+            pointer += self.n_pairs
         self.q = q
         return self.q
