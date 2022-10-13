@@ -964,7 +964,7 @@ class SBMNonbondedInteractionsByResidue(SBMNonbondedInteraction):
 
     def calculated_energy(self, derivatives=None):
         if derivatives is None:
-            derivatives = calculate_derivatives
+            raise NotImplementedError
         # NEED TO FINISH IMPLEMENTATION
 
     def get_parameters(self):
