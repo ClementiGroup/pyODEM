@@ -940,7 +940,7 @@ class SBMNonbondedInteractionsByResidue(SBMNonbondedInteraction):
 
         if not self.all_set:
             if not hasattr(self, 'q'):
-                self.q = self._calculate_Q(distances)
+                self.q = self._calculate_Q(self.distances)
 
         elif self.all_set:
             q = np.zeros(self.q_lj12gaussian.shape)
