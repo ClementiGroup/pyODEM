@@ -310,9 +310,6 @@ class HybridProtein(ModelLoader):
                     counter += 1        
         mask = np.array(mask_indexes, dtype=int) 
         spline_interaction.precompute_data(distances=self.distances[:, mask])
-        print("Q array")
-        print(spline_interaction.q)
-        print("#"*10)
         self.terms.append(spline_interaction)
         self.n_params += spline_interaction.get_n_params()
         return
@@ -421,8 +418,6 @@ class HybridProtein(ModelLoader):
         parameter_list = []
         for term in self.terms:
             params = term.get_parameters()
-            print(type(params))
-            print(params)
             parameter_list.append(params)
         param_array = np.concatenate(parameter_list)
         return param_array
