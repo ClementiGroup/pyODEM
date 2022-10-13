@@ -1007,7 +1007,7 @@ class TwoBodyBSpline(SBMNonbondedInteraction):
     def load_paramters(self, parameter_file):
         """
         Load parameters and assert correct size of the parameter file.
-        Parameters should have dimensions  (n_pairs, n_bf)
+        Parameters should have dimensions  (n_bfs, n_pairs)
 
         """
         params = np.loadtxt(parameter_file)
