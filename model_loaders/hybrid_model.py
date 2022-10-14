@@ -198,7 +198,7 @@ class HybridProtein(ModelLoader):
         """
         if clear_distance:
             self.distances = None
-        if clear_density:
+        if clear_local_density:
             self.density = None
         return
 
@@ -307,7 +307,7 @@ class HybridProtein(ModelLoader):
             for j in range(i+1, self.n_residues):
                 if frozenset([i,j]) in spline_interaction.pairs:
                     mask_indexes.append(counter)
-                    counter += 1        
+                counter += 1        
         mask = np.array(mask_indexes, dtype=int) 
         spline_interaction.precompute_data(distances=self.distances[:, mask])
         self.terms.append(spline_interaction)
