@@ -401,17 +401,37 @@ class HybridProtein(ModelLoader):
 
         return hepsilon, dhepsilon
 
-    def get_H_func(self, **kwargs):
-        hepsilon, dhepsilon = self.get_potentials_epsilon(**kwargs)
+    def get_H_func(self, save_memory=False, **kwargs):
+        """
+        Can either do evaluation of the hepsilon and dhepsilon 
+        beforehand (faster, but memory extensive), or try to do it in runtime
+        (slower, but arrays for derivatives are not stored for the mutants)
+        """
 
-        def H_func(params, return_derivatives=False, return_derivatives_only=False):
-            if return_derivatives:
-                return hepsilon(params), dhepsilon(params)
-            elif return_derivatives_only:
-                return dhepsilon(params)
-            else:
-                return hepsilon(params)
-        return H_func
+        if save_memory == False:
+            hepsilon, dhepsilon = self.get_potentials_epsilon(**kwargs)
+            
+            def H_func(params, return_derivatives=False, return_derivatives_only=False):
+                if return_derivatives:
+                    return hepsilon(params), dhepsilon(params)
+                elif return_derivatives_only:
+                    return dhepsilon(params)
+                else:
+                    return hepsilon(params)
+            return H_func
+
+        else:
+            
+            def H_func(params, return_derivatives=False, return_derivatives_only=False):
+                hepsilon, dhepsilon = self.get_potentials_epsilon(**kwargs)
+                if return_derivatives:
+                    return hepsilon(params), dhepsilon(params)
+                elif return_derivatives_only:
+                    return dhepsilon(params)
+                else:
+                    return hepsilon(params)
+            return H_func
+
 
 
     def get_epsilons(self):
