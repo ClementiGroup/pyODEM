@@ -983,10 +983,11 @@ class TwoBodyBSpline(SBMNonbondedInteraction):
 
     """
 
-    def __init__(self, n_bf, spline_range, params_description_file=None):
+    def __init__(self, n_bf, spline_range, n_frozen_tail=0, params_description_file=None):
         self.type = '2body_spline'
         self.n_bf = n_bf
         self.spline_range = spline_range
+        self.n_frozen_tail=n_frozen_tail
         self.set_spline_basis()
 
         if params_description_file is not None:
@@ -1057,9 +1058,13 @@ class TwoBodyBSpline(SBMNonbondedInteraction):
         q = np.zeros((distances.shape[0], self.n_pairs*self.n_bf))
         print("The derivative array has being allocated")
         pointer = 0
-        for spline_function in self.basis_functions:
-            spline_basis = evaluate_basis_functions(distances, [spline_function], flatten=False)[0]
-            q[:, pointer:pointer+self.n_pairs] = spline_basis
+        for ndx, spline_function in enumerate(self.basis_functions):
+            if ndx >= self.n_bf - self.n_frozen_tail:
+                # If in the frozen tail, do not do the compute the basis, leave it zero
+                continue
+            else:
+                spline_basis = evaluate_basis_functions(distances, [spline_function], flatten=False)[0]
+                q[:, pointer:pointer+self.n_pairs] = spline_basis
             pointer += self.n_pairs
         self.q = q
         return self.q
