@@ -299,6 +299,7 @@ class HybridProtein(ModelLoader):
         spline_interaction = TwoBodyBSpline(
             self.n_bf, 
             self.spline_range,
+            n_frozen_tail = self.n_frozen_tail,
             params_description_file=f'{self.parameter_location}/pairwise_params_spline'
             )
         spline_interaction.load_paramters(f'{self.parameter_location}/model_params_spline')
