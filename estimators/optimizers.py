@@ -418,7 +418,8 @@ def solve_batch_gd(Qfunc, x0,
                    lr_decay=True,
                    num_of_step=200,
                    multiplicator=0.70,
-                   alpha=0.0):
+                   alpha=0.0,
+                   l1_alpha=None):
 
     """ Solve using batch gradent descent
 
@@ -440,7 +441,8 @@ def solve_batch_gd(Qfunc, x0,
       step, at which decay is introduced
   multiplicator : float default 0.70
       defines, how step decreases at iteration num_of_step
-
+    l1_alpha : float, default None
+       if not None, defines the l1 regularization parameter
     """
     # logging information about optimization parameters
     log_file = open("optimization_log.txt", "wt")
@@ -460,6 +462,8 @@ def solve_batch_gd(Qfunc, x0,
             stepsize = multiplicator*stepsize
         Q_value, gradient = Qfunc(x_new)
         gradient += (2*alpha)*(x_new-x0)
+        if l1_alpha is not None:
+            gradient += l1_alpha*np.sign(x_new)
         step = np.multiply(stepsize, gradient)
         x_new -= step
         grad_norm = np.linalg.norm(gradient)
@@ -496,7 +500,8 @@ def solve_sgd_custom2(Qfunc, x0,
                       alpha=0.0,
                       lr_decay=True,
                       num_of_step=200,
-                      multiplicator=0.70):
+                      multiplicator=0.70,
+                      l1_alpha=None):
     """ Solve using stochastic gradent descent
 
     Arguments:
@@ -521,7 +526,8 @@ def solve_sgd_custom2(Qfunc, x0,
       step, at which decay is introduced
   multiplicator : float default 0.70
       defines, how step decreases at iteration num_of_step
-
+   l1_alpha  : float, default None
+        if not None, defines the strength of L1 regularization
     """
     if batch_number == 1:
         x_new = solve_batch_gd(Qfunc, x0,
@@ -531,7 +537,8 @@ def solve_sgd_custom2(Qfunc, x0,
                                lr_decay=lr_decay,
                                num_of_step=num_of_step,
                                multiplicator=multiplicator,
-                               alpha=alpha)
+                               alpha=alpha,
+                               l1_alpha=l1_alpha)
         return x_new
 
     # logging information about optimization parameters
@@ -564,6 +571,8 @@ def solve_sgd_custom2(Qfunc, x0,
             Q_value, gradient = Qfunc(x_new,batch_label)
             Q_total += Q_value
             gradient += (2*alpha)*(x_new-x0)
+            if l1_alpha is not None:
+                gradient += l1_alpha*np.sign(x_new)
             step = np.multiply(stepsize, gradient)
             x_new -= step
 
