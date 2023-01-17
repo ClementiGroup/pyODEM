@@ -501,7 +501,9 @@ def solve_sgd_custom2(Qfunc, x0,
                       lr_decay=True,
                       num_of_step=200,
                       multiplicator=0.70,
-                      l1_alpha=None):
+                      l1_alpha=None,
+                      checkpoint_step=None,
+                      checkpoint_folder='.'):
     """ Solve using stochastic gradent descent
 
     Arguments:
@@ -575,7 +577,9 @@ def solve_sgd_custom2(Qfunc, x0,
                 gradient += l1_alpha*np.sign(x_new)
             step = np.multiply(stepsize, gradient)
             x_new -= step
-
+        if checkpoint_step is not None:
+            if k % checkpoint_step == 0:
+                np.savetxt(f"{checkpoint_folder}/ckpt_{k}.dat", x_new)
         log_file.write("Total Q value after epoch: {} \n".format(Q_total))
         print("New Q value after update: {} \n".format(Q_total))
         diff = np.abs(Q_old - Q_total)
